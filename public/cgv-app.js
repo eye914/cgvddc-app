@@ -1799,4 +1799,9 @@
         }
     
 
-        if (document.readyState === "complete") { __initApp__(); } else { window.addEventListener("load", __initApp__); }
+        // defer 스크립트: DOM 파싱 완료 후 실행 보장 → 바로 호출
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", __initApp__);
+        } else {
+            __initApp__();
+        }

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import Script from 'next/script';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,11 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src="https://cdn.tailwindcss.com" async={false} />
         {/* GAS shim - google.script.run → fetch */}
         <script src="/gas-shim.js" async={false} />
+        {/* 앱 메인 JS - defer: DOM 파싱 완료 후, window.onload 이전에 실행 */}
+        <script src="/cgv-app.js" defer={true} />
       </head>
       <body>
         {children}
-        {/* 앱 메인 JS - body 마지막에 로드 */}
-        <Script src="/cgv-app.js" strategy="afterInteractive" />
       </body>
     </html>
   );
