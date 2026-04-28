@@ -6,9 +6,11 @@ export async function POST(req: NextRequest) {
     const { name, subscription } = await req.json();
     if (!name || !subscription) return NextResponse.json({ error: '이름과 구독 정보 필요' }, { status: 400 });
 
+    // UNIQUE 제약 없이도 동작하도록 delete → insert 패턴 사용
+    await supabaseAdmin.from('push_subscriptions').delete().eq('name', name);
     const { error } = await supabaseAdmin
       .from('push_subscriptions')
-      .upsert({ name, subscription: JSON.stringify(subscription) }, { onConflict: 'name' });
+      .insert({ name, subscription: JSON.stringify(subscription) });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });

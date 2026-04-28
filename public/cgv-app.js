@@ -158,17 +158,13 @@
             if (!('Notification' in window)) { btn.style.display = 'none'; return; }
             var n = name || getPushName();
             var perm = Notification.permission;
-            var subscribed = sessionStorage.getItem('cgv_push_subscribed') === 'true';
             if (perm === 'granted') {
-                if (!subscribed) {
-                    // 권한은 있지만 구독 미등록 → 자동 구독
+                btn.innerHTML = '<span class="text-green-600 font-black text-xs">🔔 알림 ON</span>';
+                btn.onclick = null;
+                btn.style.cursor = 'default';
+                // 세션 재시작 시 백그라운드 재구독
+                if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
                     doSubscribe(n);
-                    btn.innerHTML = '<span class="text-blue-500 font-black text-xs">🔔 등록중..</span>';
-                    btn.onclick = null;
-                } else {
-                    btn.innerHTML = '<span class="text-green-600 font-black text-xs">🔔 알림 ON</span>';
-                    btn.onclick = null;
-                    btn.style.cursor = 'default';
                 }
             } else if (perm === 'denied') {
                 btn.innerHTML = '<span class="font-black text-xs text-red-500">🔕 차단됨</span>';
@@ -181,21 +177,15 @@
             }
         }
 
-        // 앱 복귀 시 자동 감지 (설정 변경 후 돌아올 때)
+        // 앱 복귀 시 자동 감지 (설정 변경 후)
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState !== 'visible') return;
             var n = getPushName();
             if (!n) return;
-            var perm = Notification.permission;
-            var subscribed = sessionStorage.getItem('cgv_push_subscribed') === 'true';
-            if (perm === 'granted' && !subscribed) {
-                doSubscribe(n);
-            } else {
-                updatePushBtn(n);
-            }
+            updatePushBtn(n);
         });
 
-        function testPushNotification(name) {
+                function testPushNotification(name) {
             var n = name || getPushName();
             fetch('/api/push/test', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -328,7 +318,7 @@
             }
             fetchData();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
-            if (_pName && typeof updatePushBtn === 'function') setTimeout(function(){ updatePushBtn(_pName); }, 300);
+            if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
         }
         function showAuthError(msg) {
             var err = document.getElementById('auth-pin-error'); if (!err) return;
@@ -514,7 +504,7 @@
                 if (saved) selectUser(saved);
                 fetchData();
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
-                if (_rName && typeof updatePushBtn === 'function') setTimeout(function(){ updatePushBtn(_rName); }, 300);
+                if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
             } else {
                 // 미소지기 목록 먼저 로드 후 이름 그리드 표시
                 loadMisoForAuth();
@@ -1648,7 +1638,7 @@
             var container = document.getElementById("staff-stats-grid");
             if (!container||!header) return;
             var wk = getWeekKey(getLocalYYYYMMDD(currentStatsDate));
-            header.innerHTML = "<div class='flex justify-between items-center bg-slate-50 p-3 rounded-2xl border-2 border-slate-200 mb-6 font-black'><button onclick='changeStatsWeek(-1)' class='px-4 py-2.5 bg-white rounded-xl shadow-sm border font-black text-slate-500'>\uC774\uC804 \uC8FC</button><span class='font-black text-lg text-slate-800'>"+wk+"</span><button onclick='changeStatsWeek(1)' class='px-4 py-2.5 bg-white rounded-xl shadow-sm border font-black text-slate-500'>\uB2E4\uC74C \uC8FC</button></div>";
+                        header.innerHTML = "<div class='flex justify-between items-center gap-1 bg-slate-50 px-3 py-2 rounded-2xl border-2 border-slate-200 mb-3 font-black'><button onclick='changeStatsWeek(-1)' class='shrink-0 px-2 py-1 bg-white rounded-lg shadow-sm border font-black text-slate-500 text-xs'>\uC774\uC804</button><span class='font-black text-xs text-slate-700 text-center flex-1'>"+wk+"</span><button onclick='changeStatsWeek(1)' class='shrink-0 px-2 py-1 bg-white rounded-lg shadow-sm border font-black text-slate-500 text-xs'>\uB2E4\uC74C</button></div>";
             container.innerHTML = "";
             var statsMap = {};
             MISO_DATA.forEach(function(m){ statsMap[m.name] = { count:0 }; });
