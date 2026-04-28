@@ -91,7 +91,8 @@
                 grid.innerHTML = '<div class="col-span-3 text-center py-4 text-red-500 text-xs font-bold">로드 실패. 새로고침해주세요.</div>';
                 return;
             }
-            grid.innerHTML = MISO_DATA.map(function(m) {
+            var sorted = MISO_DATA.slice().sort(function(a,b){ return a.name.localeCompare(b.name, 'ko'); });
+            grid.innerHTML = sorted.map(function(m) {
                 return '<button onclick="selectAuthName(\'' + m.name + '\')" class="p-3 rounded-2xl border-2 border-slate-200 font-black text-slate-700 text-sm bg-white active:bg-red-50 active:border-red-400 transition-all active:scale-95">' + m.name + '</button>';
             }).join('');
         }
@@ -1539,16 +1540,17 @@
                 var logHtml = att.logs.length
                     ? att.logs.map(function(l){ return "<p class='text-[9px] text-slate-400 font-medium leading-tight mb-1'>- "+l+"</p>"; }).join("")
                     : "<p class='text-[9px] text-slate-300 italic'>\uBCC0\uACBD \uC774\uB825 \uC5C6\uC74C</p>";
-                container.innerHTML += "<div class='bg-white rounded-[24px] border-2 shadow-sm flex flex-col justify-between "+(isP?"border-red-400 bg-red-50":"border-slate-200")+" relative overflow-hidden font-black'>"
-                    + (isP ? "<div class='bg-red-500 text-white text-[10px] font-black py-1.5 text-center tracking-widest uppercase animate-pulse'>\uC815\uC9C0\uB428</div>" : "")
-                    + "<div class='p-5 flex justify-between items-center'>"
-                    + "<div><span class='font-black text-lg "+(isP?"text-red-700":"text-slate-900")+"'>"+m.name+"</span><p class='text-[10px] text-slate-400 font-medium'>"+m.pos.join("/")+"</p></div>"
-                    + "<span class='text-[10px] bg-slate-100 px-2 py-1 rounded-full font-black text-slate-500'>\uC8FC "+statsMap[m.name].count+"\uAC74</span></div>"
-                    + "<div class='border-t-2 border-slate-100 p-4 flex flex-col gap-3'>"
-                    + "<div class='flex gap-2'>"
-                    + "<div class='flex-1 bg-slate-50 rounded-xl p-2 flex flex-col items-center'><span class='text-[10px] font-black text-slate-500'>\uC9C0\uAC01</span><div class='flex items-center gap-2 mt-1'><button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-6 h-6 bg-white border border-slate-200 rounded-md shadow-sm'>-</button><span class='font-black "+(att.late>0?"text-red-600":"")+"'>"+ att.late+"</span><button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-6 h-6 bg-white border border-slate-200 rounded-md shadow-sm'>+</button></div></div>"
-                    + "<div class='flex-1 bg-slate-50 rounded-xl p-2 flex flex-col items-center'><span class='text-[10px] font-black text-slate-500'>\uACB0\uADFC</span><div class='flex items-center gap-2 mt-1'><button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-6 h-6 bg-white border border-slate-200 rounded-md shadow-sm'>-</button><span class='font-black "+(att.absent>0?"text-red-600":"")+"'>"+ att.absent+"</span><button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-6 h-6 bg-white border border-slate-200 rounded-md shadow-sm'>+</button></div></div>"
-                    + "</div><div class='bg-gray-100/50 p-3 rounded-lg max-h-[60px] overflow-y-auto'><p class='text-[8px] font-black text-slate-500 uppercase mb-1'>Log</p>"+logHtml+"</div></div></div>";
+                container.innerHTML += "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+" relative overflow-hidden font-black'>"
+                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest uppercase animate-pulse'>정지</div>" : "")
+                    + "<div class='p-2'>"
+                    + "<div class='flex justify-between items-start mb-1'>"
+                    + "<span class='font-black text-sm "+(isP?"text-red-700":"text-slate-900")+"'>"+m.name+"</span>"
+                    + "<span class='text-[9px] bg-slate-100 px-1.5 py-0.5 rounded-full font-black text-slate-500'>"+statsMap[m.name].count+"건</span></div>"
+                    + "<p class='text-[9px] text-slate-400 font-medium mb-2'>"+m.pos.join("/")+"</p>"
+                    + "<div class='flex gap-1'>"
+                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1 flex flex-col items-center'><span class='text-[8px] font-black text-slate-500'>지각</span><div class='flex items-center gap-1 mt-0.5'><button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>-</button><span class='text-xs font-black "+(att.late>0?"text-red-600":"")+"'>"+att.late+"</span><button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>+</button></div></div>"
+                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1 flex flex-col items-center'><span class='text-[8px] font-black text-slate-500'>결근</span><div class='flex items-center gap-1 mt-0.5'><button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>-</button><span class='text-xs font-black "+(att.absent>0?"text-red-600":"")+"'>"+att.absent+"</span><button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>+</button></div></div>"
+                    + "</div></div></div>";
             });
         }
 
