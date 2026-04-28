@@ -100,13 +100,16 @@
             if (cached) {
                 try { var p = JSON.parse(cached); if (p && p.length) { MISO_DATA = p; buildAuthNameGrid(); return; } } catch(e) {}
             }
-            google.script.run
-                .withSuccessHandler(function(list) {
-                    if (list && list.length) { MISO_DATA = list; sessionStorage.setItem('cgv_miso', JSON.stringify(list)); }
+            fetch('/api/misojigi')
+                .then(function(r) { return r.json(); })
+                .then(function(list) {
+                    if (Array.isArray(list) && list.length) {
+                        MISO_DATA = list;
+                        sessionStorage.setItem('cgv_miso', JSON.stringify(list));
+                    }
                     buildAuthNameGrid();
                 })
-                .withFailureHandler(function() { buildAuthNameGrid(); })
-                .getMisojigiFromDB();
+                .catch(function() { buildAuthNameGrid(); });
         }
         function selectAuthName(name) {
             authSelectedName = name; authIsAdmin = false;
@@ -370,7 +373,7 @@
             el.innerText = mm+"/"+dd+"("+day+") "+hh+":"+mi;
         }
 
-        window.onload = function() {
+        function __initApp__() {
             updateHeaderDatetime();
             setInterval(updateHeaderDatetime, 60000);
             var now = new Date();
@@ -1795,3 +1798,5 @@
             if (!mgrBoard.innerHTML) mgrBoard.innerHTML = "<div class='py-24 text-center font-black text-slate-300 uppercase tracking-widest text-xs bg-slate-50 rounded-3xl border border-dashed border-slate-200'>\uB300\uAE30 \uC911\uC778 \uC2B9\uC778 \uC694\uCCAD\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>";
         }
     
+
+        if (document.readyState === "complete") { __initApp__(); } else { window.addEventListener("load", __initApp__); }
