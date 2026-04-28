@@ -5,7 +5,7 @@
         var KAKAO_DEEPLINK = "kakaotalk://open/chat/gGsMiRli";
         // ── PIN 인증 설정 ──
         var PIN_LENGTH_STAFF = 5;
-        var PIN_LENGTH_ADMIN = 4;
+        var PIN_LENGTH_ADMIN = 5;
         var authSelectedName = "";
         var authIsAdmin = false;
         var pendingAdminTab = false;
@@ -192,9 +192,12 @@
             setTimeout(function(){ ov.style.display = 'none'; }, 400);
             sessionStorage.setItem('cgv_auth','true');
             if (r.role === 'admin') {
-                isAdmin = true; sessionStorage.setItem('cgv_admin','true');
+                isAdmin = true;
+                sessionStorage.setItem('cgv_admin','true');
+                sessionStorage.setItem('cgv_admin_name', r.name || '관리자');
             } else {
                 sessionStorage.setItem('cgv_currentUser', authSelectedName);
+                sessionStorage.setItem('cgv_locked_user', authSelectedName); // PIN 로그인 이름 고정
                 selectUser(authSelectedName);
             }
             fetchData();
@@ -500,6 +503,11 @@
         }
 
         function openUserSelectModal(){
+            // PIN 로그인 후 이름 변경 차단
+            if (sessionStorage.getItem('cgv_locked_user')) {
+                alert('PIN 로그인 후에는 본인 계정만 사용 가능합니다.');
+                return;
+            }
             // 미리보기/로컬 환경에서 MISO_DATA가 비어있으면 fallback 채움
             if (!MISO_DATA.length) {
                 var defaults = [

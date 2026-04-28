@@ -5,12 +5,19 @@ export async function POST(req: NextRequest) {
   try {
     const { name, pin, role } = await req.json();
 
-    // ── 관리자 PIN (4자리) ──
+    // ── 관리자 PIN (admins 테이블) ──
     if (role === 'admin') {
-      const adminPin = process.env.ADMIN_PIN;
-      if (!adminPin) return NextResponse.json({ error: '관리자 PIN 미설정' }, { status: 500 });
-      if (pin === adminPin) return NextResponse.json({ ok: true, role: 'admin' });
-      return NextResponse.json({ error: '관리자 PIN이 올바르지 않습니다.' }, { status: 401 });
+      const { data, error } = await supabaseAdmin
+        .from('admins')
+        .select('name, pin')
+        .eq('pin', pin)
+        .eq('active', true)
+        .maybeSingle();
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!data) return NextResponse.json({ error: '관리자 PIN이 올바르지 않습니다.' }, { status: 401 });
+
+      return NextResponse.json({ ok: true, role: 'admin', name: data.name });
     }
 
     // ── 미소지기 PIN (5자리) ──
