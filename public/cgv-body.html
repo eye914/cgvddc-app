@@ -1,0 +1,272 @@
+<div id="auth-overlay" className="fixed inset-0 bg-slate-200/80 backdrop-blur-md z-[9000] flex flex-col items-center justify-center px-6 transition-opacity duration-500">
+        <div className="bg-white p-10 rounded-[40px] w-full max-w-md shadow-2xl flex flex-col items-center text-center relative overflow-hidden border-4 border-slate-200">
+            <div className="absolute top-0 left-0 w-full h-3 bg-[#e71a0f]"></div>
+                        <div className="mt-4 mb-2"><h2 className="text-3xl font-black text-slate-900 tracking-tight">CGV동두천 교대 시스템</h2></div>
+            <p className="text-xs font-bold text-slate-500 mb-8 break-keep">인가된 동두천 CGV 미소지기 및 관리자만 시스템에 접근할 수 있습니다.</p>
+            <div className="w-full relative mb-6">
+                <input type="password" id="staff-password-input" placeholder="접속 암호 입력"
+                       className="w-full text-center text-xl tracking-[0.2em] font-black p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-[#e71a0f] focus:bg-white transition-all outline-none shadow-inner"
+                       onkeypress="if(event.key==='Enter')checkStaffAuth()">
+            </div>
+            <button onclick="checkStaffAuth()" className="w-full bg-[#e71a0f] hover:bg-red-700 text-white font-black text-lg py-5 rounded-2xl transition-all active:scale-95 shadow-lg border-b-4 border-red-800">
+                인증 후 입장하기
+            </button>
+        </div>
+    </div>
+
+    <header className="bg-white/95 backdrop-blur-md border-b-2 border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-3xl mx-auto px-4 flex flex-col">
+            <div className="flex items-center justify-between py-3">
+                <div className="flex flex-col justify-center">
+                    <div className="flex items-baseline gap-1 mb-0.5">
+                        <span style="color:#FF6B00;font-size:10px;font-weight:900;letter-spacing:0.18em;">CGV </span><span style="color:#e71a0f;font-size:10px;font-weight:900;letter-spacing:0.18em;"> DONGDUCHEON STAFF</span>
+                    </div>
+                    <h1 className="text-[17px] font-black tracking-tighter text-slate-900 leading-none">동두천 미소지기 교대 신청</h1>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                        <span id="header-datetime" className="text-[10px] font-bold text-slate-400"></span>
+                        <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">v1.0.5</span>
+                    </div>
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                        <button onclick="switchTab('trade')" id="tab-trade-btn" className="tab-btn active text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all">신청현황</button>
+                        <button onclick="switchTab('manager')" id="tab-manager-btn" className="tab-btn text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all text-slate-500">관리자</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main className="w-full mt-6 px-4">
+        <div id="view-trade" className="max-w-3xl mx-auto space-y-6">
+
+            <section className="bg-white rounded-[24px] p-4 card-shadow border-2 border-slate-100">
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 shadow-sm">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">누구신가요?</h2>
+                </div>
+                <button onclick="openUserSelectModal()" id="user-display-btn" className="w-full p-5 bg-slate-50 border-2 border-slate-300 hover:border-red-400 rounded-[20px] font-black text-lg text-slate-500 text-left transition-all shadow-inner flex justify-between items-center">
+                    <span>이름을 선택해 주세요</span>
+                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="name-guide" className="text-[12px] text-red-500 font-bold mt-3 ml-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> 이름을 선택해야 모든 기능이 활성화됩니다.
+                </div>
+            </section>
+
+            <section className="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 border-t-[6px] border-t-red-600">
+                <div className="mb-8">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tighter text-red-600">공고 등록</h2>
+                    <p className="text-[12px] font-black text-red-500 mt-2">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
+                </div>
+                <div className="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-[24px]">
+                    <button onclick="setTradeType('swap')" id="type-swap-btn" className="flex-1 py-4 rounded-[18px] font-black text-[15px] bg-slate-900 text-white shadow-md transition-all">맞교대</button>
+                    <button onclick="setTradeType('sub')" id="type-sub-btn" className="flex-1 py-4 rounded-[18px] font-black text-[15px] bg-white text-slate-500 hover:bg-slate-100 transition-all">단순 대타</button>
+                </div>
+                <input type="hidden" id="trade-type-input" value="swap">
+                <div className="space-y-8">
+                    <div className="p-5 rounded-[24px] border-2 border-red-200 bg-red-50/40 space-y-4">
+                        <span className="text-xs font-black text-red-600 uppercase tracking-widest">내가 보낼 근무 (OUT)</span>
+                        <div className="grid grid-cols-7 gap-1.5">
+                            <div onclick="setDayAndAutoDate('월','req')" className="req-day-chip day-chip chip font-bold text-slate-600">월</div>
+                            <div onclick="setDayAndAutoDate('화','req')" className="req-day-chip day-chip chip font-bold text-slate-600">화</div>
+                            <div onclick="setDayAndAutoDate('수','req')" className="req-day-chip day-chip chip font-bold text-slate-600">수</div>
+                            <div onclick="setDayAndAutoDate('목','req')" className="req-day-chip day-chip chip font-bold text-slate-600">목</div>
+                            <div onclick="setDayAndAutoDate('금','req')" className="req-day-chip day-chip chip font-bold text-slate-600">금</div>
+                            <div onclick="setDayAndAutoDate('토','req')" className="req-day-chip day-chip chip font-bold text-blue-600">토</div>
+                            <div onclick="setDayAndAutoDate('일','req')" className="req-day-chip day-chip chip font-bold text-red-600">일</div>
+                        </div>
+                        <input type="date" id="req-date-input" onchange="updateDayFromDate('req')" className="w-full p-5 bg-white border-2 border-slate-300 rounded-[22px] font-black text-slate-800 outline-none focus:border-red-500 text-lg shadow-sm">
+                        <div className="grid grid-cols-3 gap-2.5">
+                            <div onclick="setTimeGroup('D','req')" id="req-group-D" className="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">오픈(D)</div>
+                            <div onclick="setTimeGroup('M','req')" id="req-group-M" className="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">미들(M)</div>
+                            <div onclick="setTimeGroup('N','req')" id="req-group-N" className="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">마감(N)</div>
+                        </div>
+                        <div id="req-code-grid" className="grid grid-cols-3 gap-2 hidden border-t-2 border-red-100 pt-6"></div>
+                        <input type="hidden" id="req-selected-day"><input type="hidden" id="req-selected-code">
+                        <div className="pt-5 border-t-2 border-red-100">
+                            <label className="text-[10px] text-red-600 font-black mb-3 block">본인 직무에 맞는 포지션만 선택 가능합니다.</label>
+                            <div className="flex flex-wrap gap-2">
+                                <div onclick="setReqPosition('통합')" id="req-pos-통합" className="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
+                                <div onclick="setReqPosition('매점')" id="req-pos-매점" className="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
+                                <div onclick="setReqPosition('매점마감')" id="req-pos-매점마감" className="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
+                                <div onclick="setReqPosition('플로어')" id="req-pos-플로어" className="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
+                            </div>
+                            <input type="hidden" id="req-selected-pos">
+                        </div>
+                    </div>
+
+                    <div id="sub-warning-section" className="hidden bg-orange-50 border-2 border-orange-300 p-6 rounded-[28px] shadow-sm">
+                        <p className="text-orange-900 font-black mb-2 text-[15px]">단순 대타 요청 전 필수 확인 사항</p>
+                        <p className="text-[12px] font-bold text-orange-800 leading-relaxed">피치 못할 사유(병결, 경조사 등)가 아닌 무분별한 단순 대타 요청은 매니저 검토 후 승인이 엄격히 반려됩니다.</p>
+                    </div>
+
+                    <div id="wish-section" className="p-5 rounded-[24px] border-2 border-blue-200 bg-blue-50/40 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-black text-blue-600 uppercase tracking-widest">내가 받고 싶은 시간 (IN) [최대 2일]</span>
+                            <button onclick="clearWishData()" className="text-[10px] text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-md shadow-sm active:scale-95 font-black">초기화</button>
+                        </div>
+                        <div className="grid grid-cols-7 gap-1.5">
+                            <div onclick="toggleWishDay('월')" className="wish-day-chip day-chip chip font-bold text-slate-600">월</div>
+                            <div onclick="toggleWishDay('화')" className="wish-day-chip day-chip chip font-bold text-slate-600">화</div>
+                            <div onclick="toggleWishDay('수')" className="wish-day-chip day-chip chip font-bold text-slate-600">수</div>
+                            <div onclick="toggleWishDay('목')" className="wish-day-chip day-chip chip font-bold text-slate-600">목</div>
+                            <div onclick="toggleWishDay('금')" className="wish-day-chip day-chip chip font-bold text-slate-600">금</div>
+                            <div onclick="toggleWishDay('토')" className="wish-day-chip day-chip chip font-bold text-blue-600">토</div>
+                            <div onclick="toggleWishDay('일')" className="wish-day-chip day-chip chip font-bold text-red-600">일</div>
+                        </div>
+                        <div id="wish-details-container" className="mt-5 space-y-5">
+                            <div className="w-full p-4 bg-white border-2 border-slate-300 rounded-[22px] min-h-[64px] flex items-center justify-center shadow-sm font-black text-slate-400 text-[13px]">위에서 원하는 요일을 먼저 눌러주세요.</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="font-black text-slate-600 mb-3 block text-sm">사유 선택</label>
+                        <select id="reason-select" className="w-full p-5 bg-white border-2 border-slate-300 rounded-[28px] font-black text-lg text-slate-800 outline-none shadow-sm appearance-none">
+                            <option value="">사유를 선택해 주세요</option>
+                            <option value="개인사정">개인사정</option>
+                            <option value="학업/시험">학업/시험</option>
+                            <option value="병원방문">병원방문</option>
+                            <option value="경조사">경조사</option>
+                            <option value="기타(사전협의)">기타(사전협의)</option>
+                        </select>
+                    </div>
+                    <button onclick="submitNewTrade()" className="w-full bg-slate-900 hover:bg-slate-800 text-white py-5 rounded-[28px] font-black text-xl shadow-xl active:scale-95 transition-all border-2 border-slate-800">공고 등록 하기</button>
+                </div>
+            </section>
+
+            <section className="space-y-6 pb-10">
+                <div className="flex items-center justify-between px-4 border-l-8 border-red-600 ml-1">
+                    <h3 className="font-black text-slate-900 text-2xl italic tracking-tighter">실시간 현황</h3>
+                    <div className="flex items-center gap-3">
+                        <button onclick="sessionStorage.removeItem('cgv_miso');fetchData();" className="p-2 rounded-full bg-white border shadow-sm">
+                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+                        <div className="bg-white px-5 py-2 rounded-full border shadow-sm">
+                            <span id="total-count" className="text-sm font-black text-red-600 uppercase">0 건</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="filter-bar" className="flex gap-2 overflow-x-auto pb-1 px-1">
+                    <button onclick="setFilter('all')" id="flt-all" className="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-slate-900 text-white shadow-sm">전체</button>
+                    <button onclick="setFilter('mine')" id="flt-mine" className="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">내 공고</button>
+                    <button onclick="setFilter('open')" id="flt-open" className="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">모집중</button>
+                    <button onclick="setFilter('nego')" id="flt-nego" className="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">협의중</button>
+                    <button onclick="setFilter('wait')" id="flt-wait" className="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">승인대기</button>
+                </div>
+                <div id="my-action-list" className="grid gap-6"></div>
+                <div id="main-list-board" className="w-full"></div>
+            </section>
+        </div>
+
+        <div id="view-manager" className="hidden space-y-10 pb-20 w-full">
+            <div className="max-w-3xl mx-auto px-5">
+                <div className="bg-slate-900 rounded-[50px] p-16 text-white relative overflow-hidden shadow-2xl border-b-[10px] border-red-600">
+                    <h2 className="text-5xl font-black italic tracking-tighter mb-3 text-red-500 font-mono">ADMIN</h2>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.6em] opacity-90 mb-10">Final Approval Queue</p>
+                </div>
+            </div>
+            <div id="manager-list-board" className="max-w-3xl mx-auto space-y-8 px-4"></div>
+            <div className="max-w-3xl mx-auto px-5 mt-2">
+                <button onclick="cleanupOldTrades()" className="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black border-2 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all text-sm">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
+            </div>
+            <div className="max-w-5xl mx-auto px-5">
+                <div className="bg-white rounded-[50px] p-6 sm:p-10 shadow-2xl border-4 border-slate-100 mt-12 w-full overflow-hidden">
+                    <h3 className="text-2xl font-black text-slate-900 mb-2 italic">주간 근태 및 인력풀 모니터링</h3>
+                    <p className="text-sm font-bold text-slate-500 mb-8 border-b-2 border-slate-100 pb-4">
+                        직원별 주간 단위 지각/결근 횟수를 파악합니다.<br>
+                        <span className="text-red-500 text-xs">지각 1회 시 당해 주차 이용 정지 / 결근 1회 시 2주간 이용이 자동 차단됩니다.</span>
+                    </p>
+                    <div id="staff-stats-header"></div>
+                    <div id="staff-stats-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 지원 모달 -->
+    <div id="support-modal" className="modal-overlay">
+        <div className="support-modal-content shadow-2xl border-t-4 border-blue-500">
+            <div className="flex justify-between items-center mb-8 px-2">
+                <h2 className="text-3xl font-black italic tracking-tighter text-slate-800 uppercase">지원하기</h2>
+                <button onclick="closeModal()" className="text-slate-400 text-4xl font-light">&times;</button>
+            </div>
+            <div className="space-y-8 pb-6">
+                <div className="bg-blue-50 p-7 rounded-[44px] border-2 border-blue-200 text-center space-y-4">
+                    <div>
+                        <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">상대방의 근무 (OUT)</p>
+                        <p id="modal-target-shift" className="text-xl font-black text-slate-900"></p>
+                        <span id="modal-target-pos" className="inline-block mt-3 px-4 py-1.5 bg-white text-blue-700 text-[11px] font-black rounded-full border-2 border-blue-200 shadow-sm"></span>
+                    </div>
+                    <div className="text-blue-300 text-2xl font-black italic">&#8645;</div>
+                    <div>
+                        <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-2">상대방의 희망 시간 (IN)</p>
+                        <div id="modal-target-wish" className="text-base font-black text-blue-900 leading-relaxed"></div>
+                    </div>
+                    <div id="support-day-section" className="bg-white p-4 rounded-3xl border border-blue-100 hidden">
+                        <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-3">내가 들어갈 날짜를 먼저 하나 선택하세요</p>
+                        <div id="support-day-chips" className="flex flex-col gap-2"></div>
+                        <input type="hidden" id="support-selected-target-date">
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <label className="text-[11px] text-slate-500 font-black">내 투입 포지션을 확인하세요.</label>
+                    <div className="flex flex-wrap gap-2" id="support-pos-container">
+                        <div onclick="setSupportPosition('통합')" id="support-pos-통합" className="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
+                        <div onclick="setSupportPosition('매점')" id="support-pos-매점" className="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
+                        <div onclick="setSupportPosition('매점마감')" id="support-pos-매점마감" className="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
+                        <div onclick="setSupportPosition('플로어')" id="support-pos-플로어" className="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
+                    </div>
+                    <input type="hidden" id="support-selected-pos">
+                </div>
+                <div id="supporter-time-section" className="hidden p-7 rounded-[32px] border-2 border-green-200 bg-green-50/40 space-y-5 mt-4">
+                    <span className="text-[11px] font-black text-green-700 uppercase tracking-widest bg-white border-2 border-green-200 px-3 py-1.5 rounded-lg shadow-sm inline-block">내 실제 근무 시간 제안</span>
+                    <div id="support-code-grid" className="grid grid-cols-2 gap-2 border-t-2 border-green-100 pt-6"></div>
+                    <input type="hidden" id="support-selected-code">
+                </div>
+                <button onclick="confirmSupport()" className="w-full bg-blue-600 text-white py-6 rounded-[32px] font-black text-xl shadow-xl active:scale-95 transition-all border-2 border-blue-700">조건 확인 후 지원</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이름 선택 모달 -->
+    <div id="user-select-modal" className="modal-overlay">
+        <div className="modal-content shadow-2xl relative border-4 border-slate-100">
+            <button onclick="closeUserSelectModal()" className="absolute top-6 right-6 text-slate-400 hover:text-red-500 text-3xl font-light bg-slate-100 rounded-full w-10 h-10 flex items-center justify-center">&times;</button>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-6">내 이름과 직무 찾기</h2>
+            <div className="space-y-6" id="user-grid-container"></div>
+        </div>
+    </div>
+
+    <!-- 카카오 공유 강제 모달 -->
+    <div id="kakao-modal" className="modal-overlay" style="z-index:9500;">
+        <div className="kakao-modal-content" style="position:relative;">
+            <button id="kakao-close-btn" onclick="document.getElementById('kakao-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;padding:4px;">&#10005;</button>
+            <p id="kakao-force-msg" style="display:none;" className="text-[11px] font-black text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2">&#9888; 단톡방 공유 전까지 닫기가 안 돼요. 반드시 공유 후 완료 버튼을 눌러주세요!</p>
+            <div className="w-14 h-14 bg-[#fae100] rounded-[18px] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <span style="font-size:28px;line-height:1;">&#128172;</span>
+            </div>
+            <h3 className="text-xl font-black text-slate-900 mb-2">단톡방에 꼭 공유해주세요!</h3>
+            <p className="text-[13px] font-bold text-slate-500 mb-1 leading-relaxed">단톡방 공유 없이는 <span className="text-red-500 font-black">공식 신청으로 인정되지 않아요.</span></p>
+            <textarea id="kakao-copy-textarea" readonly onclick="this.select();"
+                style="width:100%;height:120px;margin:8px 0 10px;padding:10px;border-radius:12px;border:2px solid #e2e8f0;font-size:11px;font-family:inherit;resize:none;background:#f8fafc;color:#334155;cursor:pointer;outline:none;"
+                placeholder=""></textarea>
+            <p id="kakao-copy-hint" className="text-[11px] text-blue-600 font-black mb-2" style="display:none;">&#9757; PC: 위 텍스트를 클릭 후 Ctrl+C 로 복사하세요</p>
+            <button onclick="doKakaoOpen()" className="w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black text-base shadow-lg active:scale-95 transition-all mb-3 hover:bg-yellow-300">
+                복사 후 카톡방 열기
+            </button>
+            <button id="kakao-done-btn" onclick="closeKakaoModal()" disabled
+                className="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed">
+                공유 완료했어요 (카톡방 열기 후 활성화)
+            </button>
+            <p className="text-[10px] text-slate-400 font-bold mt-3">카톡방 열기를 누른 후 완료 버튼이 활성화됩니다.</p>
+        </div>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="loader" style="display:none;" className="fixed inset-0 bg-white/90 backdrop-blur-md z-[8000] flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-8 border-slate-200 border-t-red-600 rounded-full animate-spin mb-6"></div>
+        <p className="font-black text-slate-900 tracking-tighter text-xl uppercase animate-pulse" id="loader-msg">Syncing...</p>
+    </div>

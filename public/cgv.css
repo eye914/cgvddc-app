@@ -1,0 +1,79 @@
+
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
+        .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
+        .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
+        .chip.selected { background-color: #e71a0f; color: white; border-color: #e71a0f; transform: translateY(-1.5px); box-shadow: 0 4px 10px rgba(231,26,15,0.25); }
+        .chip.wish-selected { background-color: #3b82f6; color: white; border-color: #3b82f6; transform: translateY(-1.5px); }
+        .chip.all-selected { background-color: #10b981; color: white; border-color: #10b981; transform: translateY(-1.5px); }
+        .chip.pos-selected { background-color: #475569; color: white; border-color: #475569; transform: translateY(-1.5px); }
+        .chip.locked { opacity: 0.3; pointer-events: none; border-style: dashed; cursor: not-allowed; }
+        /* ── 모바일 최적화 ── */
+        @media (max-width: 480px) {
+            main { padding-left: 12px !important; padding-right: 12px !important; }
+            .card-shadow { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+            section { padding: 20px !important; border-radius: 24px !important; }
+            .support-modal-content { padding: 20px 16px !important; }
+            .kakao-modal-content { padding: 24px 16px !important; }
+            /* 시간 코드 그리드: 모바일에서 3열 */
+            #req-code-grid, #support-code-grid { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
+            /* 희망근무 코드 그리드도 3열 */
+            .grid.grid-cols-2 { grid-template-columns: repeat(3,1fr) !important; }
+            /* 요일 칩 */
+            .day-chip { padding: 10px 0 !important; font-size: 12px !important; }
+            /* 시간대 그룹 칩 */
+            .time-chip { padding: 12px 0 !important; font-size: 11px !important; }
+            /* 코드 칩 */
+            .code-chip { padding: 8px 2px !important; }
+            /* 입력 폼 패딩 축소 */
+            input[type="date"] { padding: 12px 10px !important; font-size: 15px !important; }
+            /* 카드 내부 패딩 */
+            .rounded-\[28px\] { padding: 16px !important; }
+            .rounded-\[32px\] { padding: 16px !important; }
+            .rounded-\[40px\] { padding: 16px !important; }
+            /* 버튼 */
+            button.rounded-\[32px\] { padding: 16px !important; font-size: 16px !important; }
+            /* 텍스트 크기 */
+            h2.text-2xl { font-size: 20px !important; }
+            h2.text-3xl { font-size: 22px !important; }
+            /* 공고 카드 */
+            .rounded-\[40px\].p-6, .rounded-\[40px\].p-8 { padding: 16px !important; border-radius: 24px !important; }
+            /* space-y 축소 */
+            .space-y-10 > * + * { margin-top: 20px !important; }
+            .space-y-8 > * + * { margin-top: 16px !important; }
+        }
+        .day-chip { border-radius: 14px; font-weight: 800; font-size: 15px; height: 48px; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .code-chip { border-radius: 12px; font-weight: 700; font-size: 13px; padding: 12px 0; width: 100%; }
+        .tab-btn.active { background-color: #e71a0f; color: white; font-weight: 900; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: white; width: 95%; max-width: 600px; border-radius: 36px; padding: 32px; animation: scaleUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; border: 2px solid #e2e8f0; }
+        .support-modal-content { background: white; width: 100%; max-width: 500px; border-radius: 36px 36px 0 0; padding: 32px; animation: slideUp 0.35s ease-out; max-height: 92vh; overflow-y: auto; position: absolute; bottom: 0; }
+        .kakao-modal-content { background: white; width: 92%; max-width: 380px; border-radius: 36px; padding: 36px 28px; animation: scaleUp 0.3s ease-out; border: 3px solid #fae100; text-align: center; }
+        .kakao-preview { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; padding: 14px; margin: 14px 0; font-size: 12px; font-weight: 600; color: #334155; text-align: left; line-height: 1.7; white-space: pre-wrap; word-break: break-all; max-height: 140px; overflow-y: auto; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .status-badge { font-weight: 900; font-size: 10px; padding: 5px 12px; border-radius: 100px; text-transform: uppercase; border: 1.5px solid currentColor; }
+        .my-alert { background: #fffdf0; border: 2.5px solid #fbbf24; }
+        details > summary { list-style: none; outline: none; }
+        /* ── 디자인 개선 ── */
+        /* 본문 텍스트 굵기 정리 */
+        .card-body-text { font-weight: 600; }
+        .label-text { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+        /* 주요 액션 버튼 통일 높이 */
+        .btn-primary { padding: 18px 0; font-size: 16px; font-weight: 900; border-radius: 20px; }
+        /* 색상 변수 통일 */
+        :root {
+            --cgv-red: #e71a0f;
+            --cgv-orange: #FF6B00;
+            --cgv-dark: #1e293b;
+            --cgv-gray: #64748b;
+            --cgv-light: #f8fafc;
+        }
+        details > summary::-webkit-details-marker { display: none; }
+        .log-container::-webkit-scrollbar { width: 4px; }
+        .log-container::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .fold-hint::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#94a3b8; white-space:nowrap; }
+        details[open] > summary .fold-hint::after { content: "\25B2  \C811\AE30"; color:#64748b; }
+        .fold-hint-dark::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#64748b; white-space:nowrap; }
+        details[open] > summary .fold-hint-dark::after { content: "\25B2  \C811\AE30"; color:#94a3b8; }
+    
