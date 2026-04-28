@@ -33,6 +33,16 @@
           .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d && d.deleted != null ? d.deleted : 0); }).catch(_failure);
       },
 
+      // ── 푸시 알림 ──
+      subscribePush: function(name, subscription) {
+        fetch('/api/push/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, subscription:subscription}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      testPush: function(name) {
+        fetch('/api/push/test', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+
       // ── 인증 ──
       checkPinAuth: function(name, pin, role) {
         fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pin:pin, role:role}) })

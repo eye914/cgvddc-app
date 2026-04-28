@@ -84,6 +84,73 @@
         }
 
         // ── 인증: 이름 그리드 빌드 ──
+        // ── 푸시 알림 ──
+        var VAPID_PUBLIC_KEY = 'BP1y9f4tcZUHXhoWhMxiiy6Gu4Yft8O6LTW4zeJs5KBVKTaVVS7pj-i9z-sbQQrluG5MyQJXPTfSz7i_BPeTIEs';
+
+        function urlBase64ToUint8Array(base64String) {
+            var padding = '='.repeat((4 - base64String.length % 4) % 4);
+            var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            var rawData = window.atob(base64);
+            var outputArray = new Uint8Array(rawData.length);
+            for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+            return outputArray;
+        }
+
+        function requestPushPermission(name) {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+                alert('이 브라우저는 푸시 알림을 지원하지 않습니다.');
+                return;
+            }
+            Notification.requestPermission().then(function(permission) {
+                if (permission !== 'granted') {
+                    alert('알림 권한이 거부되었습니다.');
+                    return;
+                }
+                navigator.serviceWorker.ready.then(function(reg) {
+                    return reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                    });
+                }).then(function(sub) {
+                    fetch('/api/push/subscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name, subscription: sub.toJSON() })
+                    }).then(function(r) { return r.json(); }).then(function(d) {
+                        if (d.ok) {
+                            sessionStorage.setItem('cgv_push_subscribed', 'true');
+                            updatePushBtn(name);
+                            alert('알림이 등록되었습니다!');
+                        }
+                    });
+                }).catch(function(e) {
+                    console.error('Push 구독 실패:', e);
+                    alert('알림 등록 실패: ' + e.message);
+                });
+            });
+        }
+
+        function updatePushBtn(name) {
+            var btn = document.getElementById('push-subscribe-btn');
+            if (!btn) return;
+            var subscribed = sessionStorage.getItem('cgv_push_subscribed') === 'true';
+            btn.innerHTML = subscribed
+                ? '<span class="text-green-600 font-black text-xs">🔔 알림 ON</span>'
+                : '<span class="font-black text-xs text-slate-500">🔕 알림 받기</span>';
+            btn.onclick = subscribed ? null : function() { requestPushPermission(name); };
+        }
+
+        function testPushNotification(name) {
+            fetch('/api/push/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.ok) alert('테스트 알림을 발송했습니다! 잠시 후 알림이 옵니다.');
+                else alert('실패: ' + d.error);
+            });
+        }
+
         function buildAuthNameGrid() {
             var grid = document.getElementById('auth-name-grid');
             if (!grid) return;
@@ -205,6 +272,8 @@
                 selectUser(authSelectedName);
             }
             fetchData();
+            var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
+            if (_pName && typeof updatePushBtn === 'function') setTimeout(function(){ updatePushBtn(_pName); }, 300);
         }
         function showAuthError(msg) {
             var err = document.getElementById('auth-pin-error'); if (!err) return;
@@ -389,6 +458,8 @@
                 var saved = sessionStorage.getItem("cgv_currentUser");
                 if (saved) selectUser(saved);
                 fetchData();
+                var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
+                if (_rName && typeof updatePushBtn === 'function') setTimeout(function(){ updatePushBtn(_rName); }, 300);
             } else {
                 // 미소지기 목록 먼저 로드 후 이름 그리드 표시
                 loadMisoForAuth();

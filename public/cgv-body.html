@@ -70,7 +70,7 @@
                 <div class="flex flex-col items-end gap-1.5">
                     <div class="flex items-center gap-1.5">
                         <span id="header-datetime" class="text-[10px] font-bold text-slate-400"></span>
-                        <span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200">v1.0.5</span>
+                        <button id="push-subscribe-btn" class="text-[9px] font-bold bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200 active:scale-95 transition-all">🔕 알림</button>
                     </div>
                     <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
                         <button onclick="switchTab('trade')" id="tab-trade-btn" class="tab-btn active text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all">신청현황</button>
@@ -213,8 +213,9 @@
                 </div>
             </div>
             <div id="manager-list-board" class="max-w-3xl mx-auto space-y-8 px-4"></div>
-            <div class="max-w-3xl mx-auto px-5 mt-2">
+            <div class="max-w-3xl mx-auto px-5 mt-2 space-y-2">
                 <button onclick="cleanupOldTrades()" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black border-2 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all text-sm">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
+                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full bg-blue-50 text-blue-600 py-4 rounded-2xl font-black border-2 border-blue-200 hover:bg-blue-100 transition-all text-sm">🔔 내 알림 테스트 발송</button>
             </div>
             <div class="max-w-5xl mx-auto px-5">
                 <div class="bg-white rounded-[50px] p-6 sm:p-10 shadow-2xl border-4 border-slate-100 mt-12 w-full overflow-hidden">
