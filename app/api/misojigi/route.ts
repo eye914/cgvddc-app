@@ -10,7 +10,7 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const result = data.map(row => ({
+  const result = (data ?? []).map((row: Record<string, any>) => ({
     name: row.name,
     pos: row.pos ? row.pos.split(',').map((p: string) => p.trim()) : [],
     hours: row.hours,

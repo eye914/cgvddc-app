@@ -68,7 +68,7 @@ export async function DELETE(req: NextRequest) {
 async function sendPushToAll(title: string, body: string) {
   const { data } = await supabaseAdmin.from('push_subscriptions').select('*');
   if (!data) return;
-  data.forEach(row => sendWebPush(row.subscription, title, body));
+  data.forEach((row: Record<string,any>) => sendWebPush(row.subscription, title, body));
 }
 
 async function sendPushToName(name: string, title: string, body: string) {
@@ -77,7 +77,7 @@ async function sendPushToName(name: string, title: string, body: string) {
     .select('*')
     .eq('name', name);
   if (!data) return;
-  data.forEach(row => sendWebPush(row.subscription, title, body));
+  data.forEach((row: Record<string,any>) => sendWebPush(row.subscription, title, body));
 }
 
 async function sendWebPush(subscriptionStr: string, title: string, body: string) {
