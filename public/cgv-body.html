@@ -1,18 +1,62 @@
-<div id="auth-overlay" class="fixed inset-0 bg-slate-200/80 backdrop-blur-md z-[9000] flex flex-col items-center justify-center px-6 transition-opacity duration-500">
-        <div class="bg-white p-10 rounded-[40px] w-full max-w-md shadow-2xl flex flex-col items-center text-center relative overflow-hidden border-4 border-slate-200">
-            <div class="absolute top-0 left-0 w-full h-3 bg-[#e71a0f]"></div>
-                        <div class="mt-4 mb-2"><h2 class="text-3xl font-black text-slate-900 tracking-tight">CGV동두천 교대 시스템</h2></div>
-            <p class="text-xs font-bold text-slate-500 mb-8 break-keep">인가된 동두천 CGV 미소지기 및 관리자만 시스템에 접근할 수 있습니다.</p>
-            <div class="w-full relative mb-6">
-                <input type="password" id="staff-password-input" placeholder="접속 암호 입력"
-                       class="w-full text-center text-xl tracking-[0.2em] font-black p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-[#e71a0f] focus:bg-white transition-all outline-none shadow-inner"
-                       onkeypress="if(event.key==='Enter')checkStaffAuth()">
+<!-- ── 로그인 오버레이 ── -->
+<div id="auth-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[9000] flex flex-col items-end justify-end transition-opacity duration-500">
+    <div class="bg-white rounded-t-[36px] w-full shadow-2xl overflow-hidden" style="max-height:90vh;overflow-y:auto">
+        <!-- 핸들 -->
+        <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+        <!-- 헤더 -->
+        <div class="px-6 pb-4 text-center border-b border-slate-100">
+            <div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em] mb-1">CGV DONGDUCHEON</div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight">교대 시스템 로그인</h2>
+        </div>
+
+        <!-- Step 1: 이름 선택 -->
+        <div id="auth-step-1" class="px-5 py-5">
+            <p class="text-[11px] font-black text-slate-400 mb-3 text-center uppercase tracking-wider">이름을 선택하세요</p>
+            <div id="auth-name-grid" class="grid grid-cols-3 gap-2 mb-4" style="max-height:220px;overflow-y:auto">
+                <div class="col-span-3 text-center py-6 text-slate-400 text-sm font-bold">로딩 중...</div>
             </div>
-            <button onclick="checkStaffAuth()" class="w-full bg-[#e71a0f] hover:bg-red-700 text-white font-black text-lg py-5 rounded-2xl transition-all active:scale-95 shadow-lg border-b-4 border-red-800">
-                인증 후 입장하기
-            </button>
+            <div class="border-t border-slate-100 pt-4">
+                <button onclick="showAdminLogin()" class="w-full py-3.5 text-slate-500 font-black text-sm border-2 border-slate-200 rounded-2xl bg-slate-50 active:scale-95 transition-all">🔐 관리자 로그인</button>
+            </div>
+        </div>
+
+        <!-- Step 2: PIN 입력 -->
+        <div id="auth-step-2" class="hidden px-5 py-5">
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="backToNameSelect()" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-600 text-lg active:scale-95 transition-all">←</button>
+                <div>
+                    <p class="font-black text-slate-900 text-base" id="auth-pin-name"></p>
+                    <p class="text-[11px] text-slate-400 font-bold" id="auth-pin-desc"></p>
+                </div>
+            </div>
+            <!-- PIN 박스 -->
+            <div id="auth-pin-boxes" class="flex gap-3 justify-center mb-2"></div>
+            <!-- 숨긴 입력 -->
+            <input type="tel" id="auth-pin-input" maxlength="5" inputmode="numeric" pattern="[0-9]*"
+                   class="opacity-0 absolute w-0 h-0" oninput="onPinInput()" autocomplete="off">
+            <p id="auth-pin-error" class="text-red-500 text-xs font-bold text-center mb-3 min-h-[1.2rem]"></p>
+            <!-- 숫자패드 -->
+            <div class="grid grid-cols-3 gap-2 mb-2" id="auth-numpad"></div>
         </div>
     </div>
+</div>
+
+<!-- ── 관리자 PIN 모달 (이미 로그인 후 관리자 탭 접근) ── -->
+<div id="admin-pin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[8500] flex items-end justify-center">
+    <div class="bg-white rounded-t-[32px] w-full shadow-2xl pb-6">
+        <div class="flex justify-center pt-4 pb-3"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+        <div class="px-6">
+            <h3 class="font-black text-slate-900 text-lg text-center mb-1">관리자 PIN</h3>
+            <p class="text-xs text-slate-400 font-bold text-center mb-5">4자리를 입력하세요</p>
+            <div id="admin-modal-pin-boxes" class="flex gap-3 justify-center mb-2"></div>
+            <input type="tel" id="admin-modal-pin-input" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                   class="opacity-0 absolute w-0 h-0" oninput="onAdminModalPinInput()" autocomplete="off">
+            <p id="admin-modal-pin-error" class="text-red-500 text-xs font-bold text-center mb-3 min-h-[1.2rem]"></p>
+            <div class="grid grid-cols-3 gap-2 mb-2" id="admin-modal-numpad"></div>
+            <button onclick="closeAdminPinModal()" class="w-full mt-2 py-3 text-slate-400 font-black text-sm active:scale-95">취소</button>
+        </div>
+    </div>
+</div>
 
     <header class="bg-white/95 backdrop-blur-md border-b-2 border-slate-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-3xl mx-auto px-4 flex flex-col">
@@ -180,7 +224,7 @@
                         <span class="text-red-500 text-xs">지각 1회 시 당해 주차 이용 정지 / 결근 1회 시 2주간 이용이 자동 차단됩니다.</span>
                     </p>
                     <div id="staff-stats-header"></div>
-                    <div id="staff-stats-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+                    <div id="staff-stats-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"></div>
                 </div>
             </div>
         </div>

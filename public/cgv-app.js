@@ -3,8 +3,12 @@
         var KAKAO_URL = "https://open.kakao.com/o/gGsMiRli";
         var DEPLOY_URL = "https://tinyurl.com/y7enzns9";
         var KAKAO_DEEPLINK = "kakaotalk://open/chat/gGsMiRli";
-        var STAFF_PASSWORD = "cgv1212";
-        var ADMIN_PASSWORDS = ["cgvddc0809"];
+        // ── PIN 인증 설정 ──
+        var PIN_LENGTH_STAFF = 5;
+        var PIN_LENGTH_ADMIN = 4;
+        var authSelectedName = "";
+        var authIsAdmin = false;
+        var pendingAdminTab = false;
         var MISO_DATA = []; // 앱 로드 시 미소지기DB에서 동적으로 채움
         var FULL_HOUR_NAMES = []; // 5.5h 미소지기 이름 목록
         var MALE_NAMES = ["\uae40\ud55c\uc194","\uc2e0\uc7ac\uc6a9","\uc870\ub3d9\uc6b0","\uc815\ud0dc\ubbfc","\uc190\uc815\ud604"];
@@ -79,19 +83,189 @@
             return y+"-"+m+"-"+dd;
         }
 
-        function checkStaffAuth() {
-            var pw = document.getElementById("staff-password-input").value;
-            if (pw === STAFF_PASSWORD || ADMIN_PASSWORDS.indexOf(pw) > -1) {
-                var ov = document.getElementById("auth-overlay");
-                ov.style.opacity = "0";
-                setTimeout(function(){ ov.style.display = "none"; }, 500);
-                sessionStorage.setItem("cgv_auth","true");
-                var saved = sessionStorage.getItem("cgv_currentUser");
-                if (saved) selectUser(saved);
-                fetchData();
-            } else {
-                alert("\uC811\uC18D \uC554\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+        // ── 인증: 이름 그리드 빌드 ──
+        function buildAuthNameGrid() {
+            var grid = document.getElementById('auth-name-grid');
+            if (!grid) return;
+            if (!MISO_DATA.length) {
+                grid.innerHTML = '<div class="col-span-3 text-center py-4 text-red-500 text-xs font-bold">로드 실패. 새로고침해주세요.</div>';
+                return;
             }
+            grid.innerHTML = MISO_DATA.map(function(m) {
+                return '<button onclick="selectAuthName(\'' + m.name + '\')" class="p-3 rounded-2xl border-2 border-slate-200 font-black text-slate-700 text-sm bg-white active:bg-red-50 active:border-red-400 transition-all active:scale-95">' + m.name + '</button>';
+            }).join('');
+        }
+        function loadMisoForAuth() {
+            var cached = sessionStorage.getItem('cgv_miso');
+            if (cached) {
+                try { var p = JSON.parse(cached); if (p && p.length) { MISO_DATA = p; buildAuthNameGrid(); return; } } catch(e) {}
+            }
+            google.script.run
+                .withSuccessHandler(function(list) {
+                    if (list && list.length) { MISO_DATA = list; sessionStorage.setItem('cgv_miso', JSON.stringify(list)); }
+                    buildAuthNameGrid();
+                })
+                .withFailureHandler(function() { buildAuthNameGrid(); })
+                .getMisojigiFromDB();
+        }
+        function selectAuthName(name) {
+            authSelectedName = name; authIsAdmin = false;
+            showPinStep(name + ' 님', PIN_LENGTH_STAFF + '자리 PIN 입력');
+        }
+        function showAdminLogin() {
+            authSelectedName = ''; authIsAdmin = true;
+            showPinStep('관리자', PIN_LENGTH_ADMIN + '자리 PIN 입력');
+        }
+        function backToNameSelect() {
+            document.getElementById('auth-step-2').classList.add('hidden');
+            document.getElementById('auth-step-1').classList.remove('hidden');
+            var i = document.getElementById('auth-pin-input'); if (i) i.value = '';
+            renderPinBoxes('', PIN_LENGTH_STAFF);
+        }
+        function showPinStep(nameText, descText) {
+            document.getElementById('auth-step-1').classList.add('hidden');
+            document.getElementById('auth-step-2').classList.remove('hidden');
+            document.getElementById('auth-pin-name').innerText = nameText;
+            document.getElementById('auth-pin-desc').innerText = descText;
+            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
+            var i = document.getElementById('auth-pin-input');
+            if (i) { i.value = ''; i.maxLength = len; }
+            renderPinBoxes('', len);
+            document.getElementById('auth-pin-error').innerText = '';
+            buildNumpad('auth-numpad', len, 'numpadPress');
+            setTimeout(function() { var inp = document.getElementById('auth-pin-input'); if (inp) inp.focus(); }, 100);
+        }
+        function onPinInput() {
+            var i = document.getElementById('auth-pin-input');
+            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
+            var val = (i.value || '').replace(/\D/g,'').substring(0, len);
+            i.value = val; renderPinBoxes(val, len);
+            if (val.length === len) submitPin();
+        }
+        function numpadPress(key) {
+            var i = document.getElementById('auth-pin-input');
+            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
+            if (key === 'x') i.value = i.value.slice(0,-1);
+            else if (i.value.length < len) i.value += key;
+            renderPinBoxes(i.value, len);
+            if (i.value.length === len) submitPin();
+        }
+        function renderPinBoxes(val, len) {
+            var el = document.getElementById('auth-pin-boxes'); if (!el) return;
+            el.innerHTML = '';
+            for (var i=0; i<len; i++) {
+                var f = i < val.length;
+                el.innerHTML += '<div class="w-11 h-14 border-2 rounded-2xl flex items-center justify-center transition-all ' + (f?'border-slate-900 bg-slate-900':'border-slate-300 bg-slate-50') + '">' + (f?'<div class="w-3 h-3 bg-white rounded-full"></div>':'') + '</div>';
+            }
+        }
+        function buildNumpad(containerId, pinLen, pressFunc) {
+            var pad = document.getElementById(containerId); if (!pad) return;
+            var keys = ['1','2','3','4','5','6','7','8','9','','0','x'];
+            pad.innerHTML = keys.map(function(k) {
+                if (!k) return '<div></div>';
+                var label = k === 'x' ? '⌫' : k;
+                return '<button onclick="'+pressFunc+'(\''+k+'\')" class="py-4 rounded-2xl font-black text-xl active:scale-95 transition-all ' + (k==='x'?'bg-slate-200 text-slate-600':'bg-slate-50 border-2 border-slate-200 text-slate-800') + '">' + label + '</button>';
+            }).join('');
+        }
+        function submitPin() {
+            var i = document.getElementById('auth-pin-input'); if (!i) return;
+            var pin = (i.value||'').replace(/\D/g,'');
+            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
+            if (pin.length < len) return;
+            var pad = document.getElementById('auth-numpad'); if (pad) pad.style.pointerEvents = 'none';
+            google.script.run
+                .withSuccessHandler(function(r) {
+                    if (pad) pad.style.pointerEvents = '';
+                    if (!r || r.error) { showAuthError(r&&r.error?r.error:'인증 오류'); if(i) i.value=''; renderPinBoxes('',len); return; }
+                    authSuccess(r);
+                })
+                .withFailureHandler(function(e) {
+                    if (pad) pad.style.pointerEvents = '';
+                    showAuthError(e&&e.message?e.message:'서버 오류');
+                    if(i) i.value=''; renderPinBoxes('',len);
+                })
+                .checkPinAuth(authIsAdmin?'':authSelectedName, pin, authIsAdmin?'admin':'staff');
+        }
+        function authSuccess(r) {
+            var ov = document.getElementById('auth-overlay');
+            ov.style.opacity = '0';
+            setTimeout(function(){ ov.style.display = 'none'; }, 400);
+            sessionStorage.setItem('cgv_auth','true');
+            if (r.role === 'admin') {
+                isAdmin = true; sessionStorage.setItem('cgv_admin','true');
+            } else {
+                sessionStorage.setItem('cgv_currentUser', authSelectedName);
+                selectUser(authSelectedName);
+            }
+            fetchData();
+        }
+        function showAuthError(msg) {
+            var err = document.getElementById('auth-pin-error'); if (!err) return;
+            err.innerText = msg;
+            var boxes = document.getElementById('auth-pin-boxes');
+            if (boxes) {
+                [8,-8,4,0].forEach(function(x,idx){ setTimeout(function(){ boxes.style.transform='translateX('+x+'px)'; }, idx*80); });
+            }
+            setTimeout(function(){ err.innerText=''; }, 3000);
+        }
+        function showAdminPinModal() {
+            var modal = document.getElementById('admin-pin-modal'); if (!modal) return;
+            var i = document.getElementById('admin-modal-pin-input'); if (i) i.value = '';
+            renderAdminModalBoxes('');
+            document.getElementById('admin-modal-pin-error').innerText = '';
+            buildNumpad('admin-modal-numpad', PIN_LENGTH_ADMIN, 'adminModalNumpad');
+            modal.classList.remove('hidden');
+            setTimeout(function(){ var inp = document.getElementById('admin-modal-pin-input'); if(inp) inp.focus(); }, 100);
+        }
+        function closeAdminPinModal() {
+            var modal = document.getElementById('admin-pin-modal'); if (modal) modal.classList.add('hidden');
+            pendingAdminTab = false;
+        }
+        function renderAdminModalBoxes(val) {
+            var el = document.getElementById('admin-modal-pin-boxes'); if (!el) return;
+            el.innerHTML = '';
+            for (var i=0; i<PIN_LENGTH_ADMIN; i++) {
+                var f = i < val.length;
+                el.innerHTML += '<div class="w-11 h-14 border-2 rounded-2xl flex items-center justify-center transition-all ' + (f?'border-slate-900 bg-slate-900':'border-slate-300 bg-slate-50') + '">' + (f?'<div class="w-3 h-3 bg-white rounded-full"></div>':'') + '</div>';
+            }
+        }
+        function onAdminModalPinInput() {
+            var i = document.getElementById('admin-modal-pin-input');
+            var val = (i.value||'').replace(/\D/g,'').substring(0,PIN_LENGTH_ADMIN);
+            i.value = val; renderAdminModalBoxes(val);
+            if (val.length === PIN_LENGTH_ADMIN) submitAdminModalPin();
+        }
+        function adminModalNumpad(key) {
+            var i = document.getElementById('admin-modal-pin-input');
+            if (key==='x') i.value = i.value.slice(0,-1);
+            else if (i.value.length < PIN_LENGTH_ADMIN) i.value += key;
+            renderAdminModalBoxes(i.value);
+            if (i.value.length === PIN_LENGTH_ADMIN) submitAdminModalPin();
+        }
+        function submitAdminModalPin() {
+            var i = document.getElementById('admin-modal-pin-input'); if (!i) return;
+            var pin = (i.value||'').replace(/\D/g,'');
+            if (pin.length < PIN_LENGTH_ADMIN) return;
+            var pad = document.getElementById('admin-modal-numpad'); if (pad) pad.style.pointerEvents = 'none';
+            google.script.run
+                .withSuccessHandler(function(r) {
+                    if (pad) pad.style.pointerEvents = '';
+                    if (!r||r.error) {
+                        var err = document.getElementById('admin-modal-pin-error');
+                        if (err) { err.innerText = r&&r.error?r.error:'PIN 오류'; setTimeout(function(){err.innerText='';},3000); }
+                        if(i) i.value=''; renderAdminModalBoxes(''); return;
+                    }
+                    isAdmin = true; sessionStorage.setItem('cgv_admin','true');
+                    closeAdminPinModal();
+                    if (pendingAdminTab) { pendingAdminTab=false; switchTab('manager'); }
+                })
+                .withFailureHandler(function(e) {
+                    if (pad) pad.style.pointerEvents = '';
+                    var err = document.getElementById('admin-modal-pin-error');
+                    if (err) { err.innerText = e&&e.message?e.message:'오류'; setTimeout(function(){err.innerText='';},3000); }
+                    if(i) i.value=''; renderAdminModalBoxes('');
+                })
+                .checkPinAuth('', pin, 'admin');
         }
 
         function showKakaoModal(text, forced) {
@@ -201,13 +375,16 @@
             var ri = document.getElementById("req-date-input");
             if (ri) ri.min = getLocalYYYYMMDD(tmr);
             // GAS 환경이 아닌 경우(미리보기/로컬) 자동 인증 처리
-            var isPreview = typeof google === "undefined" || !google.script;
-            if (sessionStorage.getItem("cgv_auth") === "true" || isPreview) {
+            // 이미 인증된 세션이면 바로 진입
+            if (sessionStorage.getItem("cgv_auth") === "true") {
                 document.getElementById("auth-overlay").style.display = "none";
-                sessionStorage.setItem("cgv_auth","true");
+                if (sessionStorage.getItem("cgv_admin") === "true") isAdmin = true;
                 var saved = sessionStorage.getItem("cgv_currentUser");
                 if (saved) selectUser(saved);
                 fetchData();
+            } else {
+                // 미소지기 목록 먼저 로드 후 이름 그리드 표시
+                loadMisoForAuth();
             }
             // Pull-to-refresh
             var ptrStart = 0; var ptrActive = false;
@@ -1295,12 +1472,10 @@
                 if (sessionStorage.getItem("cgv_admin") === "true") {
                     isAdmin = true;
                 } else {
-                    var pwd = prompt("\uAD00\uB9AC\uC790 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.");
-                    if (ADMIN_PASSWORDS.indexOf(pwd) > -1) {
-                        isAdmin = true;
-                        sessionStorage.setItem("cgv_admin", "true");
-                    } else return;
-                }
+                    // 관리자 PIN 모달 표시
+                    pendingAdminTab = true;
+                    showAdminPinModal();
+                    return;
             }
             document.getElementById("view-trade").classList.toggle("hidden", tab !== "trade");
             document.getElementById("view-manager").classList.toggle("hidden", tab !== "manager");
