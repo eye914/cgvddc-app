@@ -57,6 +57,21 @@
       getMisojigiFromDB: function() {
         fetch('/api/misojigi').then(function(r){ return r.json(); }).then(_success).catch(_failure);
       },
+      getAllMisojigiForAdmin: function() {
+        fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).then(_success).catch(_failure);
+      },
+      addMisojigi: function(name, pos, hours) {
+        fetch('/api/misojigi', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pos:pos, hours:hours}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      updateMisojigi: function(name, updates) {
+        fetch('/api/misojigi', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.assign({name:name}, updates)) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      deactivateMisojigi: function(name) {
+        fetch('/api/misojigi', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
 
       // ── 출결 ──
       getAttendanceFromDB: function() {
