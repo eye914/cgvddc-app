@@ -1487,6 +1487,7 @@
                     pendingAdminTab = true;
                     showAdminPinModal();
                     return;
+                }
             }
             document.getElementById("view-trade").classList.toggle("hidden", tab !== "trade");
             document.getElementById("view-manager").classList.toggle("hidden", tab !== "manager");
