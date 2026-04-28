@@ -25,18 +25,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
         />
         <link rel="stylesheet" href="/cgv.css" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
-        <Script src="/gas-shim.js" strategy="beforeInteractive" />
+        {/* Tailwind CDN - head에서 먼저 로드 */}
+        <script src="https://cdn.tailwindcss.com" async={false} />
+        {/* GAS shim - google.script.run → fetch */}
+        <script src="/gas-shim.js" async={false} />
       </head>
       <body>
         {children}
+        {/* 앱 메인 JS - body 마지막에 로드 */}
         <Script src="/cgv-app.js" strategy="afterInteractive" />
       </body>
     </html>

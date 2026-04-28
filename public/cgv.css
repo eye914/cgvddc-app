@@ -1,6 +1,4 @@
-
-        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
+body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
         .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
         .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
         .chip.selected { background-color: #e71a0f; color: white; border-color: #e71a0f; transform: translateY(-1.5px); box-shadow: 0 4px 10px rgba(231,26,15,0.25); }
@@ -76,4 +74,3 @@
         details[open] > summary .fold-hint::after { content: "\25B2  \C811\AE30"; color:#64748b; }
         .fold-hint-dark::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#64748b; white-space:nowrap; }
         details[open] > summary .fold-hint-dark::after { content: "\25B2  \C811\AE30"; color:#94a3b8; }
-    
