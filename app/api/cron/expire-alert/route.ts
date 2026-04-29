@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
   if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
   if (!trades?.length) return NextResponse.json({ expired: 0, message: '만료 공고 없음' });
 
-  const ids = trades.map(t => t.id);
+  type TradeRow = { id: string; req_name: string; shift_date: string };
+  const ids = (trades as TradeRow[]).map(t => t.id);
 
   // 상태를 '만료'로 일괄 업데이트
   const { error: updateErr } = await supabaseAdmin
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
   if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
   // reqName 중복 제거
-  const names = [...new Set(trades.map(t => t.req_name))];
+  const names = [...new Set((trades as TradeRow[]).map(t => t.req_name))];
 
   // 당사자 개별 알림
   await Promise.allSettled(
