@@ -1556,6 +1556,15 @@
             }
         }
 
+        function adminCancelTrade(id, reqName) {
+            if (!confirm((reqName || "해당") + " 공고를 관리자 권한으로 취소합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?")) return;
+            showLoader(true);
+            google.script.run
+                .withSuccessHandler(fetchData)
+                .withFailureHandler(function(e){ showLoader(false); alert("취소 실패: " + e.message); })
+                .deleteTradeFromDB(id);
+        }
+
         function cancelTrade(id){
             if (!confirm("\uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?")) return;
             showLoader(true);
@@ -1964,7 +1973,7 @@
                         + "<span class='text-[10px] font-black text-slate-400 bg-slate-200 px-2 py-0.5 rounded-md flex-shrink-0'>\uAE30\uAC04\uB9CC\uB8CC</span>"
                         + "<span class='font-black text-slate-600 text-[13px]'>"+t.reqName+"</span>"
                         + "<span class='text-slate-400 text-[12px] ml-1'>\u2192 "+safeDate.split("/")[0].trim()+"</span>"
-                        + (isMine ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='ml-auto text-[10px] bg-white text-red-400 border border-red-200 px-2 py-0.5 rounded-md font-black'>\uCDE8\uC18C</button>" : "<span class='ml-auto text-slate-400 text-[10px] flex-shrink-0'>눌러서 보기 ▼</span>")
+                        + ((isMine||isAdmin) ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='ml-auto text-[10px] bg-white text-red-400 border border-red-200 px-2 py-0.5 rounded-md font-black'>\uCDE8\uC18C</button>" : "<span class='ml-auto text-slate-400 text-[10px] flex-shrink-0'>눌러서 보기 ▼</span>")
                         + "</summary>"
                         + "<div class='px-4 pb-4 pt-2 border-t border-slate-200'>"
                         + "<div class='bg-white rounded-2xl p-4 border border-slate-100 space-y-3'>"
@@ -2007,7 +2016,7 @@
                     + "<div class='flex justify-between items-start mb-5'>"
                     + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
                     + "<h4 class='text-lg font-black text-slate-800'>"+t.reqName+"</h4></div>"
-                    + (isMine&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] bg-white text-slate-400 border border-slate-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uCDE8\uC18C</button>" : "")
+                    + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] bg-white text-red-400 border border-red-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uCDE8\uC18C</button>" : "")
                     + "</div>"
                     + "<div class='bg-slate-50 p-4 sm:p-5 rounded-[28px] border border-slate-100 space-y-4'>"
                     + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
@@ -2043,7 +2052,7 @@
                         + "<div class='text-center text-slate-300 text-2xl'>&#8645;</div>"
                         + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC218\uB77D: "+t.subName+" "+(t.subPos||"")+"</p><div class='text-slate-800 font-bold'>"+inHtml+"</div></div>"
                         + (isD ? "<button onclick=\"adminCopyToClipboard(decodeURIComponent('"+encAdmin+"'))\" class='w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black active:scale-95 shadow-md'>\uCE74\uD1A1 \uACF5\uC720 (\uC2B9\uC778\uC644\uB8CC \uACF5\uC9C0)</button>"
-                               : "<div class='flex gap-3'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black shadow-md'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 bg-red-600 text-white py-5 rounded-2xl font-black shadow-md'>\uBC18\uB824</button></div>")
+                               : "<div class='flex gap-3'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black shadow-md'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 bg-red-600 text-white py-5 rounded-2xl font-black shadow-md'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-2 bg-white text-slate-400 border border-slate-200 py-3 rounded-2xl font-black text-sm'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
                         + "</div>";
                     var wkA = getWeekKey(safeDate);
                     if (!adminGrouped[wkA]) adminGrouped[wkA] = [];
