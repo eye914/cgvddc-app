@@ -123,31 +123,38 @@
 
         function requestPushPermission(name) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                alert('이 브라우저는 푸시 알림을 지원하지 않습니다.'); return;
+                alert('이 브라우저는 푸시 알림을 지원하지 않습니다.\n크롬 브라우저 또는 PWA 앱에서 이용해주세요.'); return;
             }
             var perm = Notification.permission;
             if (perm === 'denied') { showPushDeniedGuide(); return; }
             if (perm === 'granted') { doSubscribe(name); return; }
+            // default: 권한 요청 팝업
             Notification.requestPermission().then(function(p) {
                 if (p === 'granted') doSubscribe(name);
+                else if (p === 'denied') showPushDeniedGuide();
                 else updatePushBtn(name);
             });
         }
 
         function showPushDeniedGuide() {
-            // 다시 한번 현재 권한 체크 (OS 설정에서 바꿨을 수도 있음)
             if (Notification.permission !== 'denied') {
-                updatePushBtn(getPushName());
-                return;
+                updatePushBtn(getPushName()); return;
             }
             var ua = navigator.userAgent.toLowerCase();
+            var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
             var msg;
             if (/android/.test(ua)) {
-                msg = '알림이 Chrome에서 차단되어 있습니다.\n\n[Chrome 사이트 설정에서 해제]\n① Chrome 앱 실행 (앱이 아닌 브라우저)\n② 주소창에 앱 주소 입력 후 접속\n③ 주소창 왼쪽 🔒 아이콘 클릭\n④ 알림 → 허용\n⑤ 앱 새로고침\n\n또는:\n설정 → 앱 → Chrome → 권한 → 알림 → 허용';
+                if (isStandalone) {
+                    // PWA로 설치된 경우
+                    msg = '알림 권한이 차단되어 있습니다.\n\n[설정 방법]\n① 기기의 설정 앱 열기\n② 앱 → Chrome 찾기\n③ 권한 → 알림 → 허용\n\n또는:\n크롬 브라우저 → 주소창 오른쪽 ⋮ 메뉴\n→ 설정 → 사이트 설정 → 알림\n→ 이 사이트 주소 찾아서 허용\n\n설정 후 앱을 새로고침하세요.';
+                } else {
+                    // 브라우저에서 접속한 경우
+                    msg = '알림 권한이 차단되어 있습니다.\n\n[설정 방법]\n주소창 왼쪽 🔒 아이콘 클릭\n→ 알림 → 허용\n\n설정 후 페이지를 새로고침하세요.';
+                }
             } else if (/iphone|ipad/.test(ua)) {
-                msg = '알림이 차단되어 있습니다.\n\n[설정 방법]\n설정 → Safari → 고급 → 웹사이트 데이터에서\n이 사이트의 알림을 허용 후 새로고침';
+                msg = '알림 권한이 차단되어 있습니다.\n\n[iPhone 설정 방법]\n① 기기 설정 앱 열기\n② 화면 맨 아래로 스크롤\n③ Safari 또는 앱 이름 찾기\n→ 알림 → 허용\n\n설정 후 앱을 새로고침하세요.';
             } else {
-                msg = '알림이 차단되어 있습니다.\n\n주소창 🔒 아이콘 → 알림 → 허용\n후 페이지를 새로고침하세요.';
+                msg = '알림 권한이 차단되어 있습니다.\n\n[설정 방법]\n주소창 왼쪽 🔒 아이콘 클릭\n→ 알림 → 허용\n\n설정 후 페이지를 새로고침하세요.';
             }
             alert(msg);
         }
