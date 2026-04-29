@@ -184,9 +184,10 @@
             }
         }
 
-        // 앱 복귀 시 자동 감지 (설정 변경 후)
+        // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState !== 'visible') return;
+            if (typeof fetchData === 'function') fetchData();
             var n = getPushName();
             if (!n) return;
             updatePushBtn(n);
@@ -2024,6 +2025,7 @@
                     + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
                     + "<h4 class='text-lg font-black text-slate-800'>"+t.reqName+"</h4></div>"
                     + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] bg-white text-red-400 border border-red-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uCDE8\uC18C</button>" : "")
+                    + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] bg-white text-slate-400 border border-slate-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uC0AD\uC81C</button>" : "")
                     + "</div>"
                     + "<div class='bg-slate-50 p-4 sm:p-5 rounded-[28px] border border-slate-100 space-y-4'>"
                     + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
