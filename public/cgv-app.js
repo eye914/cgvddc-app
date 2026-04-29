@@ -1805,6 +1805,8 @@
             form.classList.remove('hidden');
             var nameInput = document.getElementById('miso-add-name');
             if (nameInput) { nameInput.value = ''; nameInput.focus(); }
+            var empInput = document.getElementById('miso-add-empid');
+            if (empInput) empInput.value = '';
             ['매점', '플로어', '통합'].forEach(function(p) {
                 var cb = document.getElementById('miso-pos-' + p);
                 if (cb) cb.checked = false;
@@ -1816,6 +1818,7 @@
         function submitAddMisojigi() {
             var name = ((document.getElementById('miso-add-name') || {}).value || '').trim();
             if (!name) { alert('이름을 입력하세요.'); return; }
+            var employeeId = ((document.getElementById('miso-add-empid') || {}).value || '').trim();
             var pos = ['매점', '플로어', '통합'].filter(function(p) {
                 var cb = document.getElementById('miso-pos-' + p);
                 return cb && cb.checked;
@@ -1831,7 +1834,7 @@
                     sessionStorage.removeItem('cgv_miso');
                 })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
-                .addMisojigi(name, pos, hours);
+                .addMisojigi(name, pos, hours, employeeId);
         }
 
         function editMisojigiPos(name, currentPos) {

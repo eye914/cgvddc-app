@@ -60,8 +60,8 @@
       getAllMisojigiForAdmin: function() {
         fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).then(_success).catch(_failure);
       },
-      addMisojigi: function(name, pos, hours) {
-        fetch('/api/misojigi', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pos:pos, hours:hours}) })
+      addMisojigi: function(name, pos, hours, employeeId) {
+        fetch('/api/misojigi', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pos:pos, hours:hours, employeeId:employeeId}) })
           .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
       },
       updateMisojigi: function(name, updates) {

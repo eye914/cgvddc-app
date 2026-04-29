@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 // POST: 새 미소지기 추가
 export async function POST(req: NextRequest) {
   try {
-    const { name, pos, hours } = await req.json();
+    const { name, pos, hours, employeeId } = await req.json();
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });
 
     const { error } = await supabaseAdmin.from('misojigi').insert({
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       hours: hours ?? 5.5,
       active: true,
       pin: '00000',
+      employee_id: employeeId ? employeeId.trim() : null,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
