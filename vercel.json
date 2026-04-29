@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/deadline-alert",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/expire-alert",
+      "schedule": "5 13 * * *"
+    }
+  ]
+}

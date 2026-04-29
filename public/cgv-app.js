@@ -558,7 +558,7 @@
             var shiftDay = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 0, 0, 0);
             if (isNaN(shiftDay.getTime())) return false;
             // 전날 23:00 = 교대일 00:00 - 1시간
-            var expireAt = new Date(shiftDay.getTime() - 1 * 60 * 60 * 1000);
+            var expireAt = new Date(shiftDay.getTime() - 2 * 60 * 60 * 1000);
             return new Date() >= expireAt;
         }
 
@@ -1115,7 +1115,7 @@
             var rDay = document.getElementById("req-selected-day").value || (rDate ? DAYS[new Date(rDate).getDay()] : "");
             if (!rDate||!rCode||!rPos||!reas){ alert("\uBCF4\uB0BC \uADFC\uBB34(OUT) \uBC0F \uC0AC\uC720\uC758 \uBAA8\uB4E0 \uD544\uC218 \uD56D\uBAA9\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
             if (isTodayOrPast(rDate)){ alert("\uB2F9\uC77C/\uACFC\uAC70 \uADFC\uBB34\uB294 \uC2E0\uCCAD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."); return; }
-            if (isExpired(rDate)){ alert("전날 23시 이후에는 신청할 수 없습니다."); return; }
+            if (isExpired(rDate)){ alert("전날 22시 이후에는 신청할 수 없습니다."); return; }
             if (rCode.startsWith("N") && rPos === "\uB9E4\uC810"){ alert("\uB9C8\uAC10(N) \uC2DC\uAC04\uB300(OUT)\uC5D0\uB294 \uC77C\uBC18 \uB9E4\uC810\uC744 \uC120\uD0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."); return; }
 
             var dShiftData = "";
