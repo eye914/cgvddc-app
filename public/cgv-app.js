@@ -1264,12 +1264,19 @@
                     else c.classList.add("locked");
                 });
 
-                // 라벨 업데이트: 본인 가능 포지션 명시
-                var myPosLabel = document.querySelector("label[for='support-selected-pos'], .support-pos-label");
+                var posWrap = document.querySelector("#support-pos-container").parentElement;
                 var posLabelEl = document.querySelector("#support-pos-container").previousElementSibling;
-                if (posLabelEl) posLabelEl.innerText = "\uD22C\uC785 \uD3EC\uC9C0\uC158 \uC120\uD0DD (\uB098\uC758 \uC5ED\uB7C9: "+currentUserPos.join("/")+")";
 
-                if (t.reqPos) setSupportPositionSilently(t.reqPos);
+                if (t.tradeType === "sub") {
+                    // 대타: 포지션 = reqPos 자동 고정, 선택 UI 숨김
+                    if (posWrap) posWrap.classList.add("hidden");
+                    document.getElementById("support-selected-pos").value = t.reqPos || "";
+                } else {
+                    // 맞교대: 포지션 선택 UI 표시
+                    if (posWrap) posWrap.classList.remove("hidden");
+                    if (posLabelEl) posLabelEl.innerText = "투입 포지션 선택 (나의 역량: "+currentUserPos.join("/")+")"; 
+                    if (t.reqPos) setSupportPositionSilently(t.reqPos);
+                }
 
                 var timeS = document.getElementById("supporter-time-section");
                 if (safe.indexOf("\uBB34\uAD00") > -1 || safe.indexOf("ALL") > -1 || safe.indexOf(",") > -1 || safe.indexOf("\uC804\uCCB4\uAC00\uB2A5") > -1) {
