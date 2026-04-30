@@ -16,7 +16,7 @@
                 <div class="col-span-3 text-center py-6 text-slate-400 text-sm font-bold">로딩 중...</div>
             </div>
             <div class="border-t border-slate-100 pt-4">
-                <button onclick="showAdminLogin()" class="w-full py-3.5 text-slate-500 font-black text-sm border-2 border-slate-200 rounded-2xl bg-slate-50 active:scale-95 transition-all">🔐 관리자 로그인</button>
+                <button onclick="showAdminLogin()" class="w-full btn-c2 btn-c2-ghost py-3.5 rounded-2xl text-sm active:scale-95 transition-all">🔐 관리자 로그인</button>
             </div>
         </div>
 
@@ -100,14 +100,14 @@
                 </div>
             </section>
 
-            <section class="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 border-t-[6px] border-t-red-600">
+            <section class="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 section-accent-top">
                 <div class="mb-8">
                     <h2 class="text-2xl font-black text-slate-900 tracking-tighter text-red-600">공고 등록</h2>
                     <p class="text-[12px] font-black text-red-500 mt-2">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
                 </div>
                 <div class="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-[24px]">
-                    <button onclick="setTradeType('swap')" id="type-swap-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] bg-slate-900 text-white shadow-md transition-all">맞교대</button>
-                    <button onclick="setTradeType('sub')" id="type-sub-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] bg-white text-slate-500 hover:bg-slate-100 transition-all">단순 대타</button>
+                    <button onclick="setTradeType('swap')" id="type-swap-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-dark transition-all">맞교대</button>
+                    <button onclick="setTradeType('sub')" id="type-sub-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-ghost transition-all">단순 대타</button>
                 </div>
                 <input type="hidden" id="trade-type-input" value="swap">
                 <div class="space-y-8">
@@ -177,7 +177,7 @@
                             <option value="기타(사전협의)">기타(사전협의)</option>
                         </select>
                     </div>
-                    <button onclick="submitNewTrade()" class="w-full bg-slate-900 hover:bg-slate-800 text-white py-5 rounded-[28px] font-black text-xl shadow-xl active:scale-95 transition-all border-2 border-slate-800">공고 등록 하기</button>
+                    <button onclick="submitNewTrade()" class="w-full btn-c2 btn-c2-dark py-5 rounded-[28px] font-black text-xl active:scale-95 transition-all">공고 등록 하기</button>
                 </div>
             </section>
 
@@ -214,8 +214,8 @@
             </div>
             <div id="manager-list-board" class="max-w-3xl mx-auto space-y-8 px-4"></div>
             <div class="max-w-3xl mx-auto px-5 mt-2 space-y-2">
-                <button onclick="cleanupOldTrades()" class="w-full bg-slate-100 text-slate-500 py-4 rounded-2xl font-black border-2 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all text-sm">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
-                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full bg-blue-50 text-blue-600 py-4 rounded-2xl font-black border-2 border-blue-200 hover:bg-blue-100 transition-all text-sm">🔔 내 알림 테스트 발송</button>
+                <button onclick="cleanupOldTrades()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
+                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm text-blue-600 border-blue-200 hover:bg-blue-50 transition-all">🔔 내 알림 테스트 발송</button>
             </div>
             <div class="max-w-3xl mx-auto px-5 mt-2">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
@@ -225,7 +225,7 @@
                     </button>
                     <div id="miso-panel" class="hidden px-5 pb-5">
                         <div class="pt-4 pb-2 flex gap-2 flex-wrap">
-                            <button onclick="showAddMisojigiForm()" class="bg-slate-900 text-white text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-700 transition-all">+ 미소지기 추가</button>
+                            <button onclick="showAddMisojigiForm()" class="btn-c2 btn-c2-dark text-xs font-black px-4 py-2 rounded-xl">+ 미소지기 추가</button>
                             <button onclick="loadMisojigiAdmin()" class="bg-slate-100 text-slate-600 text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">↺ 새로고침</button>
                         </div>
                         <!-- 추가 폼 (기본 숨김) -->
@@ -244,7 +244,7 @@
                                 <span class="text-xs text-slate-400">시간</span>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="submitAddMisojigi()" class="flex-1 bg-slate-900 text-white text-sm font-black py-2 rounded-xl hover:bg-slate-700 transition-all">추가</button>
+                                <button onclick="submitAddMisojigi()" class="flex-1 btn-c2 btn-c2-dark text-sm font-black py-2 rounded-xl">추가</button>
                                 <button onclick="document.getElementById('miso-add-form').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-500 text-sm font-black py-2 rounded-xl hover:bg-slate-200 transition-all">취소</button>
                             </div>
                         </div>
@@ -308,7 +308,7 @@
                     <div id="support-code-grid" class="grid grid-cols-2 gap-2 border-t-2 border-green-100 pt-6"></div>
                     <input type="hidden" id="support-selected-code">
                 </div>
-                <button onclick="confirmSupport()" class="w-full bg-blue-600 text-white py-6 rounded-[32px] font-black text-xl shadow-xl active:scale-95 transition-all border-2 border-blue-700">조건 확인 후 지원</button>
+                <button onclick="confirmSupport()" class="w-full btn-c2 btn-c2-blue py-6 rounded-[32px] font-black text-xl active:scale-95 transition-all">조건 확인 후 지원</button>
             </div>
         </div>
     </div>

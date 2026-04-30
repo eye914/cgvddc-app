@@ -1999,7 +1999,7 @@
                         + "<span class='text-[10px] font-black text-slate-400 bg-slate-200 px-2 py-0.5 rounded-md flex-shrink-0'>\uAE30\uAC04\uB9CC\uB8CC</span>"
                         + "<span class='font-black text-slate-600 text-[13px]'>"+t.reqName+"</span>"
                         + "<span class='text-slate-400 text-[12px] ml-1'>\u2192 "+safeDate.split("/")[0].trim()+"</span>"
-                        + ((isMine||isAdmin) ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='ml-auto text-[10px] bg-white text-red-400 border border-red-200 px-2 py-0.5 rounded-md font-black'>\uCDE8\uC18C</button>" : "<span class='ml-auto text-slate-400 text-[10px] flex-shrink-0'>눌러서 보기 ▼</span>")
+                        + ((isMine||isAdmin) ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='ml-auto text-[10px] btn-c2 btn-c2-danger px-2 py-0.5 rounded-md font-black'>\uCDE8\uC18C</button>" : "<span class='ml-auto text-slate-400 text-[10px] flex-shrink-0'>눌러서 보기 ▼</span>")
                         + "</summary>"
                         + "<div class='px-4 pb-4 pt-2 border-t border-slate-200'>"
                         + "<div class='bg-white rounded-2xl p-4 border border-slate-100 space-y-3'>"
@@ -2042,8 +2042,8 @@
                     + "<div class='flex justify-between items-start mb-5'>"
                     + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
                     + "<h4 class='text-lg font-black text-slate-800'>"+t.reqName+"</h4></div>"
-                    + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] bg-white text-red-400 border border-red-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uCDE8\uC18C</button>" : "")
-                    + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] bg-white text-slate-400 border border-slate-200 px-3 py-1.5 rounded-lg active:scale-95 font-black shadow-sm'>\uC0AD\uC81C</button>" : "")
+                    + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] btn-c2 btn-c2-danger px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
+                    + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] btn-c2 btn-c2-ghost px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
                     + "</div>"
                     + "<div class='bg-slate-50 p-4 sm:p-5 rounded-[28px] border border-slate-100 space-y-4'>"
                     + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
@@ -2052,8 +2052,8 @@
                     + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+(t.subPos||"")+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
                     + "</div>"
                     + "<div class='mt-6 flex gap-3'>"
-                    + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"bg-orange-500 hover:bg-orange-600":"bg-blue-600 hover:bg-blue-700")+" text-white py-4 rounded-2xl font-black transition-all shadow-md'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
-                    + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 bg-green-600 text-white py-4 rounded-2xl font-black shadow-md'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 bg-slate-800 text-white py-4 rounded-2xl font-black shadow-md'>\uAC70\uC808</button>" : "")
+                    + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-4 rounded-2xl font-black'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
+                    + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-4 rounded-2xl font-black'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-4 rounded-2xl font-black'>\uAC70\uC808</button>" : "")
                     + "</div></div>";
 
                 if (isN&&isMine) { myBoard.innerHTML += cardHtml; }
@@ -2079,7 +2079,7 @@
                         + "<div class='text-center text-slate-300 text-2xl'>&#8645;</div>"
                         + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC218\uB77D: "+t.subName+" "+(t.subPos||"")+"</p><div class='text-slate-800 font-bold'>"+inHtml+"</div></div>"
                         + (isD ? "<button onclick=\"adminCopyToClipboard(decodeURIComponent('"+encAdmin+"'))\" class='w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black active:scale-95 shadow-md'>\uCE74\uD1A1 \uACF5\uC720 (\uC2B9\uC778\uC644\uB8CC \uACF5\uC9C0)</button>"
-                               : "<div class='flex gap-3'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black shadow-md'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 bg-red-600 text-white py-5 rounded-2xl font-black shadow-md'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-2 bg-white text-slate-400 border border-slate-200 py-3 rounded-2xl font-black text-sm'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
+                               : "<div class='flex gap-3'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-dark py-5 rounded-2xl font-black'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-primary py-5 rounded-2xl font-black'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-2 btn-c2 btn-c2-ghost py-3 rounded-2xl font-black text-sm'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
                         + "</div>";
                     var wkA = getWeekKey(safeDate);
                     if (!adminGrouped[wkA]) adminGrouped[wkA] = [];

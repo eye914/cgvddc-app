@@ -1,7 +1,7 @@
 body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
         .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
         .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
-        .chip.selected { background-color: #e71a0f; color: white; border-color: #e71a0f; transform: translateY(-1.5px); box-shadow: 0 4px 10px rgba(231,26,15,0.25); }
+        .chip.selected { background-color: #991b1b; color: white; border-color: #991b1b; transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(153,27,27,0.28); }
         .chip.wish-selected { background-color: #3b82f6; color: white; border-color: #3b82f6; transform: translateY(-1.5px); }
         .chip.all-selected { background-color: #10b981; color: white; border-color: #10b981; transform: translateY(-1.5px); }
         .chip.pos-selected { background-color: #475569; color: white; border-color: #475569; transform: translateY(-1.5px); }
@@ -42,7 +42,7 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
         }
         .day-chip { border-radius: 14px; font-weight: 800; font-size: 15px; height: 48px; display: flex; align-items: center; justify-content: center; width: 100%; }
         .code-chip { border-radius: 12px; font-weight: 700; font-size: 13px; padding: 12px 0; width: 100%; }
-        .tab-btn.active { background-color: #e71a0f; color: white; font-weight: 900; }
+        .tab-btn.active { background-color: #991b1b; color: white; font-weight: 900; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(153,27,27,0.25); border-radius: 10px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: white; width: 95%; max-width: 600px; border-radius: 36px; padding: 32px; animation: scaleUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; border: 2px solid #e2e8f0; }
         .support-modal-content { background: white; width: 100%; max-width: 500px; border-radius: 36px 36px 0 0; padding: 32px; animation: slideUp 0.35s ease-out; max-height: 92vh; overflow-y: auto; position: absolute; bottom: 0; }
@@ -61,11 +61,14 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
         .btn-primary { padding: 18px 0; font-size: 16px; font-weight: 900; border-radius: 20px; }
         /* 색상 변수 통일 */
         :root {
-            --cgv-red: #e71a0f;
-            --cgv-orange: #FF6B00;
-            --cgv-dark: #1e293b;
+            --cgv-red: #991b1b;
+            --cgv-red-light: #fef2f2;
+            --cgv-orange: #9a3412;
+            --cgv-dark: #0f172a;
             --cgv-gray: #64748b;
             --cgv-light: #f8fafc;
+            --cgv-blue: #1e40af;
+            --cgv-green: #14532d;
         }
         details > summary::-webkit-details-marker { display: none; }
         .log-container::-webkit-scrollbar { width: 4px; }
@@ -74,3 +77,110 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
         details[open] > summary .fold-hint::after { content: "\25B2  \C811\AE30"; color:#64748b; }
         .fold-hint-dark::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#64748b; white-space:nowrap; }
         details[open] > summary .fold-hint-dark::after { content: "\25B2  \C811\AE30"; color:#94a3b8; }
+/* ═══════════════════════════════════════════════
+   C-2 Light Glassmorphism Design System v1.0
+   CGV Dongducheon Staff App
+═══════════════════════════════════════════════ */
+
+/* Body background gradient */
+body { background: linear-gradient(150deg, #f8fafc 0%, #f1f5f9 100%) !important; min-height: 100vh; }
+
+/* ── Base button class ── */
+.btn-c2 {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 900; letter-spacing: -0.02em; cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+.btn-c2:active { transform: scale(0.97) !important; }
+
+/* Primary (Deep Red) */
+.btn-c2-primary {
+    background: #991b1b !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.3) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 12px rgba(153,27,27,0.28) !important;
+}
+.btn-c2-primary:hover { background: #7f1d1d !important; }
+.btn-c2-primary:active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 4px rgba(153,27,27,0.2) !important; }
+
+/* Dark (Slate/Navy) */
+.btn-c2-dark {
+    background: #0f172a !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 10px rgba(15,23,42,0.22) !important;
+}
+.btn-c2-dark:hover { background: #1e293b !important; }
+
+/* Ghost (White/Transparent) */
+.btn-c2-ghost {
+    background: rgba(255,255,255,0.85) !important;
+    color: #334155 !important;
+    border: 1.5px solid #e2e8f0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+.btn-c2-ghost:hover { background: #fff !important; border-color: #cbd5e1 !important; }
+
+/* Danger (Soft Red) */
+.btn-c2-danger {
+    background: rgba(255,241,242,0.9) !important;
+    color: #991b1b !important;
+    border: 1.5px solid #fecdd3 !important;
+}
+.btn-c2-danger:hover { background: #fff1f2 !important; }
+
+/* Blue (Support/Action) */
+.btn-c2-blue {
+    background: #1e40af !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 12px rgba(30,64,175,0.28) !important;
+}
+.btn-c2-blue:hover { background: #1d3a9e !important; }
+
+/* Green (Accept) */
+.btn-c2-green {
+    background: #166534 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 10px rgba(22,101,52,0.28) !important;
+}
+
+/* Orange (Sub trade) */
+.btn-c2-orange {
+    background: #9a3412 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 10px rgba(154,52,18,0.28) !important;
+}
+
+/* ── Status Badges (dot + text) ── */
+.badge-c2-open  { background: #dcfce7; color: #15803d; border: 1.5px solid #86efac; }
+.badge-c2-nego  { background: #dbeafe; color: #1d4ed8; border: 1.5px solid #93c5fd; }
+.badge-c2-wait  { background: #fef9c3; color: #a16207; border: 1.5px solid #fde047; }
+.badge-c2-done  { background: #f1f5f9; color: #475569; border: 1.5px solid #cbd5e1; }
+.badge-c2-expired { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fca5a5; }
+
+/* ── Card glass effect ── */
+.card-c2 {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(226,232,240,0.8);
+    border-radius: 24px;
+}
+
+/* ── Type toggle (맞교대/대타) active ── */
+#type-swap-btn.active-type {
+    background: #0f172a !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 8px rgba(15,23,42,0.2) !important;
+}
+
+/* ── Header accent ── */
+header { background: rgba(255,255,255,0.92) !important; backdrop-filter: blur(12px) !important; border-bottom: 1.5px solid #e2e8f0 !important; }
+
+/* ── Section top-border (공고 등록) ── */
+.section-accent-top { border-top: 5px solid #991b1b !important; }
+
+/* ── Filter chip active ── */
+#filter-bar .filter-chip.active,
+#flt-all.active { background: #0f172a !important; color: #fff !important; }
