@@ -96,7 +96,17 @@ export async function PATCH(req: NextRequest) {
     } else if (ns === '반려됨') {
       await sendPushToNames([prevSubName], '😢 교대 거절', `${row.reqName}님이 교대 신청을 거절했습니다.`);
     } else if (ns === '승인완료') {
+      // 공고자 + 지원자에게 확정 알림
       await sendPushToNames([row.reqName, row.subName], '✅ 교대 확정!', `${row.shiftDate} 교대가 최종 확정되었습니다.`);
+      // 승인한 관리자 제외 나머지 관리자에게 처리 완료 알림
+      const approver = row.approvedBy ?? '관리자';
+      const { data: adminRows } = await supabaseAdmin.from('admins').select('name').eq('active', true);
+      const otherAdmins = (adminRows ?? [])
+        .map((r: Record<string, any>) => r.name)
+        .filter((n: string) => n !== approver);
+      if (otherAdmins.length) {
+        await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver}이(가) ${row.reqName}↔${row.subName} ${row.shiftDate} 교대를 승인했습니다.`);
+      }
     } else if (ns === '모집중' && before?.status === '승인대기') {
       await sendPushToNames([row.reqName], '🔄 교대 반려', `관리자가 ${row.shiftDate} 교대 신청을 반려했습니다. 재모집 중입니다.`);
       if (prevSubName && prevSubName !== '모집중') {
