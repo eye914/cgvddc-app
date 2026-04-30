@@ -7,6 +7,7 @@ const toSnake = (obj: Record<string, any>) => {
     reqName: 'req_name', reqPos: 'req_pos',
     subName: 'sub_name', subPos: 'sub_pos',
     desiredShift: 'desired_shift', shiftDate: 'shift_date', tradeType: 'trade_type',
+    approvedBy: 'approved_by',
   };
   const r: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) r[map[k] ?? k] = v;
@@ -25,6 +26,7 @@ const toCamel = (row: Record<string, any>) => ({
   subPos: row.sub_pos,
   status: row.status,
   createdAt: row.created_at,
+  approvedBy: row.approved_by ?? null,
 });
 
 export async function GET() {

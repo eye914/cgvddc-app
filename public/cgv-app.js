@@ -1546,7 +1546,7 @@
             google.script.run
                 .withSuccessHandler(fetchData)
                 .withFailureHandler(function(e){ showLoader(false); alert("\uC2B9\uC778 \uC2E4\uD328: "+e.message); })
-                .updateTradeInDB(id, { status:"\uC2B9\uC778\uC644\uB8CC" });
+                .updateTradeInDB(id, { status:"\uC2B9\uC778\uC644\uB8CC", approvedBy: sessionStorage.getItem('cgv_admin_name') || '\uAD00\uB9AC\uC790' });
         }
 
         function adminReject(id) {
@@ -2074,7 +2074,7 @@
                         +"\uD83D\uDCE2 \uCD5C\uC885 \uC2B9\uC778 \uC644\uB8CC!\n\u2705 \uC2A4\uCF00\uC904 \uD655\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.";
                     var encAdmin = encodeURIComponent(adminMsg).replace(/'/g,"%27");
                     var aCardHtml = "<div class='bg-white rounded-[40px] p-8 border-4 "+(isD?"border-green-200 bg-green-50/10":"border-blue-100")+" shadow-xl space-y-6'>"
-                        + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>"
+                        + "<div class='flex items-center justify-between gap-2'>" + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>" + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>" + "\uC2B9\uC778: " + t.approvedBy + "</span>" : "") + "</div>"
                         + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC2E0\uCCAD: "+t.reqName+"</p><div class='text-slate-800 font-bold'>"+outHtml+"</div></div>"
                         + "<div class='text-center text-slate-300 text-2xl'>&#8645;</div>"
                         + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC218\uB77D: "+t.subName+" "+(t.subPos||"")+"</p><div class='text-slate-800 font-bold'>"+inHtml+"</div></div>"
