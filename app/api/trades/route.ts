@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { sendPushToNames, sendPushToAdmins } from '@/lib/push';
+import { sendPushToNames, sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
 
 const toSnake = (obj: Record<string, any>) => {
   const map: Record<string, string> = {
@@ -45,7 +45,18 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(toCamel(data));
+
+    const row = toCamel(data);
+    // 공고 등록 → 등록자 제외 전체 미소지기에게 알림 발송
+    const typeLabel = row.tradeType === 'sub' ? '대타' : '맞교대';
+    const shiftShort = (row.shiftDate ?? '').split(' / ')[0];
+    await sendPushToAllExcept(
+      [row.reqName],
+      `📢 새 ${typeLabel} 공고`,
+      `${row.reqName}님의 ${shiftShort} [${row.reqPos}] 공고가 등록됐습니다.`
+    );
+
+    return NextResponse.json(row);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

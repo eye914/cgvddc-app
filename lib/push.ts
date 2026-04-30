@@ -36,3 +36,23 @@ export async function sendPushToAdmins(title: string, body: string) {
   const adminNames = data.map((r: Record<string, any>) => r.name);
   await sendPushToNames(adminNames, title, body);
 }
+
+/** 등록된 전체 구독자 중 excludeNames 를 제외하고 발송 */
+export async function sendPushToAllExcept(excludeNames: string[], title: string, body: string) {
+  const { data } = await supabaseAdmin
+    .from('push_subscriptions')
+    .select('name, subscription');
+  if (!data?.length) return;
+
+  const targets = data.filter((row: Record<string, any>) => !excludeNames.includes(row.name));
+  if (!targets.length) return;
+
+  await Promise.allSettled(
+    targets.map((row: Record<string, any>) =>
+      webpush.sendNotification(
+        JSON.parse(row.subscription),
+        JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
+      )
+    )
+  );
+}
