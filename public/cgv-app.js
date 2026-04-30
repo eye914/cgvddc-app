@@ -217,16 +217,24 @@
             }).join('');
         }
         function loadMisoForAuth() {
+            var CACHE_TTL = 60 * 60 * 1000; // 1시간
             var cached = sessionStorage.getItem('cgv_miso');
             if (cached) {
-                try { var p = JSON.parse(cached); if (p && p.length) { MISO_DATA = p; buildAuthNameGrid(); return; } } catch(e) {}
+                try {
+                    var obj = JSON.parse(cached);
+                    var p = Array.isArray(obj) ? obj : (obj && obj.data ? obj.data : []);
+                    var ts = obj && obj.ts ? obj.ts : 0;
+                    if (p && p.length && (Date.now() - ts) < CACHE_TTL) {
+                        MISO_DATA = p; buildAuthNameGrid(); return;
+                    }
+                } catch(e) {}
             }
             fetch('/api/misojigi')
                 .then(function(r) { return r.json(); })
                 .then(function(list) {
                     if (Array.isArray(list) && list.length) {
                         MISO_DATA = list;
-                        sessionStorage.setItem('cgv_miso', JSON.stringify(list));
+                        sessionStorage.setItem('cgv_miso', JSON.stringify({ data: list, ts: Date.now() }));
                     }
                     buildAuthNameGrid();
                 })
@@ -1451,16 +1459,23 @@
                     if (loaded >= total) { showLoader(false); buildUserGrid(); renderList(); }
                 }
 
-                // 미소지기DB: 세션 캐시 활용 (자주 안 바뀌므로)
+                // 미소지기DB: 세션 캐시 활용 (1시간 만료)
+                var MISO_CACHE_TTL = 60 * 60 * 1000;
                 var cachedMiso = sessionStorage.getItem("cgv_miso");
+                var misoFromCache = false;
                 if (cachedMiso) {
                     try {
-                        var parsed = JSON.parse(cachedMiso);
-                        if (parsed && parsed.length) {
-                            MISO_DATA = parsed;
-                            FULL_HOUR_NAMES = parsed.filter(function(m){ return m.hours === "5.5"; }).map(function(m){ return m.name; });
+                        var parsedMiso = JSON.parse(cachedMiso);
+                        var misoList2 = Array.isArray(parsedMiso) ? parsedMiso : (parsedMiso && parsedMiso.data ? parsedMiso.data : []);
+                        var misoTs = parsedMiso && parsedMiso.ts ? parsedMiso.ts : 0;
+                        if (misoList2.length && (Date.now() - misoTs) < MISO_CACHE_TTL) {
+                            MISO_DATA = misoList2;
+                            FULL_HOUR_NAMES = misoList2.filter(function(m){ return m.hours === "5.5"; }).map(function(m){ return m.name; });
+                            misoFromCache = true;
                         }
                     } catch(e) {}
+                }
+                if (misoFromCache) {
                     onAllLoaded(); // 캐시 있으면 바로 카운트
                 } else {
                     google.script.run
@@ -1468,7 +1483,7 @@
                             if (misoList && misoList.length) {
                                 MISO_DATA = misoList;
                                 FULL_HOUR_NAMES = misoList.filter(function(m){ return m.hours === "5.5"; }).map(function(m){ return m.name; });
-                                sessionStorage.setItem("cgv_miso", JSON.stringify(misoList));
+                                sessionStorage.setItem("cgv_miso", JSON.stringify({ data: misoList, ts: Date.now() }));
                             }
                             onAllLoaded();
                         })
