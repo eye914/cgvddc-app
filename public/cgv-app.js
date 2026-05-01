@@ -273,13 +273,13 @@
         }
         function backToNameSelect() {
             document.getElementById('auth-step-2').style.display = 'none';
-            document.getElementById('auth-step-1').style.display = '';
+            document.getElementById('auth-step-1').style.display = 'block';
             var i = document.getElementById('auth-pin-input'); if (i) i.value = '';
             renderPinBoxes('', PIN_LENGTH_STAFF);
         }
         function showPinStep(nameText, descText) {
             document.getElementById('auth-step-1').style.display = 'none';
-            document.getElementById('auth-step-2').style.display = '';
+            document.getElementById('auth-step-2').style.display = 'block';
             document.getElementById('auth-pin-name').innerText = nameText;
             document.getElementById('auth-pin-desc').innerText = descText;
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
