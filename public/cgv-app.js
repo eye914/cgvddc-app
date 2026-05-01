@@ -187,7 +187,7 @@
         // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState !== 'visible') return;
-            if (typeof fetchData === 'function') fetchData();
+            if (sessionStorage.getItem("cgv_auth") === "true" && typeof fetchData === 'function') fetchData();
             var n = getPushName();
             if (!n) return;
             updatePushBtn(n);
@@ -535,18 +535,31 @@
             var tmr = new Date(now); tmr.setDate(now.getDate()+1);
             var ri = document.getElementById("req-date-input");
             if (ri) ri.min = getLocalYYYYMMDD(tmr);
-            // GAS 환경이 아닌 경우(미리보기/로컬) 자동 인증 처리
-            // 이미 인증된 세션이면 바로 진입
             if (sessionStorage.getItem("cgv_auth") === "true") {
-                document.getElementById("auth-overlay").style.display = "none";
+                var ov = document.getElementById("auth-overlay");
+                if (ov) ov.style.display = "none";
                 if (sessionStorage.getItem("cgv_admin") === "true") isAdmin = true;
                 var saved = sessionStorage.getItem("cgv_currentUser");
                 if (saved) selectUser(saved);
+                // 15초 안에 로더가 안 꺼지면 세션 초기화 후 로그인 화면으로 복귀
+                var _authRecovery = setTimeout(function() {
+                    var ldr = document.getElementById("loader");
+                    if (ldr && ldr.style.display !== "none") {
+                        sessionStorage.removeItem("cgv_auth");
+                        sessionStorage.removeItem("cgv_admin");
+                        sessionStorage.removeItem("cgv_currentUser");
+                        sessionStorage.removeItem("cgv_admin_name");
+                        isAdmin = false;
+                        showLoader(false);
+                        var ov2 = document.getElementById("auth-overlay");
+                        if (ov2) { ov2.style.display = "flex"; }
+                        loadMisoForAuth();
+                    }
+                }, 15000);
                 fetchData();
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
             } else {
-                // 미소지기 목록 먼저 로드 후 이름 그리드 표시
                 loadMisoForAuth();
             }
             // Pull-to-refresh
@@ -1478,16 +1491,21 @@
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
                 var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
+                var _fetchDone = false;
                 function onAllLoaded() {
                     loaded++;
-                    if (loaded >= total) {
+                    if (loaded >= total && !_fetchDone) {
+                        _fetchDone = true;
                         showLoader(false); buildUserGrid(); renderList();
-                        // 직원 로그인 시 미제출 폼 알림 체크
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
                         }
                     }
                 }
+                // 12초 이내 응답 없으면 강제 완료
+                setTimeout(function() {
+                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); }
+                }, 12000);
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
                 var MISO_CACHE_TTL = 60 * 60 * 1000;
