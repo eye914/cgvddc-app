@@ -2657,68 +2657,111 @@
                 .getFormSubmissions(req ? req.target_name : null);
         }
 
+        // 제출된 서류 데이터를 원본 문서 레이아웃으로 변환 (읽기 전용)
+        function buildViewDoc(type, fd, sub, adminName, adminSigBase64) {
+            var today = sub && sub.submitted_at ? sub.submitted_at.substring(0, 10) : getLocalYYYYMMDD(new Date());
+            var sigImg = adminSigBase64
+                ? '<img src="' + adminSigBase64 + '" style="height:38px;object-fit:contain;vertical-align:middle">'
+                : '<span style="color:#aaa;font-size:10px">서명 미등록</span>';
+            function tv(v) { return v ? '<span style="font-weight:700;color:#111">' + v + '</span>' : '<span style="color:#bbb">-</span>'; }
+            function tf(v) { return '<span style="display:inline-block;min-width:60px;border-bottom:1.5px solid #333;text-align:center;background:#eef4ff;padding:0 6px;font-weight:700">' + (v || '') + '</span>'; }
+
+            var adm = '<div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :'
+                + '<span style="letter-spacing:0.15em;margin-left:6px">' + adminName + '</span>'
+                + '<span style="margin-left:2px">(서명)</span>' + sigImg + '</div>';
+
+            if (type === 'late') {
+                return DOC_STYLE
+                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px">미소지기&nbsp;&nbsp;지각확인서</div>'
+                    + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:10px">'
+                    + '미소지기 ' + tf(fd.name)
+                    + ' 은(는) 아래와 같이 지각 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                    + '<div style="display:flex;border:1px solid #555;margin-bottom:12px;font-size:12px">'
+                    + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
+                    + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">사유</div>'
+                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">지각</div>'
+                    + '</div>'
+                    + '<div style="flex:1;display:flex;flex-direction:column">'
+                    + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">내&nbsp;&nbsp;용</div>'
+                    + '<div style="flex:1;background:#eef4ff;padding:8px;font-size:12px;font-weight:600;min-height:60px;white-space:pre-wrap">' + tv(fd.content) + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + '<table class="dt"><thead><tr class="hr">'
+                    + '<th>이&nbsp;&nbsp;름</th><th>날&nbsp;&nbsp;짜</th><th>약정 근로시간</th><th>실제 근로시간</th><th>확인 서명</th>'
+                    + '</tr></thead><tbody><tr style="height:48px">'
+                    + '<td class="fc" style="text-align:center">' + tv(fd.name) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv(fd.date) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
+                    + '<td class="fc" style="text-align:center"></td>'
+                    + '</tr></tbody></table>'
+                    + '<div class="doc-footer"><div></div><div>' + adm + '</div></div>';
+            }
+
+            if (type === 'absent') {
+                return DOC_STYLE
+                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
+                    + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                    + '<table class="dt"><tbody>'
+                    + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
+                    + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
+                    + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc">' + tv(fd.date) + '</td></tr>'
+                    + '<tr><th>제출사유</th><td colspan="3" class="fc">' + tv(fd.reasons) + '</td></tr>'
+                    + '<tr><th rowspan="6" style="vertical-align:top;padding-top:8px">내&nbsp;&nbsp;&nbsp;용</th>'
+                    + '<td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 언제</b><div>' + tv(fd.when) + '</div></td></tr>'
+                    + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 어디서</b><div>' + tv(fd.where) + '</div></td></tr>'
+                    + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 무엇을</b><div>' + tv(fd.what) + '</div></td></tr>'
+                    + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 어떻게</b><div>' + tv(fd.how) + '</div></td></tr>'
+                    + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 왜</b><div>' + tv(fd.why) + '</div></td></tr>'
+                    + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#555">- 약속 및 개선 방향</b><div>' + tv(fd.promise) + '</div></td></tr>'
+                    + '</tbody></table>'
+                    + '<p class="sub-date">위와 같이 사유서를 제출합니다. &nbsp;&nbsp; 제출일: ' + today + '</p>'
+                    + '<div class="doc-footer">'
+                    + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
+                    + '<div style="display:flex;align-items:center;gap:6px">' + tf(fd.submitter || fd.name) + '<span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                    + '<div>' + adm + '</div>'
+                    + '</div>';
+            }
+
+            if (type === 'resign') {
+                return DOC_STYLE
+                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
+                    + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                    + '<table class="dt"><tbody>'
+                    + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
+                    + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
+                    + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc">' + tv(fd.hireDate) + '</td>'
+                    + '<th>퇴직일</th><td class="fc">' + tv(fd.resignDate) + '</td></tr>'
+                    + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc">' + tv(fd.phone) + '</td></tr>'
+                    + '<tr><th>퇴사사유</th><td colspan="3" class="fc" style="white-space:pre-wrap">' + tv(fd.reason) + '</td></tr>'
+                    + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap">' + tv(fd.interviewNote) + '</td></tr>'
+                    + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems) + '</td></tr>'
+                    + '<tr><th>지급 방법</th><td colspan="3" class="fc">' + tv(fd.bank ? fd.bank + ' 은행  계좌: ' + (fd.account||'') : '') + '</td></tr>'
+                    + '<tr><th>면담 직원</th><td class="ac">' + tv(fd.interviewer) + '</td>'
+                    + '<th>물품접수 확인자</th><td class="ac">' + tv(fd.receiver) + '</td></tr>'
+                    + '</tbody></table>'
+                    + '<p class="sub-date">위와 같이 사직원을 제출합니다. &nbsp;&nbsp; 제출일: ' + today + '</p>'
+                    + '<div class="doc-footer">'
+                    + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
+                    + '<div style="display:flex;align-items:center;gap:6px">' + tf(fd.submitter || fd.name) + '<span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                    + '<div>' + adm + '</div>'
+                    + '</div>';
+            }
+
+            return '<p style="color:#e00;font-weight:700">알 수 없는 서류 유형: ' + type + '</p>';
+        }
+
         function renderFormView(container, sub, req) {
             var fd = sub.form_data || {};
             var type = sub.type || (req && req.type) || '';
             var sig = '';
             try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
-            var sigHtml = sig
-                ? '<img src="' + sig + '" alt="관리자서명" class="h-10 object-contain">'
-                : '<span class="text-slate-300 text-xs font-bold">서명 미등록</span>';
             var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
-            var today = getLocalYYYYMMDD(new Date());
-            var rows = [];
+            var today = sub.submitted_at ? sub.submitted_at.substring(0,10) : getLocalYYYYMMDD(new Date());
 
-            if (type === 'late') {
-                rows = [
-                    ['이름', fd.name], ['지각 날짜', fd.date],
-                    ['사유', fd.reason], ['내용', fd.content],
-                    ['약정 근로시간', (fd.schStart || '') + (fd.schEnd ? ' ~ ' + fd.schEnd : '')],
-                    ['실제 근로시간', (fd.actStart || '') + (fd.actEnd ? ' ~ ' + fd.actEnd : '')],
-                ];
-            } else if (type === 'absent') {
-                rows = [
-                    ['이름', fd.name], ['결근 일시', fd.date],
-                    ['제출 사유', fd.reasonType],
-                    ['언제', fd.when], ['어디서', fd.where],
-                    ['무엇을', fd.what], ['어떻게', fd.how],
-                    ['왜', fd.why], ['약속개선', fd.promise],
-                ];
-            } else if (type === 'resign') {
-                rows = [
-                    ['성명', fd.name], ['주민번호 앞6자', fd.birth],
-                    ['입사일', fd.hireDate], ['퇴직희망일', fd.resignDate],
-                    ['퇴사 사유', fd.reason], ['회사 조언', fd.advice],
-                    ['반낙 물품', fd.returnItems], ['급여 지급', fd.payment],
-                ];
-            }
-
-            var tableRows = rows.map(function(r) {
-                return '<tr class="border-b border-slate-100">'
-                    + '<td class="py-2 pr-3 text-[11px] font-black text-slate-500 whitespace-nowrap w-28">' + r[0] + '</td>'
-                    + '<td class="py-2 text-sm font-bold text-slate-800">' + (r[1] || '<span class="text-slate-300">-</span>') + '</td>'
-                    + '</tr>';
-            }).join('');
-
-            container.innerHTML = '<div id="form-print-area">'
-                + '<div class="bg-slate-900 text-white rounded-2xl px-5 py-4 mb-5 text-center">'
-                + '<p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">CGV동두천 미소지기</p>'
-                + '<p class="text-xl font-black">' + (FORM_TYPE_LABELS[type] || type) + '</p>'
-                + '</div>'
-                + '<table class="w-full mb-6"><tbody>' + tableRows + '</tbody></table>'
-                + '<div class="border-t-2 border-slate-200 pt-4 mt-4">'
-                + '<p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">㎏한연개발 동두천지점</p>'
-                + '<div class="flex items-end justify-between">'
-                + '<div>'
-                + '<p class="text-xs font-bold text-slate-500">제출일: ' + (sub.submitted_at ? sub.submitted_at.substring(0,10) : today) + '</p>'
-                + '<p class="text-xs font-bold text-slate-500">제출자: ' + (fd.name || sub.target_name) + '</p>'
-                + '</div>'
-                + '<div class="text-right">'
-                + '<p class="text-[10px] text-slate-400 font-bold mb-1">관리자 (확인자): ' + adminName + '</p>'
-                + sigHtml
-                + '</div>'
-                + '</div>'
-                + '</div>'
+            // 서류 원본 레이아웃으로 직접 표시
+            container.innerHTML = '<div id="form-print-area" style="padding:4px 0">'
+                + buildViewDoc(type, fd, sub, adminName, sig)
                 + '</div>';
         }
 
@@ -2729,16 +2772,37 @@
 
         function printFormView() {
             var area = document.getElementById('form-print-area');
-            if (!area) return;
+            if (!area) { alert('열람된 서류가 없습니다.'); return; }
+            var title = document.getElementById('form-view-title');
+            var docTitle = title ? title.textContent.replace(/[^가-힣\w\s]/g, '').trim() : '서류';
+            var sig = '';
+            try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            // _formViewSub, _formViewReq 를 참조해 buildViewDoc 재생성
+            var docHtml = area.innerHTML;
             var win = window.open('', '_blank');
-            win.document.write('<html><head><title>서류 출력</title>'
-                + '<style>body{font-family:sans-serif;padding:24px;max-width:600px;margin:auto}'
-                + 'table{width:100%;border-collapse:collapse}td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}'
-                + 'td:first-child{font-weight:900;color:#64748b;width:120px}'
-                + '@media print{button{display:none}}</style></head><body>'
-                + area.innerHTML
-                + '<br><button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:#fff;border:none;border-radius:8px;font-weight:900;cursor:pointer">프린트 / PDF 저장</button>'
-                + '</body></html>');
+            if (!win) { alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.'); return; }
+            win.document.write(
+                '<!DOCTYPE html><html lang="ko"><head>'
+                + '<meta charset="UTF-8">'
+                + '<title>' + docTitle + '</title>'
+                + '<style>'
+                + 'body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:28px 32px;max-width:620px;margin:auto;background:#fff}'
+                + '@media print{'
+                + '  @page{size:A4;margin:15mm 15mm 20mm 15mm}'
+                + '  body{padding:0;max-width:100%}'
+                + '  .no-print{display:none!important}'
+                + '}'
+                + '</style>'
+                + '</head><body>'
+                + docHtml
+                + '<div class="no-print" style="margin-top:24px;display:flex;gap:10px">'
+                + '<button onclick="window.print()" style="flex:1;padding:12px 0;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:900;cursor:pointer">PDF 저장 / 인쇄</button>'
+                + '<button onclick="window.close()" style="padding:12px 20px;background:#f1f5f9;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">닫기</button>'
+                + '</div>'
+                + '<script>window.onload=function(){window.print();}<\/script>'
+                + '</body></html>'
+            );
             win.document.close();
         }
 
