@@ -112,7 +112,12 @@
                 <input type="hidden" id="trade-type-input" value="swap">
                 <div class="space-y-8">
                     <div class="p-5 rounded-[24px] border-2 border-red-200 bg-red-50/40 space-y-4">
-                        <span class="text-xs font-black text-red-600 uppercase tracking-widest">내가 보낼 근무 (OUT)</span>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-md bg-red-600 flex items-center justify-center flex-shrink-0">
+                                <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 1v8M1 5l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                            </div>
+                            <span class="text-[13px] font-black text-red-700 tracking-tight">내가 보낼 근무 (OUT)</span>
+                        </div>
                         <div class="grid grid-cols-7 gap-1.5">
                             <div onclick="setDayAndAutoDate('월','req')" class="req-day-chip day-chip chip font-bold text-slate-600">월</div>
                             <div onclick="setDayAndAutoDate('화','req')" class="req-day-chip day-chip chip font-bold text-slate-600">화</div>
@@ -148,9 +153,17 @@
                     </div>
 
                     <div id="wish-section" class="p-5 rounded-[24px] border-2 border-blue-200 bg-blue-50/40 space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs font-black text-blue-600 uppercase tracking-widest">내가 받고 싶은 시간 (IN) [최대 2일]</span>
-                            <button onclick="clearWishData()" class="text-[10px] text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-md shadow-sm active:scale-95 font-black">초기화</button>
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-4 h-4 rounded-md bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                    <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 9V1M1 5l4 4 4-4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <span class="text-[13px] font-black text-blue-700 tracking-tight block">내가 받고 싶은 시간 (IN)</span>
+                                    <span class="text-[10px] font-bold text-blue-400">최대 2일 선택</span>
+                                </div>
+                            </div>
+                            <button onclick="clearWishData()" class="text-[10px] text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-md shadow-sm active:scale-95 font-black flex-shrink-0">초기화</button>
                         </div>
                         <div class="grid grid-cols-7 gap-1.5">
                             <div onclick="toggleWishDay('월')" class="wish-day-chip day-chip chip font-bold text-slate-600">월</div>
