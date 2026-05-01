@@ -242,16 +242,26 @@
                     }
                 } catch(e) {}
             }
+            var done = false;
+            var timeoutId = setTimeout(function() {
+                if (!done) { done = true; buildAuthNameGrid(); }
+            }, 7000);
             fetch('/api/misojigi')
                 .then(function(r) { return r.json(); })
                 .then(function(list) {
+                    if (done) return;
+                    done = true; clearTimeout(timeoutId);
                     if (Array.isArray(list) && list.length) {
                         MISO_DATA = list;
                         sessionStorage.setItem('cgv_miso', JSON.stringify({ data: list, ts: Date.now() }));
                     }
                     buildAuthNameGrid();
                 })
-                .catch(function() { buildAuthNameGrid(); });
+                .catch(function() {
+                    if (done) return;
+                    done = true; clearTimeout(timeoutId);
+                    buildAuthNameGrid();
+                });
         }
         function selectAuthName(name) {
             authSelectedName = name; authIsAdmin = false;
@@ -262,14 +272,14 @@
             showPinStep('관리자', PIN_LENGTH_ADMIN + '자리 PIN 입력');
         }
         function backToNameSelect() {
-            document.getElementById('auth-step-2').classList.add('hidden');
-            document.getElementById('auth-step-1').classList.remove('hidden');
+            document.getElementById('auth-step-2').style.display = 'none';
+            document.getElementById('auth-step-1').style.display = '';
             var i = document.getElementById('auth-pin-input'); if (i) i.value = '';
             renderPinBoxes('', PIN_LENGTH_STAFF);
         }
         function showPinStep(nameText, descText) {
-            document.getElementById('auth-step-1').classList.add('hidden');
-            document.getElementById('auth-step-2').classList.remove('hidden');
+            document.getElementById('auth-step-1').style.display = 'none';
+            document.getElementById('auth-step-2').style.display = '';
             document.getElementById('auth-pin-name').innerText = nameText;
             document.getElementById('auth-pin-desc').innerText = descText;
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
