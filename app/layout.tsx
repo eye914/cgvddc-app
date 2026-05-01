@@ -3,6 +3,9 @@ import './globals.css';
 import fs from 'fs';
 import path from 'path';
 
+// 매 요청마다 서버에서 새로 렌더링 → CDN 캐시 우회
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'CGV동두천 미소지기 교대 신청',
   description: 'CGV동두천 미소지기 근무 교대 신청 시스템',
