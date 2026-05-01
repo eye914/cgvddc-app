@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>전자 폼 미리보기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Pretendard', sans-serif; background: #f0f4ff; letter-spacing: -0.02em; }
+
+  /* 탭 */
+  .tab-btn { padding: 8px 18px; border-radius: 10px; font-weight: 900; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: linear-gradient(160deg,#b91c1c,#7f1d1d); color: #fff; box-shadow: 0 3px 10px rgba(127,29,29,.4); }
+  .tab-btn:not(.active) { background: #f1f5f9; color: #64748b; }
+
+  /* 문서 공통 */
+  .doc-wrap {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 32px 28px;
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+    border-radius: 4px;
+  }
+  .doc-title {
+    text-align: center;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .doc-sub {
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  .doc-intro {
+    font-size: 13px;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #222;
+  }
+  .doc-intro .blank {
+    border-bottom: 1.5px solid #222;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  /* 문서 테이블 */
+  .doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .doc-table th, .doc-table td {
+    border: 1px solid #555;
+    padding: 6px 10px;
+    vertical-align: middle;
+    font-weight: 600;
+    color: #222;
+  }
+  .doc-table th {
+    background: #f5f5f5;
+    font-weight: 900;
+    text-align: center;
+    white-space: nowrap;
+    width: 1%;
+  }
+  .doc-table .header-row th {
+    background: #ececec;
+    text-align: center;
+    font-size: 12px;
+    padding: 5px 4px;
+  }
+
+  /* 미소지기 작성란: 연한 파란색 배경 */
+  .fill-cell {
+    background: #eef4ff !important;
+  }
+  .fill-cell .doc-input::placeholder { color: #93aacc; }
+
+  /* 관리자 작성란: 연한 회색 */
+  .admin-cell {
+    background: #f9f9f9 !important;
+  }
+  .admin-cell .doc-input::placeholder { color: #bbb; }
+
+  /* 인라인 입력 (테이블 셀 안) */
+  .doc-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #111;
+    padding: 2px 0;
+    box-sizing: border-box;
+  }
+  .doc-input::placeholder { color: #bbb; font-weight: 500; }
+  textarea.doc-input { resize: none; line-height: 1.7; }
+
+  /* 범례 */
+  .legend {
+    display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+    font-size: 11px; font-weight: 700; color: #555;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 2px; border: 1px solid #ccc; }
+
+  /* 체크박스 행 */
+  .check-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .check-row label { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .check-row input[type=checkbox] { width: 14px; height: 14px; accent-color: #333; }
+
+  /* 확인란 날인 */
+  .seal-box {
+    border: 1px solid #888;
+    width: 60px; height: 60px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #aaa; font-weight: 600;
+    margin: 0 auto;
+  }
+
+  /* 하단 서명란 */
+  .doc-footer {
+    margin-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 12px;
+    color: #333;
+    font-weight: 600;
+  }
+  .sig-label { font-size: 11px; color: #666; margin-bottom: 4px; font-weight: 600; }
+  .sig-img { height: 44px; object-fit: contain; vertical-align: middle; }
+  /* 관리자 확인 한 줄 블록 */
+  .admin-confirm-line {
+    display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;
+    font-size: 12px; font-weight: 800; color: #222; white-space: nowrap;
+  }
+  .admin-confirm-line .sig-img { margin-left: 2px; }
+
+  /* 제출날짜 줄 */
+  .submit-date {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #222;
+    margin: 14px 0 6px;
+    letter-spacing: 0.05em;
+  }
+
+  /* 제출 버튼 */
+  .submit-btn {
+    display: block; width: 100%;
+    background: linear-gradient(135deg,#991b1b,#7f1d1d);
+    color: #fff; font-weight: 900; font-size: 15px;
+    padding: 14px; border-radius: 16px;
+    border: none; cursor: pointer;
+    margin-top: 20px; text-align: center;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+  .submit-btn:active { transform: scale(0.97); }
+
+  /* 법조항 텍스트 */
+  .legal-text {
+    font-size: 10.5px; color: #444; line-height: 1.7;
+    border: 1px solid #ccc; padding: 10px 12px;
+    margin-top: 12px; font-weight: 500;
+  }
+</style>
+</head>
+<body class="min-h-screen pb-16">
+
+<!-- 헤더 -->
+<div class="bg-slate-900 text-white px-5 py-4 sticky top-0 z-50">
+  <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">CGV DONGDUCHEON</p>
+  <p class="text-base font-black">전자 폼 시스템 미리보기</p>
+</div>
+
+<!-- 탭 -->
+<div class="sticky top-[60px] z-40 bg-white/95 backdrop-blur border-b border-slate-100 px-4 py-3">
+  <div class="flex gap-2 overflow-x-auto pb-1 max-w-2xl mx-auto">
+    <button class="tab-btn active flex-shrink-0" onclick="showTab('late',this)">⏰ 지각확인서</button>
+    <button class="tab-btn flex-shrink-0" onclick="showTab('absent',this)">📝 사유서</button>
+    <button class="tab-btn flex-shrink-0" onclick="showTab('resign',this)">📄 사직원</button>
+    <button class="tab-btn flex-shrink-0" onclick="showTab('admin',this)">👑 관리자뷰</button>
+  </div>
+</div>
+
+<div class="max-w-2xl mx-auto px-4 pt-6 space-y-4">
+
+  <!-- ══════════════════════════════════
+       지각확인서
+  ═══════════════════════════════════ -->
+  <div id="tab-late">
+    <div class="doc-wrap">
+      <div class="doc-title">미소지기  지각확인서</div>
+
+      <p class="doc-intro">
+        미소지기 <span class="blank"><input class="doc-input" style="width:80px;text-align:center;background:#eef4ff" id="L-name" placeholder="이름"></span>
+        은(는) 아래와 같이 지각 사유가 <strong>발생</strong>하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.
+      </p>
+
+      <!-- 표 1: 사유/내용 -->
+      <div style="display:flex;border:1px solid #555;margin-bottom:12px;font-size:13px">
+        <!-- 왼쪽: 사유(헤더) + 지각(셀) -->
+        <div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">
+          <div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>
+          <div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">지각</div>
+        </div>
+        <!-- 오른쪽: 내용(헤더) + textarea(셀) -->
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">내  용</div>
+          <div style="flex:1;background:#eef4ff;padding:4px 6px">
+            <textarea class="doc-input" rows="8" id="L-content" placeholder="지각 사유를 구체적으로 작성하세요"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 표 2: 이름/날짜/약정/실제/날인 -->
+      <table class="doc-table">
+        <thead>
+          <tr class="header-row">
+            <th>이  름</th>
+            <th>날  짜</th>
+            <th>약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th>
+            <th>실제 근로시간</th>
+            <th>확인 서명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="height:52px">
+            <td class="fill-cell" style="vertical-align:middle;text-align:center"><input class="doc-input" style="text-align:center" id="L-name2" placeholder="홍길동"></td>
+            <td class="fill-cell" style="vertical-align:middle"><input class="doc-input" type="date" id="L-date"></td>
+            <td class="fill-cell" style="vertical-align:middle;text-align:center">
+              <input class="doc-input" id="L-sch-start" placeholder="09:00" style="width:46%;text-align:center">~<input class="doc-input" id="L-sch-end" placeholder="14:30" style="width:46%;text-align:center">
+            </td>
+            <td class="fill-cell" style="vertical-align:middle;text-align:center">
+              <input class="doc-input" id="L-act-start" placeholder="09:30" style="width:46%;text-align:center">~<input class="doc-input" id="L-act-end" placeholder="14:30" style="width:46%;text-align:center">
+            </td>
+            <td class="fill-cell" style="vertical-align:middle;text-align:center">
+              <input class="doc-input" id="L-sign" placeholder="서명" style="text-align:center;border-bottom:1px solid #999;width:90%">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 하단 서명 -->
+      <div class="doc-footer">
+        <div></div>
+        <div>
+          <div class="admin-confirm-line">
+            <span>㈜한연개발 동두천지점 (관리자) 확인 :</span>
+            <span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span>
+            <span style="margin-left:2px">(서명)</span>
+            <img src="/admin-sig.png" class="sig-img" style="margin-left:4px">
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-btn" onclick="alert('제출 완료! 관리자에게 알림이 발송됩니다.')">✅  제출하기</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       사유서
+  ═══════════════════════════════════ -->
+  <div id="tab-absent" class="hidden">
+    <div class="doc-wrap">
+      <!-- 범례 -->
+      <div class="doc-title">사  유  서</div>
+      <div class="doc-sub">(미소지기 용)</div>
+
+      <table class="doc-table">
+        <tbody>
+          <tr>
+            <th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th>
+            <td class="fill-cell"><input class="doc-input" id="A-name" placeholder="홍길동"></td>
+            <th style="width:28%">주민번호 앞자리</th>
+            <td class="fill-cell"><input class="doc-input" id="A-birth" placeholder="001215" maxlength="6"></td>
+          </tr>
+          <tr>
+            <th>일&nbsp;&nbsp;&nbsp;시</th>
+            <td colspan="3" class="fill-cell">
+              <input class="doc-input" type="date" id="A-date">
+            </td>
+          </tr>
+          <tr>
+            <th>제출사유</th>
+            <td colspan="3" class="fill-cell">
+              <div class="check-row">
+                <label><input type="checkbox" id="A-r1"> 경고</label>
+                <label><input type="checkbox" id="A-r2"> 근태</label>
+                <label><input type="checkbox" id="A-r3"> 직무 태만</label>
+                <label><input type="checkbox" id="A-r4"> 기타 (</label>
+                <input class="doc-input" id="A-other" placeholder="기타사유" style="width:100px;border-bottom:1px solid #999">
+                <span style="font-size:13px;font-weight:600">)</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th rowspan="6" style="vertical-align:top;padding-top:10px">내&nbsp;&nbsp;&nbsp;용</th>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#666;font-weight:700;margin-bottom:2px">- 언제</div>
+              <textarea class="doc-input" rows="1" id="A-when"></textarea>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#666;font-weight:700;margin-bottom:2px">- 어디서</div>
+              <textarea class="doc-input" rows="1" id="A-where"></textarea>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#666;font-weight:700;margin-bottom:2px">- 무엇을</div>
+              <textarea class="doc-input" rows="1" id="A-what"></textarea>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#666;font-weight:700;margin-bottom:2px">- 어떻게</div>
+              <textarea class="doc-input" rows="1" id="A-how"></textarea>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#666;font-weight:700;margin-bottom:2px">- 왜</div>
+              <textarea class="doc-input" rows="2" id="A-why"></textarea>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" class="fill-cell" style="padding:4px 10px">
+              <div style="font-size:12px;color:#555;font-weight:700;margin-bottom:2px">- 약속 및 개선 방향</div>
+              <textarea class="doc-input" rows="2" id="A-promise"></textarea>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="submit-date">위와 같이 사유서를 제출합니다.</p>
+      <p class="submit-date" style="font-size:12px;margin-top:4px">
+        <input class="doc-input" type="date" id="A-submit-date" style="display:inline;width:140px;text-align:center;border-bottom:1px solid #555;background:#eef4ff">
+      </p>
+
+      <!-- 제출자/확인자 서명 -->
+      <div class="doc-footer" style="margin-top:16px;align-items:center">
+        <div>
+          <div class="sig-label">제출자 :</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="doc-input" id="A-submitter" placeholder="홍길동" style="border-bottom:1px solid #555;width:80px;background:#eef4ff">
+            <span style="font-size:12px;color:#555;font-weight:600">(서명)</span>
+          </div>
+        </div>
+        <div>
+          <div class="admin-confirm-line">
+            <span>㈜한연개발 동두천지점 (관리자) 확인 :</span>
+            <span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span>
+            <span style="margin-left:2px">(서명)</span>
+            <img src="/admin-sig.png" class="sig-img" style="margin-left:4px">
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-btn" onclick="alert('제출 완료! 관리자에게 알림이 발송됩니다.')">✅  제출하기</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       사직원
+  ═══════════════════════════════════ -->
+  <div id="tab-resign" class="hidden">
+    <div class="doc-wrap">
+      <!-- 범례 -->
+      <div class="doc-title">사  직  원</div>
+      <div class="doc-sub">(미소지기 용)</div>
+
+      <table class="doc-table">
+        <tbody>
+          <tr>
+            <th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th>
+            <td class="fill-cell">
+              <input class="doc-input" id="R-name" placeholder="홍길동">
+              <span style="font-size:11px;color:#888;font-weight:600">(서명)</span>
+            </td>
+            <th style="width:28%">주민번호 앞자리</th>
+            <td class="fill-cell"><input class="doc-input" id="R-birth" placeholder="001215" maxlength="6"></td>
+          </tr>
+          <tr>
+            <th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th>
+            <td class="fill-cell"><input class="doc-input" type="date" id="R-hire"></td>
+            <th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th>
+            <td class="fill-cell"><input class="doc-input" type="date" id="R-resign"></td>
+          </tr>
+          <tr>
+            <th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th>
+            <td colspan="3" class="fill-cell"><input class="doc-input" id="R-phone" placeholder="010-0000-0000"></td>
+          </tr>
+          <tr>
+            <th>퇴 사 사 유</th>
+            <td colspan="3" class="fill-cell"><textarea class="doc-input" rows="2" id="R-reason" placeholder="퇴사 사유를 작성하세요"></textarea></td>
+          </tr>
+          <tr>
+            <th style="vertical-align:top;padding-top:8px">면담자 의견</th>
+            <td colspan="3" class="admin-cell"><textarea class="doc-input" rows="2" id="R-interview" placeholder="관리자 기입란"></textarea></td>
+          </tr>
+          <tr>
+            <th>체&nbsp;&nbsp;&nbsp;크</th>
+            <td colspan="3" class="admin-cell">
+              <div class="check-row" style="gap:12px;flex-wrap:wrap">
+                <label><input type="checkbox" id="R-c1"> 유니폼</label>
+                <label><input type="checkbox" id="R-c2"> 명찰</label>
+                <label><input type="checkbox" id="R-c3"> ID카드</label>
+                <label><input type="checkbox" id="R-c4"> 락커Key</label>
+                <label><input type="checkbox" id="R-c5"> 기타</label>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>지 급 방 법</th>
+            <td colspan="3" class="fill-cell">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <input class="doc-input" id="R-bank" placeholder="은행명" style="width:80px">
+                <span style="font-size:12px;font-weight:700">은행 (계좌번호 :</span>
+                <input class="doc-input" id="R-account" placeholder="계좌번호" style="width:130px">
+                <span style="font-size:12px;font-weight:700">)</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th>면담 직원</th>
+            <td class="admin-cell">
+              <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:2px">성 명</div>
+              <input class="doc-input" id="R-interviewer" placeholder="">
+            </td>
+            <th>물품접수 확인자</th>
+            <td class="admin-cell"><input class="doc-input" id="R-receiver" placeholder=""></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 법조항 -->
+      <div class="legal-text">
+        본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을
+        퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.
+        <span style="margin-left:16px">확인 :</span>
+        <span style="border-bottom:1px solid #555;display:inline-block;width:80px;margin-left:8px"></span>
+        (인)
+      </div>
+
+      <p class="submit-date" style="margin-top:16px">위와 같이 사직원을 제출합니다.</p>
+      <p class="submit-date" style="font-size:12px;margin-top:4px">
+        <input class="doc-input" type="date" id="R-submit-date" style="display:inline;width:140px;text-align:center;border-bottom:1px solid #555;background:#eef4ff">
+      </p>
+
+      <!-- 제출자 서명 -->
+      <div class="doc-footer" style="margin-top:20px;align-items:center">
+        <div>
+          <div class="sig-label">제출자 :</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="doc-input" id="R-submitter" placeholder="홍길동" style="border-bottom:1px solid #555;width:80px;background:#eef4ff">
+            <span style="font-size:12px;color:#555;font-weight:600">(서명)</span>
+          </div>
+        </div>
+        <div>
+          <div class="admin-confirm-line">
+            <span>㈜한연개발 동두천지점 (관리자) 확인 :</span>
+            <span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span>
+            <span style="margin-left:2px">(서명)</span>
+            <img src="/admin-sig.png" class="sig-img" style="margin-left:4px">
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-btn" style="background:linear-gradient(135deg,#1e293b,#0f172a)" onclick="alert('사직원 제출 완료! 관리자에게 알림이 발송됩니다.')">✅  제출하기</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       관리자뷰 (요청 패널)
+  ═══════════════════════════════════ -->
+  <div id="tab-admin" class="hidden space-y-4">
+    <div class="bg-white rounded-[24px] shadow-xl border-2 border-slate-100 overflow-hidden">
+      <div class="bg-slate-50 px-5 py-4 border-b border-slate-100">
+        <p class="font-black text-slate-800">📋 근태 서류 관리</p>
+        <p class="text-xs text-slate-400 font-bold mt-0.5">미소지기 선택 → 서류 종류 클릭 → 요청 발송</p>
+      </div>
+      <div class="px-5 py-4 space-y-4">
+        <div>
+          <p class="text-xs font-black text-slate-500 mb-2">미소지기 선택</p>
+          <div class="flex flex-wrap gap-1.5">
+            <button class="px-3 py-1.5 rounded-xl border-2 border-red-400 bg-red-50 text-xs font-black text-red-700">홍길동 ✓</button>
+            <button class="px-3 py-1.5 rounded-xl border-2 border-slate-200 text-xs font-black text-slate-700 bg-white">김한솔</button>
+            <button class="px-3 py-1.5 rounded-xl border-2 border-slate-200 text-xs font-black text-slate-700 bg-white">신재용</button>
+          </div>
+        </div>
+        <div>
+          <p class="text-xs font-black text-slate-700 mb-2">요청 서류 <span class="text-red-600">— 홍길동</span></p>
+          <div class="flex gap-2">
+            <button class="flex-1 bg-yellow-50 border-2 border-yellow-200 text-yellow-800 text-xs font-black py-3 px-2 rounded-xl">⏰ 지각확인서</button>
+            <button class="flex-1 bg-red-50 border-2 border-red-200 text-red-700 text-xs font-black py-3 px-2 rounded-xl">📝 사유서</button>
+            <button class="flex-1 bg-slate-50 border-2 border-slate-200 text-slate-700 text-xs font-black py-3 px-2 rounded-xl">📄 사직원</button>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 pt-4">
+          <p class="text-xs font-black text-slate-700 mb-3">서류 현황</p>
+          <div class="space-y-2">
+            <div class="rounded-2xl border-2 bg-yellow-50 border-yellow-200 p-3 flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-1.5"><span>⏰</span><span class="font-black text-sm text-slate-800">지각확인서</span><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span><span class="text-[10px] text-slate-500 font-bold">제출대기</span></div>
+                <p class="text-xs font-bold text-slate-600 mt-0.5">홍길동 · 2025-04-15</p>
+              </div>
+              <button class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg">취소</button>
+            </div>
+            <div class="rounded-2xl border-2 bg-blue-50 border-blue-200 p-3 flex justify-between items-start">
+              <div>
+                <div class="flex items-center gap-1.5"><span>📝</span><span class="font-black text-sm text-slate-800">사유서</span><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span><span class="text-[10px] text-slate-500 font-bold">제출완료</span></div>
+                <p class="text-xs font-bold text-slate-600 mt-0.5">김한솔 · 2025-04-10</p>
+              </div>
+              <button class="text-[11px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl">열람</button>
+            </div>
+          </div>
+        </div>
+        <div class="border-t border-slate-100 pt-4">
+          <p class="text-xs font-black text-slate-500 mb-2">관리자 서명</p>
+          <div class="flex items-center gap-3">
+            <span class="text-[11px] font-black bg-slate-100 text-slate-600 px-3 py-2 rounded-xl border border-slate-200">🖊️ 서명 이미지 업로드</span>
+            <img src="/admin-sig.png" style="height:36px;object-fit:contain" alt="서명">
+            <span class="text-[10px] text-green-600 font-bold">✅ 등록됨</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 직원 수신 알림 -->
+    <div class="bg-white rounded-[24px] shadow-xl border-2 border-slate-100 overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 bg-slate-50">
+        <p class="font-black text-slate-800 text-sm">📱 직원 화면 — 플로팅 버튼</p>
+      </div>
+      <div class="px-5 py-5">
+        <div class="relative bg-slate-100 rounded-2xl h-28 flex items-end justify-end p-3">
+          <p class="absolute top-3 left-4 text-xs text-slate-400 font-bold">교대신청 메인화면</p>
+          <div class="flex items-center gap-2 bg-red-600 text-white font-black text-sm px-4 py-2.5 rounded-2xl shadow-2xl border-2 border-red-700">
+            <span>📋</span><span>서류 제출</span>
+            <span class="bg-white text-red-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">1</span>
+          </div>
+        </div>
+        <p class="text-xs text-slate-400 font-bold mt-3 text-center">미제출 서류가 있을 때 우하단에 자동 표시</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(name, btn) {
+  ['late','absent','resign','admin'].forEach(function(t){
+    document.getElementById('tab-'+t).classList.add('hidden');
+  });
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  window.scrollTo(0,0);
+}
+// 이름 동기화 (지각확인서 두 이름 필드)
+document.getElementById('L-name').addEventListener('input', function(){
+  document.getElementById('L-name2').value = this.value;
+});
+</script>
+</body>
+</html>

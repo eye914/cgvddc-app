@@ -211,9 +211,22 @@
                 grid.innerHTML = '<div class="col-span-3 text-center py-4 text-red-500 text-xs font-bold">로드 실패. 새로고침해주세요.</div>';
                 return;
             }
+            var savedName = '';
+            try { savedName = localStorage.getItem('cgv_last_name') || ''; } catch(e) {}
             var sorted = MISO_DATA.slice().sort(function(a,b){ return a.name.localeCompare(b.name, 'ko'); });
-            grid.innerHTML = sorted.map(function(m) {
-                return '<button onclick="selectAuthName(\'' + m.name + '\')" class="p-3 rounded-2xl border-2 border-slate-200 font-black text-slate-700 text-sm bg-white active:bg-red-50 active:border-red-400 transition-all active:scale-95">' + m.name + '</button>';
+            var quickBtn = '';
+            if (savedName && MISO_DATA.some(function(m){ return m.name === savedName; })) {
+                quickBtn = '<div class="col-span-3 mb-1">'
+                    + '<p class="text-[10px] text-slate-400 font-bold mb-1.5 text-center">마지막 로그인</p>'
+                    + '<button onclick="selectAuthName(\'' + savedName + '\')" class="w-full p-3.5 rounded-2xl border-2 border-red-400 bg-red-50 font-black text-red-700 text-sm active:bg-red-100 transition-all active:scale-95 flex items-center justify-center gap-2">'
+                    + '<span class="text-base">⚡</span><span>' + savedName + '</span>'
+                    + '</button></div>'
+                    + '<div class="col-span-3 mb-1"><p class="text-[10px] text-slate-300 font-bold text-center">전체</p></div>';
+            }
+            grid.innerHTML = quickBtn + sorted.map(function(m) {
+                var isSaved = m.name === savedName;
+                return '<button onclick="selectAuthName(\'' + m.name + '\')" class="p-3 rounded-2xl border-2 font-black text-sm bg-white active:bg-red-50 active:border-red-400 transition-all active:scale-95 '
+                    + (isSaved ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-700') + '">' + m.name + '</button>';
             }).join('');
         }
         function loadMisoForAuth() {
@@ -330,6 +343,7 @@
             } else {
                 sessionStorage.setItem('cgv_currentUser', authSelectedName);
                 sessionStorage.setItem('cgv_locked_user', authSelectedName); // PIN 로그인 이름 고정
+                try { localStorage.setItem('cgv_last_name', authSelectedName); } catch(e) {}
                 selectUser(authSelectedName);
             }
             fetchData();
@@ -1456,7 +1470,13 @@
                 var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
                 function onAllLoaded() {
                     loaded++;
-                    if (loaded >= total) { showLoader(false); buildUserGrid(); renderList(); }
+                    if (loaded >= total) {
+                        showLoader(false); buildUserGrid(); renderList();
+                        // 직원 로그인 시 미제출 폼 알림 체크
+                        if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
+                            checkMyPendingForms();
+                        }
+                    }
                 }
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
@@ -2127,6 +2147,592 @@
             if (!mgrBoard.innerHTML) mgrBoard.innerHTML = "<div class='py-24 text-center font-black text-slate-300 uppercase tracking-widest text-xs bg-slate-50 rounded-3xl border border-dashed border-slate-200'>\uB300\uAE30 \uC911\uC778 \uC2B9\uC778 \uC694\uCCAD\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>";
         }
     
+
+        // ═══════════════════════════════════════════════════
+        //  전자 폼 시스템
+        // ═══════════════════════════════════════════════════
+        var _formRequests = [];
+        var _formSelectedName = '';
+        var _formCurrentReqId = '';
+        var _formCurrentType = '';
+
+        var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원' };
+        var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄' };
+        var FORM_STATUS_LABELS = { pending: '제출대기', submitted: '제출완료', viewed: '확인완료' };
+
+        // 관리자: 폼 패널 토글
+        function toggleFormPanel() {
+            var panel = document.getElementById('form-panel');
+            var arrow = document.getElementById('form-panel-arrow');
+            if (!panel) return;
+            var isHidden = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !isHidden);
+            if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
+            if (isHidden) {
+                buildFormReqNameGrid();
+                loadAdminForms();
+            }
+        }
+
+        function buildFormReqNameGrid() {
+            var grid = document.getElementById('form-req-name-grid');
+            if (!grid) return;
+            grid.innerHTML = MISO_DATA.map(function(m) {
+                return '<button onclick="selectFormReqName(\'' + m.name + '\')" class="px-3 py-1.5 rounded-xl border-2 border-slate-200 text-xs font-black text-slate-700 bg-white active:scale-95 transition-all">' + m.name + '</button>';
+            }).join('');
+        }
+
+        function selectFormReqName(name) {
+            _formSelectedName = name;
+            var sel = document.getElementById('form-req-selected');
+            var lbl = document.getElementById('form-req-target-label');
+            if (sel) sel.classList.remove('hidden');
+            if (lbl) lbl.textContent = '— ' + name;
+        }
+
+        function clearFormReqName() {
+            _formSelectedName = '';
+            var sel = document.getElementById('form-req-selected');
+            if (sel) sel.classList.add('hidden');
+        }
+
+        function openFormRequestModal(type) {
+            if (!_formSelectedName) { alert('미소지기를 먼저 선택하세요.'); return; }
+            _formCurrentType = type;
+            var title = document.getElementById('form-req-modal-title');
+            var desc = document.getElementById('form-req-modal-desc');
+            var note = document.getElementById('form-req-note');
+            if (title) title.textContent = (FORM_TYPE_ICONS[type] || '') + ' ' + (FORM_TYPE_LABELS[type] || '') + ' 요청';
+            if (desc) desc.textContent = _formSelectedName + '님에게 ' + (FORM_TYPE_LABELS[type] || '') + ' 제출을 요청합니다.';
+            if (note) note.value = '';
+            var modal = document.getElementById('form-request-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeFormRequestModal() {
+            var modal = document.getElementById('form-request-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function submitFormRequest() {
+            var note = (document.getElementById('form-req-note') || {}).value || '';
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            if (!_formSelectedName || !_formCurrentType) return;
+            showLoader(true, '요청 발송 중...');
+            google.script.run
+                .withSuccessHandler(function() {
+                    showLoader(false);
+                    closeFormRequestModal();
+                    clearFormReqName();
+                    loadAdminForms();
+                    alert(_formSelectedName + '님게 ' + (FORM_TYPE_LABELS[_formCurrentType] || '') + ' 제출 요청을 발송했습니다.');
+                })
+                .withFailureHandler(function(e) {
+                    showLoader(false);
+                    alert('오류: ' + (e && e.message ? e.message : e));
+                })
+                .requestForm(_formCurrentType, _formSelectedName, adminName, note);
+        }
+
+        function loadAdminForms() {
+            var el = document.getElementById('form-admin-list');
+            if (el) el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">불러오는 중...</p>';
+            google.script.run
+                .withSuccessHandler(function(list) {
+                    _formRequests = list || [];
+                    renderAdminForms(_formRequests);
+                    updateFormPendingBadge(_formRequests);
+                })
+                .withFailureHandler(function() {
+                    if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">로드 실패</p>';
+                })
+                .getFormRequests(null);
+        }
+
+        function updateFormPendingBadge(list) {
+            var badge = document.getElementById('form-pending-badge');
+            if (!badge) return;
+            var pending = (list || []).filter(function(r) { return r.status === 'pending'; }).length;
+            if (pending > 0) {
+                badge.textContent = pending;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderAdminForms(list) {
+            var el = document.getElementById('form-admin-list');
+            if (!el) return;
+            if (!list || !list.length) {
+                el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">요청 내역이 없습니다</p>';
+                return;
+            }
+            el.innerHTML = list.slice(0, 20).map(function(r) {
+                var statusClass = r.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                                  r.status === 'submitted' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200';
+                var statusDot = r.status === 'pending' ? 'bg-yellow-400' :
+                                r.status === 'submitted' ? 'bg-blue-500' : 'bg-green-400';
+                var statusLabel = FORM_STATUS_LABELS[r.status] || r.status;
+                var icon = FORM_TYPE_ICONS[r.type] || '📄';
+                var label = FORM_TYPE_LABELS[r.type] || r.type;
+                var dateStr = r.requested_at ? r.requested_at.substring(0,10) : '';
+                var canView = r.status === 'submitted' || r.status === 'viewed';
+                return '<div class="rounded-2xl border-2 ' + statusClass + ' p-3">'
+                    + '<div class="flex items-start justify-between gap-2">'
+                    + '<div class="flex-1 min-w-0">'
+                    + '<div class="flex items-center gap-1.5 mb-1">'
+                    + '<span class="text-sm">' + icon + '</span>'
+                    + '<span class="font-black text-slate-800 text-sm">' + label + '</span>'
+                    + '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>'
+                    + '<span class="text-[10px] font-bold text-slate-500">' + statusLabel + '</span>'
+                    + '</div>'
+                    + '<p class="text-xs font-bold text-slate-600">' + r.target_name + ' <span class="text-slate-400">' + dateStr + '</span></p>'
+                    + (r.note ? '<p class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">' + r.note + '</p>' : '')
+                    + '</div>'
+                    + '<div class="flex flex-col gap-1 flex-shrink-0">'
+                    + (canView ? '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[11px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl active:scale-95">열람</button>' : '')
+                    + '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95">취소</button>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
+            }).join('');
+        }
+
+        function cancelFormReq(id) {
+            if (!confirm('서류 요청을 취소하시겠습니까?')) return;
+            google.script.run
+                .withSuccessHandler(function() { loadAdminForms(); })
+                .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
+                .cancelFormRequest(id);
+        }
+
+        // ── 직원용: 내 서류 ──
+        function checkMyPendingForms() {
+            var myName = sessionStorage.getItem('cgv_currentUser');
+            if (!myName) return;
+            google.script.run
+                .withSuccessHandler(function(list) {
+                    var pending = (list || []).filter(function(r) { return r.status === 'pending'; });
+                    var fab = document.getElementById('my-forms-fab');
+                    var badge = document.getElementById('my-forms-badge');
+                    if (pending.length > 0) {
+                        if (fab) fab.classList.remove('hidden');
+                        if (badge) badge.textContent = pending.length;
+                    } else {
+                        if (fab) fab.classList.add('hidden');
+                    }
+                })
+                .withFailureHandler(function() {})
+                .getFormRequests(myName);
+        }
+
+        function openMyFormsModal() {
+            var myName = sessionStorage.getItem('cgv_currentUser');
+            if (!myName) return;
+            var modal = document.getElementById('my-forms-modal');
+            if (modal) modal.classList.remove('hidden');
+            var el = document.getElementById('my-forms-list');
+            if (el) el.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>';
+            google.script.run
+                .withSuccessHandler(function(list) {
+                    var pending = (list || []).filter(function(r) { return r.status === 'pending'; });
+                    if (!el) return;
+                    if (!pending.length) {
+                        el.innerHTML = '<div class="text-center py-8"><p class="text-4xl mb-3">✅</p><p class="font-black text-slate-500 text-sm">제출할 서류가 없습니다</p></div>';
+                        return;
+                    }
+                    el.innerHTML = pending.map(function(r) {
+                        var icon = FORM_TYPE_ICONS[r.type] || '📄';
+                        var label = FORM_TYPE_LABELS[r.type] || r.type;
+                        var dateStr = r.requested_at ? r.requested_at.substring(0,10) : '';
+                        return '<div class="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4">'
+                            + '<div class="flex items-center gap-2 mb-2">'
+                            + '<span class="text-xl">' + icon + '</span>'
+                            + '<div><p class="font-black text-slate-800">' + label + ' 제출 요청</p>'
+                            + '<p class="text-xs text-slate-500 font-bold">' + dateStr + ' · ' + (r.requested_by || '관리자') + '</p></div>'
+                            + '</div>'
+                            + (r.note ? '<p class="text-xs text-slate-600 font-bold bg-white rounded-xl px-3 py-2 mb-3 border border-yellow-200">' + r.note + '</p>' : '')
+                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">작성하기</button>'
+                            + '</div>';
+                    }).join('');
+                })
+                .withFailureHandler(function() {
+                    if (el) el.innerHTML = '<p class="text-red-500 text-sm text-center py-6">로드 실패</p>';
+                })
+                .getFormRequests(myName);
+        }
+
+        function closeMyFormsModal() {
+            var modal = document.getElementById('my-forms-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // ── 폼 작성 ──
+        function openFormFillModal(reqId, type) {
+            _formCurrentReqId = reqId;
+            _formCurrentType = type;
+            var modal = document.getElementById('form-fill-modal');
+            var title = document.getElementById('form-fill-title');
+            var body = document.getElementById('form-fill-body');
+            if (!modal || !body) return;
+            var myName = sessionStorage.getItem('cgv_currentUser') || '';
+            var today = getLocalYYYYMMDD(new Date());
+            if (title) title.textContent = (FORM_TYPE_ICONS[type] || '') + ' ' + (FORM_TYPE_LABELS[type] || '') + ' 작성';
+
+            if (type === 'late') {
+                body.innerHTML = buildLateForm(myName, today);
+            } else if (type === 'absent') {
+                body.innerHTML = buildAbsentForm(myName, today);
+            } else if (type === 'resign') {
+                body.innerHTML = buildResignForm(myName, today);
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeFormFillModal() {
+            var modal = document.getElementById('form-fill-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        var DOC_STYLE = '<style>'
+            + '.dt{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px}'
+            + '.dt th,.dt td{border:1px solid #555;padding:5px 8px;vertical-align:middle;font-weight:600;color:#222}'
+            + '.dt th{background:#f0f0f0;font-weight:900;text-align:center;white-space:nowrap}'
+            + '.dt .hr th{background:#e0e0e0;font-size:11px;padding:4px}'
+            + '.di{width:100%;border:none;outline:none;background:transparent;font-size:12px;font-weight:600;color:#111;padding:2px 0;box-sizing:border-box;font-family:inherit}'
+            + '.di::placeholder{color:#bbb;font-weight:400}'
+            + 'textarea.di{resize:none;line-height:1.6}'
+            + '.fc{background:#eef4ff}'
+            + '.ac{background:#f9f9f9}'
+            + '.ck-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}'
+            + '.ck-row label{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:600;cursor:pointer}'
+            + '.doc-legend{display:flex;gap:10px;margin-bottom:10px;font-size:11px;font-weight:700;color:#555}'
+            + '.doc-legend span{display:flex;align-items:center;gap:4px}'
+            + '.doc-legend b{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid #ccc}'
+            + '.adm-line{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#222;flex-wrap:nowrap;white-space:nowrap}'
+            + '.adm-line img{height:38px;object-fit:contain;vertical-align:middle}'
+            + '.seal{border:1px solid #888;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;font-weight:600;margin:0 auto}'
+            + '.sub-date{text-align:center;font-size:12px;font-weight:700;color:#222;margin:10px 0 4px}'
+            + '.doc-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}'
+            + '</style>';
+
+        function buildLateForm(name, today) {
+            return DOC_STYLE
+                + ''
+                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px">미소지기  지각확인서</div>'
+                + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:10px">'
+                + '미소지기 <span style="border-bottom:1.5px solid #222;display:inline-block;min-width:60px;text-align:center;background:#eef4ff">' + name + '</span>'
+                + ' 은(는) 아래와 같이 지각 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                + '<div style="display:flex;border:1px solid #555;margin-bottom:12px;font-size:12px">'
+                + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
+                + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>'
+                + '<div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">지각</div>'
+                + '</div>'
+                + '<div style="flex:1;display:flex;flex-direction:column">'
+                + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">내  용</div>'
+                + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="지각 사유를 구체적으로 작성하세요"></textarea></div>'
+                + '</div>'
+                + '</div>'
+                + '<table class="dt"><thead><tr class="hr">'
+                + '<th>이  름</th><th>날  짜</th><th>약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th><th>실제 근로시간</th><th>확인 서명</th>'
+                + '</tr></thead><tbody><tr style="height:52px">'
+                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center"></td>'
+                + '<td class="fc" style="vertical-align:middle"><input id="ff-date" type="date" class="di" placeholder="지각 날짜"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-sch-start" class="di" placeholder="09:00" style="width:46%;text-align:center">~<input id="ff-sch-end" class="di" placeholder="14:30" style="width:46%;text-align:center"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-act-start" class="di" placeholder="09:30" style="width:46%;text-align:center">~<input id="ff-act-end" class="di" placeholder="14:30" style="width:46%;text-align:center"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-sign" class="di" placeholder="서명" style="text-align:center;border-bottom:1px solid #999;width:90%"></td>'
+                + '</tr></tbody></table>'
+                + '<div class="doc-footer"><div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
+        }
+
+        function buildAbsentForm(name, today) {
+            return DOC_STYLE
+                + ''
+                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사  유  서</div>'
+                + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                + '<table class="dt"><tbody>'
+                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
+                + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
+                + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc">'
+                + '<input id="ff-date" type="date" class="di">'
+                + '</td></tr>'
+                + '<tr><th>제출사유</th><td colspan="3" class="fc"><div class="ck-row">'
+                + '<label><input type="checkbox" id="ff-r1"> 경고</label>'
+                + '<label><input type="checkbox" id="ff-r2"> 근태</label>'
+                + '<label><input type="checkbox" id="ff-r3"> 직무 태만</label>'
+                + '<label><input type="checkbox" id="ff-r4"> 기타 (</label>'
+                + '<input id="ff-other" class="di" placeholder="기타사유" style="width:90px;border-bottom:1px solid #999">'
+                + '<span style="font-size:12px;font-weight:600">)</span></div></td></tr>'
+                + '<tr><th rowspan="6" style="vertical-align:top;padding-top:8px">내&nbsp;&nbsp;&nbsp;용</th>'
+                + '<td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 언제</div><textarea id="ff-when" class="di" rows="1"></textarea></td></tr>'
+                + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 어디서</div><textarea id="ff-where" class="di" rows="1"></textarea></td></tr>'
+                + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 무엇을</div><textarea id="ff-what" class="di" rows="1"></textarea></td></tr>'
+                + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 어떻게</div><textarea id="ff-how" class="di" rows="1"></textarea></td></tr>'
+                + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 왜</div><textarea id="ff-why" class="di" rows="2"></textarea></td></tr>'
+                + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#555;font-weight:700;margin-bottom:1px">- 약속 및 개선 방향</div><textarea id="ff-promise" class="di" rows="2"></textarea></td></tr>'
+                + '</tbody></table>'
+                + '<p class="sub-date">위와 같이 사유서를 제출합니다.</p>'
+                + '<div class="doc-footer">'
+                + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
+                + '<div style="display:flex;align-items:center;gap:6px"><input id="ff-submitter" class="di" value="' + name + '" style="border-bottom:1px solid #555;width:70px;background:#eef4ff"><span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
+        }
+
+        function buildResignForm(name, today) {
+            return DOC_STYLE
+                + ''
+                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사  직  원</div>'
+                + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                + '<table class="dt"><tbody>'
+                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"><span style="font-size:10px;color:#888;font-weight:600"> (서명)</span></td>'
+                + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
+                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"></td>'
+                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" value="' + today + '"></td></tr>'
+                + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000"></td></tr>'
+                + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
+                + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th><td colspan="3" class="ac"><textarea id="ff-interview" class="di" rows="2" placeholder="관리자 기입란"></textarea></td></tr>'
+                + '<tr><th>체&nbsp;&nbsp;&nbsp;크</th><td colspan="3" class="ac"><div class="ck-row">'
+                + '<label><input type="checkbox" id="ff-c1"> 유니폼</label>'
+                + '<label><input type="checkbox" id="ff-c2"> 명찰</label>'
+                + '<label><input type="checkbox" id="ff-c3"> ID카드</label>'
+                + '<label><input type="checkbox" id="ff-c4"> 락커Key</label>'
+                + '<label><input type="checkbox" id="ff-c5"> 기타</label>'
+                + '</div></td></tr>'
+                + '<tr><th>지 급 방 법</th><td colspan="3" class="fc">'
+                + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
+                + '<input id="ff-bank" class="di" placeholder="은행명" style="width:70px">'
+                + '<span style="font-size:11px;font-weight:700">은행 (계좌번호 :</span>'
+                + '<input id="ff-account" class="di" placeholder="계좌번호" style="width:120px">'
+                + '<span style="font-size:11px;font-weight:700">)</span></div></td></tr>'
+                + '<tr><th>면담 직원</th><td class="ac"><div style="font-size:10px;color:#888;font-weight:600;margin-bottom:1px">성 명</div><input id="ff-interviewer" class="di" placeholder=""></td>'
+                + '<th>물품접수 확인자</th><td class="ac"><input id="ff-receiver" class="di" placeholder=""></td></tr>'
+                + '</tbody></table>'
+                + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin-bottom:10px">'
+                + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다. '
+                + '<span style="margin-left:10px">확인 :</span><span style="border-bottom:1px solid #555;display:inline-block;width:70px;margin-left:6px"></span>(인)</div>'
+                + '<p class="sub-date">위와 같이 사직원을 제출합니다.</p>'
+                + '<div class="doc-footer">'
+                + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
+                + '<div style="display:flex;align-items:center;gap:6px"><input id="ff-submitter" class="di" value="' + name + '" style="border-bottom:1px solid #555;width:70px;background:#eef4ff"><span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
+        }
+
+        function fField(label, inputHtml) {
+            return '<div>'
+                + '<label class="text-xs font-black text-slate-600 mb-1 block">' + label + '</label>'
+                + inputHtml
+                + '</div>';
+        }
+
+        // 실제로는 Tailwind 클래스 조합 사용
+        function submitFormFill() {
+            var type = _formCurrentType;
+            var formData = {};
+
+            function v(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+            function r(name) {
+                var el = document.querySelector('input[name="' + name + '"]:checked');
+                return el ? el.value : '';
+            }
+
+            function chk(id) { var el = document.getElementById(id); return el ? el.checked : false; }
+            if (type === 'late') {
+                formData = {
+                    name: v('ff-name'), date: v('ff-date'),
+                    content: v('ff-content'),
+                    schStart: v('ff-sch-start'), schEnd: v('ff-sch-end'),
+                    actStart: v('ff-act-start'), actEnd: v('ff-act-end')
+                };
+                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 지각 사유는 필수입니다.'); return; }
+            } else if (type === 'absent') {
+                var reasons = [];
+                if (chk('ff-r1')) reasons.push('경고');
+                if (chk('ff-r2')) reasons.push('근태');
+                if (chk('ff-r3')) reasons.push('직무 태만');
+                if (chk('ff-r4')) reasons.push('기타: ' + v('ff-other'));
+                formData = {
+                    name: v('ff-name'), birth: v('ff-birth'),
+                    date: v('ff-date'), timeStart: v('ff-time-start'), timeEnd: v('ff-time-end'),
+                    reasons: reasons.join(', '),
+                    when: v('ff-when'), where: v('ff-where'), what: v('ff-what'),
+                    how: v('ff-how'), why: v('ff-why'), promise: v('ff-promise'),
+                    submitter: v('ff-submitter')
+                };
+                if (!formData.name || !formData.date || !formData.why) { alert('이름, 날짜, 이유(왜)는 필수입니다.'); return; }
+            } else if (type === 'resign') {
+                var returnItems = [];
+                if (chk('ff-c1')) returnItems.push('유니폼');
+                if (chk('ff-c2')) returnItems.push('명찰');
+                if (chk('ff-c3')) returnItems.push('ID카드');
+                if (chk('ff-c4')) returnItems.push('락커Key');
+                if (chk('ff-c5')) returnItems.push('기타');
+                formData = {
+                    name: v('ff-name'), birth: v('ff-birth'),
+                    hireDate: v('ff-hire-date'), resignDate: v('ff-resign-date'),
+                    phone: v('ff-phone'), reason: v('ff-resign-reason'),
+                    interviewNote: v('ff-interview'),
+                    returnItems: returnItems.join(', '),
+                    bank: v('ff-bank'), account: v('ff-account'),
+                    interviewer: v('ff-interviewer'), receiver: v('ff-receiver'),
+                    submitter: v('ff-submitter')
+                };
+                if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
+            }
+
+            if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
+            showLoader(true, '제출 중...');
+            google.script.run
+                .withSuccessHandler(function() {
+                    showLoader(false);
+                    closeFormFillModal();
+                    closeMyFormsModal();
+                    checkMyPendingForms();
+                    alert('제출이 완료되었습니다. 수고하셨습니다!');
+                })
+                .withFailureHandler(function(e) {
+                    showLoader(false);
+                    alert('제출 실패: ' + (e && e.message ? e.message : e));
+                })
+                .submitForm(_formCurrentReqId, formData);
+        }
+
+        // ── 관리자: 제출된 서류 열람 ──
+        function openFormViewModal(reqId) {
+            var req = _formRequests.find(function(r) { return r.id === reqId; });
+            var modal = document.getElementById('form-view-modal');
+            var body = document.getElementById('form-view-body');
+            var title = document.getElementById('form-view-title');
+            if (!modal || !body) return;
+            if (title && req) title.textContent = (FORM_TYPE_ICONS[req.type] || '') + ' ' + (FORM_TYPE_LABELS[req.type] || '');
+            body.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>';
+            modal.classList.remove('hidden');
+
+            google.script.run
+                .withSuccessHandler(function(list) {
+                    var sub = list && list[0];
+                    if (!sub) {
+                        body.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">제출된 서류가 없습니다</p>';
+                        return;
+                    }
+                    renderFormView(body, sub, req);
+                    // 열람 처리
+                    google.script.run.withSuccessHandler(function() { loadAdminForms(); }).markFormViewed(reqId);
+                })
+                .withFailureHandler(function() {
+                    body.innerHTML = '<p class="text-red-500 text-sm text-center py-6">로드 실패</p>';
+                })
+                .getFormSubmissions(req ? req.target_name : null);
+        }
+
+        function renderFormView(container, sub, req) {
+            var fd = sub.form_data || {};
+            var type = sub.type || (req && req.type) || '';
+            var sig = '';
+            try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
+            var sigHtml = sig
+                ? '<img src="' + sig + '" alt="관리자서명" class="h-10 object-contain">'
+                : '<span class="text-slate-300 text-xs font-bold">서명 미등록</span>';
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            var today = getLocalYYYYMMDD(new Date());
+            var rows = [];
+
+            if (type === 'late') {
+                rows = [
+                    ['이름', fd.name], ['지각 날짜', fd.date],
+                    ['사유', fd.reason], ['내용', fd.content],
+                    ['약정 근로시간', (fd.schStart || '') + (fd.schEnd ? ' ~ ' + fd.schEnd : '')],
+                    ['실제 근로시간', (fd.actStart || '') + (fd.actEnd ? ' ~ ' + fd.actEnd : '')],
+                ];
+            } else if (type === 'absent') {
+                rows = [
+                    ['이름', fd.name], ['결근 일시', fd.date],
+                    ['제출 사유', fd.reasonType],
+                    ['언제', fd.when], ['어디서', fd.where],
+                    ['무엇을', fd.what], ['어떻게', fd.how],
+                    ['왜', fd.why], ['약속개선', fd.promise],
+                ];
+            } else if (type === 'resign') {
+                rows = [
+                    ['성명', fd.name], ['주민번호 앞6자', fd.birth],
+                    ['입사일', fd.hireDate], ['퇴직희망일', fd.resignDate],
+                    ['퇴사 사유', fd.reason], ['회사 조언', fd.advice],
+                    ['반낙 물품', fd.returnItems], ['급여 지급', fd.payment],
+                ];
+            }
+
+            var tableRows = rows.map(function(r) {
+                return '<tr class="border-b border-slate-100">'
+                    + '<td class="py-2 pr-3 text-[11px] font-black text-slate-500 whitespace-nowrap w-28">' + r[0] + '</td>'
+                    + '<td class="py-2 text-sm font-bold text-slate-800">' + (r[1] || '<span class="text-slate-300">-</span>') + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            container.innerHTML = '<div id="form-print-area">'
+                + '<div class="bg-slate-900 text-white rounded-2xl px-5 py-4 mb-5 text-center">'
+                + '<p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">CGV동두천 미소지기</p>'
+                + '<p class="text-xl font-black">' + (FORM_TYPE_LABELS[type] || type) + '</p>'
+                + '</div>'
+                + '<table class="w-full mb-6"><tbody>' + tableRows + '</tbody></table>'
+                + '<div class="border-t-2 border-slate-200 pt-4 mt-4">'
+                + '<p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">㎏한연개발 동두천지점</p>'
+                + '<div class="flex items-end justify-between">'
+                + '<div>'
+                + '<p class="text-xs font-bold text-slate-500">제출일: ' + (sub.submitted_at ? sub.submitted_at.substring(0,10) : today) + '</p>'
+                + '<p class="text-xs font-bold text-slate-500">제출자: ' + (fd.name || sub.target_name) + '</p>'
+                + '</div>'
+                + '<div class="text-right">'
+                + '<p class="text-[10px] text-slate-400 font-bold mb-1">관리자 (확인자): ' + adminName + '</p>'
+                + sigHtml
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</div>';
+        }
+
+        function closeFormViewModal() {
+            var modal = document.getElementById('form-view-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function printFormView() {
+            var area = document.getElementById('form-print-area');
+            if (!area) return;
+            var win = window.open('', '_blank');
+            win.document.write('<html><head><title>서류 출력</title>'
+                + '<style>body{font-family:sans-serif;padding:24px;max-width:600px;margin:auto}'
+                + 'table{width:100%;border-collapse:collapse}td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}'
+                + 'td:first-child{font-weight:900;color:#64748b;width:120px}'
+                + '@media print{button{display:none}}</style></head><body>'
+                + area.innerHTML
+                + '<br><button onclick="window.print()" style="padding:10px 24px;background:#0f172a;color:#fff;border:none;border-radius:8px;font-weight:900;cursor:pointer">프린트 / PDF 저장</button>'
+                + '</body></html>');
+            win.document.close();
+        }
+
+        // ── 관리자 서명 업로드 ──
+        function handleSigUpload(input) {
+            var file = input.files && input.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var base64 = e.target.result;
+                try { localStorage.setItem('cgv_admin_sig', base64); } catch(err) {}
+                var img = document.getElementById('sig-preview-img');
+                var wrap = document.getElementById('sig-preview-wrap');
+                if (img) { img.src = base64; }
+                if (wrap) wrap.classList.remove('hidden');
+                alert('서명이 등록되었습니다!');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // fetchData 완료 후 직원 폼 알림 체크
+        var _origOnAllLoaded = null;
 
         // defer 스크립트: DOM 파싱 완료 후 실행 보장 → 바로 호출
         if (document.readyState === "loading") {

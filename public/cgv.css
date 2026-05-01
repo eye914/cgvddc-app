@@ -366,6 +366,23 @@ h1, h2, h3, h4, p, span, button, label {
 .flex { flex-wrap: nowrap; }
 .flex-wrap { flex-wrap: wrap !important; }
 
+/* ── 전자 폼 입력 필드 ── */
+.ff-input {
+    width: 100%;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    outline: none;
+    background: #f8fafc;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.ff-input:focus { border-color: #e71a0f; background: #fff; }
+textarea.ff-input { resize: vertical; min-height: 64px; }
+
 /* 6. 공고 카드 타이틀/정보 정렬 */
 @media (max-width: 480px) {
     /* 카드 헤더 (배지 + 상태) */

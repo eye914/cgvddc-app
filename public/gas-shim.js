@@ -81,6 +81,32 @@
         fetch('/api/attendance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, week:week, late:late, absent:absent, logs:logs}) })
           .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
       },
+
+      // ── 전자 폼 ──
+      getFormRequests: function(name) {
+        var url = '/api/forms' + (name ? '?name=' + encodeURIComponent(name) : '');
+        fetch(url).then(function(r){ return r.json(); }).then(_success).catch(_failure);
+      },
+      getFormSubmissions: function(name) {
+        var url = '/api/forms?mode=submissions' + (name ? '&name=' + encodeURIComponent(name) : '');
+        fetch(url).then(function(r){ return r.json(); }).then(_success).catch(_failure);
+      },
+      requestForm: function(type, targetName, requestedBy, note) {
+        fetch('/api/forms', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({type:type, targetName:targetName, requestedBy:requestedBy, note:note||''}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      submitForm: function(id, formData) {
+        fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id, action:'submit', formData:formData}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      markFormViewed: function(id) {
+        fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id, action:'viewed'}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
+      cancelFormRequest: function(id) {
+        fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:id, action:'cancel'}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
     };
     return runner;
   }
