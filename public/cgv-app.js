@@ -2774,31 +2774,40 @@
             var area = document.getElementById('form-print-area');
             if (!area) { alert('열람된 서류가 없습니다.'); return; }
             var title = document.getElementById('form-view-title');
-            var docTitle = title ? title.textContent.replace(/[^가-힣\w\s]/g, '').trim() : '서류';
-            var sig = '';
-            try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
-            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
-            // _formViewSub, _formViewReq 를 참조해 buildViewDoc 재생성
+            var docTitle = title ? title.textContent.trim() : '서류';
             var docHtml = area.innerHTML;
             var win = window.open('', '_blank');
             if (!win) { alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.'); return; }
             win.document.write(
                 '<!DOCTYPE html><html lang="ko"><head>'
                 + '<meta charset="UTF-8">'
+                + '<meta name="viewport" content="width=device-width,initial-scale=1">'
                 + '<title>' + docTitle + '</title>'
                 + '<style>'
-                + 'body{font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:28px 32px;max-width:620px;margin:auto;background:#fff}'
+                /* ── 화면: A4 페이지처럼 보이게 ── */
+                + 'html{background:#9ca3af;min-height:100%}'
+                + 'body{'
+                + '  font-family:"Apple SD Gothic Neo","Malgun Gothic","나눔고딕",sans-serif;'
+                + '  background:#fff;'
+                + '  width:210mm;min-height:297mm;'
+                + '  margin:16px auto;'
+                + '  padding:20mm 18mm 24mm 18mm;'
+                + '  box-sizing:border-box;'
+                + '  box-shadow:0 4px 24px rgba(0,0,0,.3);'
+                + '}'
+                /* ── 인쇄: 정확한 A4 ── */
                 + '@media print{'
-                + '  @page{size:A4;margin:15mm 15mm 20mm 15mm}'
-                + '  body{padding:0;max-width:100%}'
+                + '  html{background:#fff}'
+                + '  @page{size:A4 portrait;margin:20mm 18mm 24mm 18mm}'
+                + '  body{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none}'
                 + '  .no-print{display:none!important}'
                 + '}'
                 + '</style>'
                 + '</head><body>'
                 + docHtml
-                + '<div class="no-print" style="margin-top:24px;display:flex;gap:10px">'
-                + '<button onclick="window.print()" style="flex:1;padding:12px 0;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:900;cursor:pointer">PDF 저장 / 인쇄</button>'
-                + '<button onclick="window.close()" style="padding:12px 20px;background:#f1f5f9;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">닫기</button>'
+                + '<div class="no-print" style="margin-top:20px;display:flex;gap:8px;position:fixed;bottom:16px;right:16px;z-index:999">'
+                + '<button onclick="window.print()" style="padding:11px 22px;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)">📄 PDF 저장 / 인쇄</button>'
+                + '<button onclick="window.close()" style="padding:11px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">닫기</button>'
                 + '</div>'
                 + '<script>window.onload=function(){window.print();}<\/script>'
                 + '</body></html>'
