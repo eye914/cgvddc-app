@@ -2034,7 +2034,7 @@
                     + "<div class='flex items-center gap-2'>"
                     + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-3 py-1.5 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 shadow-sm active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
                     + "<div class='flex flex-col items-end gap-1'>"
-                    + "<span class='status-badge shadow-sm "+(isU?"text-red-600 border-red-200 bg-red-50":isN?"text-yellow-700 border-yellow-200 bg-yellow-50":isP2?"text-blue-700 border-blue-200 bg-blue-50":"text-green-700 border-green-200 bg-green-50")+"'>"+t.status+"</span>"
+                    + "<span class='status-badge' style='"+(isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a")+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+(isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a")+"'></span>"+t.status+"</span>"
                     + (isMine&&isU ? "<span class='text-[9px] text-slate-400 font-bold'>\uB0B4 \uACF5\uACE0</span>" : "")
                     + (t.subName===currentUser&&isN ? "<span class='text-[9px] text-blue-500 font-bold'>\uB0B4\uAC00 \uC9C0\uC6D0\uD568</span>" : "")
                     + (isUrgent ? "<span class='text-[9px] text-red-500 font-bold animate-pulse'>D-day \uC784\uBC15</span>" : "")

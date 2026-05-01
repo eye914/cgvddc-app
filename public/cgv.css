@@ -206,7 +206,57 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 /* ── 탭 버튼 pill 모양 강화 ── */
 .tab-btn { border-radius: 10px !important; }
 .tab-btn.active {
-    background: #991b1b !important;
+    background: linear-gradient(160deg, #b91c1c 0%, #7f1d1d 100%) !important;
     color: #fff !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(153,27,27,0.3) !important;
+    box-shadow: 0 3px 10px rgba(127,29,29,0.4) !important;
 }
+
+/* ═══════════════════════════════════════════════
+   Preview Match — Status Badges & Typography
+═══════════════════════════════════════════════ */
+
+/* Status badge — pill + colored dot */
+.status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 4px 10px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+.badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+@keyframes badge-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(1.5); }
+}
+.badge-dot-pulse { animation: badge-pulse 1.5s ease-in-out infinite; }
+
+/* Section labels (OUT/IN headers) — uppercase slate */
+.section-label-red   { font-size: 11px !important; font-weight: 900 !important; letter-spacing: 0.10em !important; text-transform: uppercase !important; color: #94a3b8 !important; }
+.section-label-blue  { font-size: 11px !important; font-weight: 900 !important; letter-spacing: 0.10em !important; text-transform: uppercase !important; color: #94a3b8 !important; }
+
+/* Inner info box — tighter radius */
+.info-box-inner { border-radius: 14px !important; padding: 14px !important; background: #f8fafc !important; border: 1.5px solid #e2e8f0 !important; }
+
+/* Card — tighter radius & cleaner border */
+.card-shadow {
+    background: white !important;
+    border: 2px solid #f1f5f9 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07) !important;
+    backdrop-filter: none !important;
+}
+
+/* Body base letter-spacing override */
+body { letter-spacing: -0.03em !important; }
