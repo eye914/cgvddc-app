@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
-// 매 요청마다 서버에서 새로 렌더링 → CDN 캐시 우회
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
@@ -26,13 +26,18 @@ export const viewport: Viewport = {
 };
 
 const publicDir = path.join(process.cwd(), 'public');
-const cssContent    = fs.readFileSync(path.join(publicDir, 'cgv.css'),     'utf8');
-const shimContent   = fs.readFileSync(path.join(publicDir, 'gas-shim.js'), 'utf8');
-const appJsContent  = fs.readFileSync(path.join(publicDir, 'cgv-app.js'),  'utf8');
+const cssContent = fs.readFileSync(path.join(publicDir, 'cgv.css'), 'utf8');
+
+function fileVer(filename: string): string {
+  const buf = fs.readFileSync(path.join(publicDir, filename));
+  return crypto.createHash('md5').update(buf).digest('hex').slice(0, 8);
+}
+const shimVer = fileVer('gas-shim.js');
+const appVer  = fileVer('cgv-app.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"
@@ -41,14 +46,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* CSS 인라인 주입 — 캐시 완전 우회 */}
         <style dangerouslySetInnerHTML={{ __html: cssContent }} />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        {/* Tailwind CDN */}
-        <script src="https://cdn.tailwindcss.com" async={false} />
-        {/* GAS shim 인라인 */}
-        <script dangerouslySetInnerHTML={{ __html: shimContent }} />
-        {/* 앱 메인 JS 인라인 */}
-        <script dangerouslySetInnerHTML={{ __html: appJsContent }} />
+        {/* Tailwind CDN — async로 페이지 블로킹 방지 */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://cdn.tailwindcss.com" async />
+        {/* GAS shim + 앱 메인 JS — 외부 파일로 React 수화 간섭 완전 차단 */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`/gas-shim.js?v=${shimVer}`} />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src={`/cgv-app.js?v=${appVer}`} />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
       </body>
     </html>
