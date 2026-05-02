@@ -2375,6 +2375,8 @@
             var note = (document.getElementById('form-req-note') || {}).value || '';
             var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
             if (!_formSelectedName || !_formCurrentType) return;
+            var sentName = _formSelectedName; // clearFormReqName() 호출 전에 미리 저장
+            var sentType = _formCurrentType;
             showLoader(true, '요청 발송 중...');
             google.script.run
                 .withSuccessHandler(function() {
@@ -2382,7 +2384,7 @@
                     closeFormRequestModal();
                     clearFormReqName();
                     loadAdminForms();
-                    alert(_formSelectedName + ' 님에게 ' + (FORM_TYPE_LABELS[_formCurrentType] || '') + ' 제출 요청을 발송했습니다.');
+                    alert(sentName + ' 님에게 ' + (FORM_TYPE_LABELS[sentType] || '') + ' 제출 요청을 발송했습니다.');
                 })
                 .withFailureHandler(function(e) {
                     showLoader(false);
@@ -2526,12 +2528,14 @@
         }
 
         // ── 폼 작성 ──
-        window._signDataURL = null; // 서명 데이터 초기화
+        window._signDataURL = null;
+        window._submitterSignDataURL = null;
 
         function openFormFillModal(reqId, type) {
             _formCurrentReqId = reqId;
             _formCurrentType = type;
-            window._signDataURL = null; // 매번 초기화
+            window._signDataURL = null;
+            window._submitterSignDataURL = null;
             var modal = document.getElementById('form-fill-modal');
             var title = document.getElementById('form-fill-title');
             var body = document.getElementById('form-fill-body');
@@ -2560,6 +2564,7 @@
         var _signPadDrawing = false;
         var _signPadCtx = null;
         var _signPadCanvas = null;
+        var _signPadMode = 'sign'; // 'sign' = 확인서명(late폼), 'submitter' = 제출자서명(absent/resign)
 
         function ensureSignPadModal() {
             if (document.getElementById('sign-pad-modal')) return;
@@ -2579,7 +2584,8 @@
             document.body.appendChild(el);
         }
 
-        function openSignPad() {
+        function openSignPad(mode) {
+            _signPadMode = mode || 'sign';
             ensureSignPadModal();
             var modal = document.getElementById('sign-pad-modal');
             if (!modal) return;
@@ -2621,14 +2627,24 @@
 
         function confirmSignPad() {
             if (!_signPadCanvas) return;
-            window._signDataURL = _signPadCanvas.toDataURL('image/png');
+            var dataURL = _signPadCanvas.toDataURL('image/png');
             var modal = document.getElementById('sign-pad-modal');
             if (modal) modal.style.display = 'none';
-            // 버튼 업데이트
-            var btn = document.getElementById('ff-sign-btn');
-            var img = document.getElementById('ff-sign-img');
+
+            var btnId, imgId;
+            if (_signPadMode === 'submitter') {
+                window._submitterSignDataURL = dataURL;
+                btnId = 'ff-submitter-sign-btn';
+                imgId = 'ff-submitter-sign-img';
+            } else {
+                window._signDataURL = dataURL;
+                btnId = 'ff-sign-btn';
+                imgId = 'ff-sign-img';
+            }
+            var btn = document.getElementById(btnId);
+            var img = document.getElementById(imgId);
             if (btn) { btn.textContent = '✅ 서명완료'; btn.style.background = '#dcfce7'; btn.style.borderColor = '#16a34a'; btn.style.color = '#15803d'; }
-            if (img) { img.src = window._signDataURL; img.style.display = 'block'; }
+            if (img) { img.src = dataURL; img.style.display = 'block'; }
         }
 
         var DOC_STYLE = '<style>'
@@ -2698,16 +2714,16 @@
         }
 
         function buildAbsentForm(name, today) {
+            var signBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
             return DOC_STYLE
-                + ''
                 + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사  유  서</div>'
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
-                + '<table class="dt"><tbody>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+                + '<table class="dt" style="min-width:300px"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
-                + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc">'
-                + '<input id="ff-date" type="date" class="di">'
-                + '</td></tr>'
+                + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc"><input id="ff-date" type="date" class="di"></td></tr>'
                 + '<tr><th>제출사유</th><td colspan="3" class="fc"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-r1"> 경고</label>'
                 + '<label><input type="checkbox" id="ff-r2"> 근태</label>'
@@ -2723,27 +2739,46 @@
                 + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#666;font-weight:700;margin-bottom:1px">- 왜</div><textarea id="ff-why" class="di" rows="2"></textarea></td></tr>'
                 + '<tr><td colspan="3" class="fc" style="padding:4px 8px"><div style="font-size:11px;color:#555;font-weight:700;margin-bottom:1px">- 약속 및 개선 방향</div><textarea id="ff-promise" class="di" rows="2"></textarea></td></tr>'
                 + '</tbody></table>'
-                + '<p class="sub-date">위와 같이 사유서를 제출합니다.</p>'
-                + '<div class="doc-footer">'
-                + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
-                + '<div style="display:flex;align-items:center;gap:6px"><input id="ff-submitter" class="di" value="' + name + '" style="border-bottom:1px solid #555;width:70px;background:#eef4ff"><span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                + '</div>'
+                + '<p class="sub-date" style="margin:14px 0 12px">위와 같이 사유서를 제출합니다.</p>'
+                + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">'
+                + '<div style="display:flex;align-items:center;gap:8px">'
+                + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
+                + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
+                + '<span style="font-size:11px;font-weight:700">(서명)</span>'
+                + signBtn
+                + '</div>'
                 + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
 
         function buildResignForm(name, today) {
+            var signBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
+            var adminOnlyStyle = 'background:#f9f9f9;color:#aaa;font-size:11px;cursor:not-allowed';
             return DOC_STYLE
-                + ''
-                + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사  직  원</div>'
+                + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사  직  원</div>'
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
-                + '<table class="dt"><tbody>'
-                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"><span style="font-size:10px;color:#888;font-weight:600"> (서명)</span></td>'
+                // 상기 문구
+                + '<p style="font-size:11px;font-weight:700;color:#222;line-height:1.8;margin-bottom:14px;text-align:center">'
+                + '상기 본인은&nbsp;&nbsp;'
+                + '<input id="ff-resign-year" class="di" type="number" placeholder="20__" style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-resign-month" class="di" type="number" placeholder="_" min="1" max="12" style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-resign-day" class="di" type="number" placeholder="_" min="1" max="31" style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '&nbsp;&nbsp;자로 당 사를 사직하고자 하오니 재가하여 주시기 바랍니다.'
+                + '</p>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+                + '<table class="dt" style="min-width:300px"><tbody>'
+                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
                 + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"></td>'
                 + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" value="' + today + '"></td></tr>'
                 + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000"></td></tr>'
                 + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
-                + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th><td colspan="3" class="ac"><textarea id="ff-interview" class="di" rows="2" placeholder="관리자 기입란"></textarea></td></tr>'
+                // 관리자 전용 필드 - disabled
+                + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th>'
+                + '<td colspan="3" style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#bbb;margin-bottom:2px">관리자 기입란 (제출 후 작성)</div>'
+                + '<textarea id="ff-interview" rows="2" disabled style="width:100%;border:none;outline:none;background:transparent;color:#bbb;font-size:11px;resize:none;cursor:not-allowed"></textarea></td></tr>'
                 + '<tr><th>체&nbsp;&nbsp;&nbsp;크</th><td colspan="3" class="ac"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-c1"> 유니폼</label>'
                 + '<label><input type="checkbox" id="ff-c2"> 명찰</label>'
@@ -2757,16 +2792,35 @@
                 + '<span style="font-size:11px;font-weight:700">은행 (계좌번호 :</span>'
                 + '<input id="ff-account" class="di" placeholder="계좌번호" style="width:120px">'
                 + '<span style="font-size:11px;font-weight:700">)</span></div></td></tr>'
-                + '<tr><th>면담 직원</th><td class="ac"><div style="font-size:10px;color:#888;font-weight:600;margin-bottom:1px">성 명</div><input id="ff-interviewer" class="di" placeholder=""></td>'
-                + '<th>물품접수 확인자</th><td class="ac"><input id="ff-receiver" class="di" placeholder=""></td></tr>'
+                // 관리자 전용 필드 - disabled
+                + '<tr><th>면담 직원</th>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px">'
+                + '<div style="font-size:10px;color:#bbb">관리자 작성</div></td>'
+                + '<th>물품접수 확인자</th>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px">'
+                + '<div style="font-size:10px;color:#bbb">관리자 작성</div></td></tr>'
                 + '</tbody></table>'
-                + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin-bottom:10px">'
+                + '</div>'
+                // 본문 합의문
+                + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin:12px 0 10px">'
                 + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다. '
                 + '<span style="margin-left:10px">확인 :</span><span style="border-bottom:1px solid #555;display:inline-block;width:70px;margin-left:6px"></span>(인)</div>'
-                + '<p class="sub-date">위와 같이 사직원을 제출합니다.</p>'
-                + '<div class="doc-footer">'
-                + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
-                + '<div style="display:flex;align-items:center;gap:6px"><input id="ff-submitter" class="di" value="' + name + '" style="border-bottom:1px solid #555;width:70px;background:#eef4ff"><span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                // 하단 구분선 및 제출 문구
+                + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
+                // 제출 날짜
+                + '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">'
+                + '<input id="ff-submit-year" class="di" type="number" placeholder="20__" style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-submit-month" class="di" type="number" placeholder="_" min="1" max="12" style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-submit-day" class="di" type="number" placeholder="_" min="1" max="31" style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '</p>'
+                // 제출자 + 관리자 확인 세로 배치
+                + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">'
+                + '<div style="display:flex;align-items:center;gap:8px">'
+                + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
+                + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
+                + '<span style="font-size:11px;font-weight:700">(서명)</span>'
+                + signBtn
+                + '</div>'
                 + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
@@ -2807,11 +2861,12 @@
                 if (chk('ff-r4')) reasons.push('기타: ' + v('ff-other'));
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
-                    date: v('ff-date'), timeStart: v('ff-time-start'), timeEnd: v('ff-time-end'),
+                    date: v('ff-date'),
                     reasons: reasons.join(', '),
                     when: v('ff-when'), where: v('ff-where'), what: v('ff-what'),
                     how: v('ff-how'), why: v('ff-why'), promise: v('ff-promise'),
-                    submitter: v('ff-submitter')
+                    submitter: v('ff-name'),
+                    submitterSign: window._submitterSignDataURL || ''
                 };
                 if (!formData.name || !formData.date || !formData.why) { alert('이름, 날짜, 이유(왜)는 필수입니다.'); return; }
             } else if (type === 'resign') {
@@ -2821,15 +2876,18 @@
                 if (chk('ff-c3')) returnItems.push('ID카드');
                 if (chk('ff-c4')) returnItems.push('락커Key');
                 if (chk('ff-c5')) returnItems.push('기타');
+                var resignYear = v('ff-resign-year'), resignMonth = v('ff-resign-month'), resignDay = v('ff-resign-day');
+                var submitYear = v('ff-submit-year'), submitMonth = v('ff-submit-month'), submitDay = v('ff-submit-day');
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
                     hireDate: v('ff-hire-date'), resignDate: v('ff-resign-date'),
+                    resignYMD: (resignYear && resignMonth && resignDay) ? resignYear + '년 ' + resignMonth + '월 ' + resignDay + '일' : '',
                     phone: v('ff-phone'), reason: v('ff-resign-reason'),
-                    interviewNote: v('ff-interview'),
                     returnItems: returnItems.join(', '),
                     bank: v('ff-bank'), account: v('ff-account'),
-                    interviewer: v('ff-interviewer'), receiver: v('ff-receiver'),
-                    submitter: v('ff-submitter')
+                    submitter: v('ff-name'),
+                    submitYMD: (submitYear && submitMonth && submitDay) ? submitYear + '년 ' + submitMonth + '월 ' + submitDay + '일' : '',
+                    submitterSign: window._submitterSignDataURL || ''
                 };
                 if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
             }
@@ -2931,10 +2989,14 @@
             }
 
             if (type === 'absent') {
+                var subSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
+                    : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
                     + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
-                    + '<table class="dt"><tbody>'
+                    + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+                    + '<table class="dt" style="min-width:300px"><tbody>'
                     + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
                     + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc">' + tv(fd.date) + '</td></tr>'
@@ -2947,35 +3009,55 @@
                     + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#666">- 왜</b><div>' + tv(fd.why) + '</div></td></tr>'
                     + '<tr><td colspan="3" class="fc" style="padding:5px 8px"><b style="font-size:11px;color:#555">- 약속 및 개선 방향</b><div>' + tv(fd.promise) + '</div></td></tr>'
                     + '</tbody></table>'
-                    + '<p class="sub-date">위와 같이 사유서를 제출합니다. &nbsp;&nbsp; 제출일: ' + today + '</p>'
-                    + '<div class="doc-footer">'
-                    + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
-                    + '<div style="display:flex;align-items:center;gap:6px">' + tf(fd.submitter || fd.name) + '<span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                    + '</div>'
+                    + '<p class="sub-date" style="margin:14px 0 10px">위와 같이 사유서를 제출합니다. &nbsp;&nbsp; 제출일: ' + today + '</p>'
+                    + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px">'
+                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+                    + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
+                    + tf(fd.submitter || fd.name)
+                    + '<span style="font-size:11px;font-weight:700">(서명)</span>'
+                    + subSign
+                    + '</div>'
                     + '<div>' + adm + '</div>'
                     + '</div>';
             }
 
             if (type === 'resign') {
+                var rSubSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
+                    : '';
                 return DOC_STYLE
-                    + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
+                    + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
                     + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
-                    + '<table class="dt"><tbody>'
+                    + (fd.resignYMD ? '<p style="font-size:11px;font-weight:700;color:#222;line-height:1.8;margin-bottom:14px;text-align:center">상기 본인은 <b>' + fd.resignYMD + '</b> 자로 당 사를 사직하고자 하오니 재가하여 주시기 바랍니다.</p>' : '')
+                    + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+                    + '<table class="dt" style="min-width:300px"><tbody>'
                     + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
                     + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc">' + tv(fd.hireDate) + '</td>'
                     + '<th>퇴직일</th><td class="fc">' + tv(fd.resignDate) + '</td></tr>'
                     + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc">' + tv(fd.phone) + '</td></tr>'
                     + '<tr><th>퇴사사유</th><td colspan="3" class="fc" style="white-space:pre-wrap">' + tv(fd.reason) + '</td></tr>'
-                    + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap">' + tv(fd.interviewNote) + '</td></tr>'
+                    + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap;color:#888;font-size:11px">'
+                    + (fd.interviewNote ? tv(fd.interviewNote) : '<span style="color:#ccc">관리자 미기입</span>') + '</td></tr>'
                     + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems) + '</td></tr>'
                     + '<tr><th>지급 방법</th><td colspan="3" class="fc">' + tv(fd.bank ? fd.bank + ' 은행  계좌: ' + (fd.account||'') : '') + '</td></tr>'
-                    + '<tr><th>면담 직원</th><td class="ac">' + tv(fd.interviewer) + '</td>'
-                    + '<th>물품접수 확인자</th><td class="ac">' + tv(fd.receiver) + '</td></tr>'
+                    + '<tr><th>면담 직원</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.interviewer || '관리자 미기입') + '</span></td>'
+                    + '<th>물품접수 확인자</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.receiver || '관리자 미기입') + '</span></td></tr>'
                     + '</tbody></table>'
-                    + '<p class="sub-date">위와 같이 사직원을 제출합니다. &nbsp;&nbsp; 제출일: ' + today + '</p>'
-                    + '<div class="doc-footer">'
-                    + '<div><div style="font-size:11px;color:#666;font-weight:600;margin-bottom:3px">제출자 :</div>'
-                    + '<div style="display:flex;align-items:center;gap:6px">' + tf(fd.submitter || fd.name) + '<span style="font-size:11px;font-weight:600">(서명)</span></div></div>'
+                    + '</div>'
+                    + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin:12px 0 10px">'
+                    + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
+                    + '</div>'
+                    + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
+                    + (fd.submitYMD ? '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">' + fd.submitYMD + '</p>' : '<p style="text-align:center;font-size:11px;color:#aaa;margin-bottom:14px">제출일: ' + today + '</p>')
+                    + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">'
+                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+                    + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
+                    + tf(fd.submitter || fd.name)
+                    + '<span style="font-size:11px;font-weight:700">(서명)</span>'
+                    + rSubSign
+                    + '</div>'
                     + '<div>' + adm + '</div>'
                     + '</div>';
             }
