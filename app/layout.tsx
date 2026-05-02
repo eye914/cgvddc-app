@@ -46,14 +46,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* CSS 인라인 주입 — 캐시 완전 우회 */}
         <style dangerouslySetInnerHTML={{ __html: cssContent }} />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        {/* Tailwind CDN — async로 페이지 블로킹 방지 */}
+        {/* Tailwind CDN — 블로킹으로 body 렌더 전 스타일 적용 보장 (FOUC 방지) */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://cdn.tailwindcss.com" async />
-        {/* GAS shim + 앱 메인 JS — 외부 파일로 React 수화 간섭 완전 차단 */}
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src={`/gas-shim.js?v=${shimVer}`} />
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src={`/cgv-app.js?v=${appVer}`} />
+        <script src="https://cdn.tailwindcss.com" />
+        {/* GAS shim + 앱 메인 JS — defer: HTML 파싱과 병렬 다운로드, 파싱 완료 후 실행 */}
+        <script src={`/gas-shim.js?v=${shimVer}`} defer />
+        <script src={`/cgv-app.js?v=${appVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}
