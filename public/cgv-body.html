@@ -81,6 +81,17 @@
         </div>
     </header>
 
+    <!-- 알림 설정 배너 (로그인 후 한 번만 표시) -->
+    <div id="push-banner" style="display:none;background:#eff6ff;border-bottom:2px solid #bfdbfe;padding:10px 16px;">
+        <div style="max-width:768px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <span id="push-banner-msg" style="font-size:13px;font-weight:700;color:#1e40af;flex:1;">🔔 교대·서류 알림을 받으려면 알림을 설정하세요</span>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+                <button onclick="setupPushFromBanner()" style="background:#2563eb;color:white;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:900;border:none;cursor:pointer;">알림 설정</button>
+                <button onclick="dismissPushBanner()" style="color:#94a3b8;font-size:12px;font-weight:700;background:none;border:none;cursor:pointer;">나중에</button>
+            </div>
+        </div>
+    </div>
+
     <main class="w-full mt-6 px-4">
         <div id="view-trade" class="max-w-3xl mx-auto space-y-6">
 

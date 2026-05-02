@@ -130,7 +130,7 @@
             if (perm === 'granted') { doSubscribe(name); return; }
             // default: 권한 요청 팝업
             Notification.requestPermission().then(function(p) {
-                if (p === 'granted') doSubscribe(name);
+                if (p === 'granted') { doSubscribe(name); dismissPushBanner(); }
                 else if (p === 'denied') showPushDeniedGuide();
                 else updatePushBtn(name);
             });
@@ -245,6 +245,52 @@
 
         function updatePushBtn(name) {
             _setPushBtnEl(document.getElementById('push-subscribe-btn'), name);
+        }
+
+        // ── 알림 설정 배너 ──
+        var _pushBannerName = '';
+
+        function checkAndShowPushBanner(name) {
+            try { if (localStorage.getItem('push_banner_dismissed') === 'true') return; } catch(e) {}
+            var banner = document.getElementById('push-banner');
+            if (!banner) return;
+            var msg = document.getElementById('push-banner-msg');
+            _pushBannerName = name || '';
+
+            if (isIOS() && !isIOSStandalone()) {
+                if (msg) msg.textContent = '📲 iPhone에서 알림을 받으려면 홈 화면에 앱을 설치하세요';
+                banner.style.display = '';
+            } else if (isIOS() && isIOSStandalone()) {
+                if ('Notification' in window && Notification.permission !== 'granted') {
+                    if (msg) msg.textContent = '🔔 교대·서류 알림을 받으려면 알림을 설정하세요';
+                    banner.style.display = '';
+                }
+            } else {
+                if ('Notification' in window && 'PushManager' in window && Notification.permission !== 'granted') {
+                    if (msg) msg.textContent = '🔔 교대·서류 알림을 받으려면 알림을 설정하세요';
+                    banner.style.display = '';
+                } else if (!('PushManager' in window)) {
+                    if (msg) msg.textContent = '🔔 알림을 받으려면 크롬(Chrome) 브라우저로 접속하세요';
+                    banner.style.display = '';
+                }
+            }
+        }
+
+        function setupPushFromBanner() {
+            if (isIOS() && !isIOSStandalone()) {
+                showIOSInstallGuide(); return;
+            }
+            if (!('PushManager' in window)) {
+                alert('알림을 받으려면 크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기'); return;
+            }
+            requestPushPermission(_pushBannerName);
+            dismissPushBanner();
+        }
+
+        function dismissPushBanner() {
+            var banner = document.getElementById('push-banner');
+            if (banner) banner.style.display = 'none';
+            try { localStorage.setItem('push_banner_dismissed', 'true'); } catch(e) {}
         }
 
         // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
@@ -422,6 +468,7 @@
             fetchData();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
             if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
+            setTimeout(function() { checkAndShowPushBanner(_pName); }, 600);
         }
         function showAuthError(msg) {
             var err = document.getElementById('auth-pin-error'); if (!err) return;
