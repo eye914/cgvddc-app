@@ -189,7 +189,7 @@
                 var isStandalone = isIOSStandalone();
 
                 if (!isStandalone) {
-                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
+                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">🔕 알림받기</span>';
                     btn.onclick = showIOSInstallGuide;
                     btn.style.cursor = 'pointer';
                     return;
@@ -214,7 +214,11 @@
                 }
             } else {
                 if (!('Notification' in window) || !('PushManager' in window)) {
-                    btn.style.display = 'none';
+                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">🔕 알림받기</span>';
+                    btn.onclick = function() {
+                        alert('알림을 받으려면 크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기');
+                    };
+                    btn.style.cursor = 'pointer';
                     return;
                 }
             }
