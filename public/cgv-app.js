@@ -162,29 +162,68 @@
         function isIOS() {
             return /iphone|ipad|ipod/i.test(navigator.userAgent);
         }
-        function isIOSPWA() {
-            return isIOS() && (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+        function isIOSStandalone() {
+            return window.navigator.standalone === true
+                || window.matchMedia('(display-mode: standalone)').matches;
+        }
+        function getIOSMajorVer() {
+            var m = navigator.userAgent.match(/OS (\d+)[_\.]/i);
+            return m ? parseInt(m[1], 10) : 0;
+        }
+        function getIOSMinorVer() {
+            var m = navigator.userAgent.match(/OS \d+[_\.](\d+)/i);
+            return m ? parseInt(m[1], 10) : 0;
         }
 
         function showIOSInstallGuide() {
-            alert('iPhone에서 알림을 받으려면\n홈 화면에 앱을 추가해야 합니다.\n\n[ 설치 방법 ]\n① Safari 하단 공유 버튼 (□↑) 탭\n② "홈 화면에 추가" 선택\n③ 오른쪽 위 "추가" 탭\n\n홈 화면 아이콘으로 앱을 열면\n알림 받기 버튼이 나타납니다.\n\n※ iOS 16.4 이상 필요');
+            alert('iPhone에서 알림을 받으려면\n홈 화면에 앱을 설치해야 합니다.\n\n[ Safari에서 설치 ]\n① 하단 공유 버튼(□↑) 탭\n② "홈 화면에 추가" 선택\n③ 오른쪽 위 "추가" 탭\n\n홈 화면 아이콘으로 실행하면\n알림 받기 버튼이 활성화됩니다.\n\n※ iOS 16.4 이상 필요');
         }
 
         function updatePushBtn(name) {
             var btn = document.getElementById('push-subscribe-btn');
             if (!btn) return;
+            btn.style.display = '';
 
-            // iOS Safari (홈 화면 미설치) → 설치 안내 버튼 표시
-            if (isIOS() && !isIOSPWA()) {
-                btn.style.display = '';
-                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
-                btn.onclick = function() { showIOSInstallGuide(); };
-                btn.style.cursor = 'pointer';
-                return;
+            if (isIOS()) {
+                var major = getIOSMajorVer();
+                var minor = getIOSMinorVer();
+                var isStandalone = isIOSStandalone();
+
+                // 홈 화면 미설치 → 설치 안내
+                if (!isStandalone) {
+                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
+                    btn.onclick = showIOSInstallGuide;
+                    btn.style.cursor = 'pointer';
+                    return;
+                }
+
+                // iOS 16.4 미만 → 버전 안내 (Web Push 미지원)
+                if (major < 16 || (major === 16 && minor < 4)) {
+                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">iOS구버전</span>';
+                    btn.onclick = function() {
+                        alert('아이폰 알림은 iOS 16.4 이상에서만 지원됩니다.\n현재: iOS ' + major + '.' + minor + '\n\niPhone 설정 → 일반 → 소프트웨어 업데이트에서 업그레이드하세요.');
+                    };
+                    btn.style.cursor = 'pointer';
+                    return;
+                }
+
+                // iOS 16.4+ PWA — Notification API 없으면 재설치 안내
+                if (!('Notification' in window)) {
+                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">알림 재설치</span>';
+                    btn.onclick = function() {
+                        alert('알림 기능을 사용하려면 앱을 다시 설치해주세요.\n\n① 홈 화면에서 앱 아이콘 길게 탭\n② "앱 제거" → 삭제\n③ Safari에서 다시 "홈 화면에 추가"');
+                    };
+                    btn.style.cursor = 'pointer';
+                    return;
+                }
+                // iOS 16.4+ PWA + Notification 지원 → 아래 공통 로직으로 fall-through
+            } else {
+                // 비iOS에서 알림 미지원
+                if (!('Notification' in window) || !('PushManager' in window)) {
+                    btn.style.display = 'none';
+                    return;
+                }
             }
-
-            // 알림 API 자체가 없는 환경 (구형 브라우저 등)
-            if (!('Notification' in window)) { btn.style.display = 'none'; return; }
 
             var n = name || getPushName();
             var perm = Notification.permission;
