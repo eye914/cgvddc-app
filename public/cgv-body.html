@@ -234,10 +234,6 @@
                 </div>
             </div>
             <div id="manager-list-board" class="max-w-3xl mx-auto space-y-8 px-4"></div>
-            <div class="max-w-3xl mx-auto px-5 mt-2 space-y-2">
-                <button onclick="cleanupOldTrades()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
-                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm text-blue-600 border-blue-200 hover:bg-blue-50 transition-all">🔔 내 알림 테스트 발송</button>
-            </div>
             <div class="max-w-3xl mx-auto px-5 mt-2">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleMisojigiPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
@@ -275,15 +271,20 @@
                     </div>
                 </div>
             </div>
-            <div class="max-w-3xl mx-auto px-5">
-                <div class="bg-white rounded-[20px] p-4 sm:p-6 shadow-xl border-2 border-slate-100 mt-4 w-full overflow-hidden">
-                    <h3 class="text-base font-black text-slate-900 mb-1 italic">주간 근태 · 인력풀 모니터링</h3>
-                    <p class="text-xs font-bold text-slate-400 mb-3 border-b border-slate-100 pb-2">
-                        직원별 주간 단위 지각/결근 횟수를 파악합니다.<br>
-                        <span class="text-red-500 text-xs">지각 1회 시 당해 주차 이용 정지 / 결근 1회 시 2주간 이용이 자동 차단됩니다.</span>
-                    </p>
-                    <div id="staff-stats-header"></div>
-                    <div id="staff-stats-grid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5"></div>
+            <div class="max-w-3xl mx-auto px-5 mt-4">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleStatsPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <span class="font-black text-slate-800 text-base">📊 인력풀 현황</span>
+                        <span id="stats-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="stats-panel" class="hidden px-5 pb-5">
+                        <p class="text-xs font-bold text-slate-400 mb-3 pt-4 border-b border-slate-100 pb-2">
+                            직원별 주간 단위 지각/결근 횟수를 파악합니다.<br>
+                            <span class="text-red-500 text-xs">지각 1회 시 당해 주차 이용 정지 / 결근 1회 시 2주간 이용이 자동 차단됩니다.</span>
+                        </p>
+                        <div id="staff-stats-header"></div>
+                        <div id="staff-stats-grid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5"></div>
+                    </div>
                 </div>
             </div>
 
@@ -336,6 +337,11 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <!-- ── 유틸리티 버튼 (최하단) ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-2 mb-6 space-y-2">
+                <button onclick="cleanupOldTrades()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
+                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm text-blue-600 border-blue-200 hover:bg-blue-50 transition-all">🔔 내 알림 테스트 발송</button>
             </div>
         </div>
     </main>

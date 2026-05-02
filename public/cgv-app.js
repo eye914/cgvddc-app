@@ -1913,6 +1913,15 @@
         // 미소지기 관리 ──
         var _misoAdminData = [];
 
+        function toggleStatsPanel() {
+            var panel = document.getElementById('stats-panel');
+            var arrow = document.getElementById('stats-panel-arrow');
+            if (!panel) return;
+            var isHidden = panel.classList.contains('hidden');
+            panel.classList.toggle('hidden', !isHidden);
+            if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
+        }
+
         function toggleMisojigiPanel() {
             var panel = document.getElementById('miso-panel');
             var arrow = document.getElementById('miso-panel-arrow');
@@ -1956,6 +1965,9 @@
                 var toggleClass = m.active
                     ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
                     : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100';
+                var hardDeleteBtn = m.active ? '' :
+                    '<button data-miso-action="hard-delete" data-miso-name="' + m.name + '" ' +
+                        'class="text-xs font-black px-3 py-1.5 rounded-xl bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 transition-all">🗑️ DB삭제</button>';
                 html += '<div class="rounded-2xl border-2 ' + activeClass + ' p-3 flex flex-col gap-2">' +
                     '<div class="flex items-center justify-between">' +
                         '<span class="font-black text-slate-800">' + m.name + '</span>' +
@@ -1969,6 +1981,7 @@
                             'class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 초기화</button>' +
                         '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" ' +
                             'class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
+                        hardDeleteBtn +
                     '</div>' +
                 '</div>';
             });
@@ -1986,6 +1999,8 @@
                     } else if (action === 'toggle-active') {
                         var active = this.getAttribute('data-miso-active') === 'true';
                         toggleMisojigiActive(name, active);
+                    } else if (action === 'hard-delete') {
+                        deleteMisojigiHard(name);
                     }
                 });
             });
@@ -2052,6 +2067,18 @@
                 .withSuccessHandler(function() { alert(name + ' PIN 초기화 완료 (00000)'); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .updateMisojigi(name, { pin: '00000' });
+        }
+
+        function deleteMisojigiHard(name) {
+            if (!confirm('⚠️ ' + name + ' 미소지기를 DB에서 완전 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n정말 삭제하시겠습니까?')) return;
+            google.script.run
+                .withSuccessHandler(function() {
+                    alert(name + ' 완전 삭제 완료');
+                    loadMisojigiAdmin();
+                    sessionStorage.removeItem('cgv_miso');
+                })
+                .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
+                .deleteMisojigiHard(name);
         }
 
         function toggleMisojigiActive(name, isActive) {
@@ -2669,27 +2696,36 @@
             if (img) { img.src = dataURL; img.style.display = 'block'; }
         }
 
-        // ── 시간 선택 팝업 ──
+        // ── 시간 선택 팝업 (▲▼ 버튼 방식) ──
         var _tpHiddenId = '';
         var _tpBtnId = '';
+        var _tpHour = 9;
+        var _tpMin = 0;
 
         function ensureTimePickerModal() {
             if (document.getElementById('time-picker-modal')) return;
-            var hours = '', mins = '';
-            for (var h = 0; h < 24; h++) hours += '<option value="' + (h < 10 ? '0' + h : h) + '">' + (h < 10 ? '0' + h : h) + '</option>';
-            for (var m = 0; m < 60; m++) mins  += '<option value="' + (m < 10 ? '0' + m : m) + '">' + (m < 10 ? '0' + m : m) + '</option>';
+            var btnStyle = 'width:48px;height:40px;border-radius:10px;background:#f1f5f9;border:1.5px solid #cbd5e1;font-size:20px;font-weight:900;cursor:pointer;color:#334155;line-height:1;display:flex;align-items:center;justify-content:center';
+            var dispStyle = 'font-size:38px;font-weight:900;min-width:66px;text-align:center;color:#0f172a;background:#f8fafc;border-radius:12px;padding:10px 4px;border:2px solid #e2e8f0';
             var el = document.createElement('div');
             el.id = 'time-picker-modal';
             el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:19998;display:none;align-items:center;justify-content:center';
             el.innerHTML = ''
-                + '<div style="background:white;border-radius:20px;padding:20px 24px;width:82%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
-                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:18px;color:#0f172a">⏰ 시간 선택</div>'
-                + '<div style="display:flex;align-items:center;justify-content:center;gap:8px">'
-                + '<select id="tp-hour" style="font-size:22px;font-weight:900;border:2px solid #334155;border-radius:10px;padding:8px 6px;background:#f8fafc;color:#0f172a;text-align:center">' + hours + '</select>'
-                + '<span style="font-size:26px;font-weight:900;color:#334155">:</span>'
-                + '<select id="tp-min" style="font-size:22px;font-weight:900;border:2px solid #334155;border-radius:10px;padding:8px 6px;background:#f8fafc;color:#0f172a;text-align:center">' + mins + '</select>'
+                + '<div style="background:white;border-radius:22px;padding:24px 28px;width:78%;max-width:280px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:20px;color:#0f172a">⏰ 시간 선택</div>'
+                + '<div style="display:flex;align-items:center;justify-content:center;gap:14px">'
+                +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
+                +     '<button onclick="tpAdjust(\'h\',1)" style="' + btnStyle + '">▲</button>'
+                +     '<div id="tp-hour-disp" style="' + dispStyle + '">09</div>'
+                +     '<button onclick="tpAdjust(\'h\',-1)" style="' + btnStyle + '">▼</button>'
+                +   '</div>'
+                +   '<span style="font-size:38px;font-weight:900;color:#334155;margin-bottom:4px">:</span>'
+                +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
+                +     '<button onclick="tpAdjust(\'m\',1)" style="' + btnStyle + '">▲</button>'
+                +     '<div id="tp-min-disp" style="' + dispStyle + '">00</div>'
+                +     '<button onclick="tpAdjust(\'m\',-1)" style="' + btnStyle + '">▼</button>'
+                +   '</div>'
                 + '</div>'
-                + '<div style="display:flex;gap:10px;margin-top:18px">'
+                + '<div style="display:flex;gap:10px;margin-top:22px">'
                 + '<button onclick="cancelTimePicker()" style="flex:1;padding:12px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
                 + '<button onclick="confirmTimePicker()" style="flex:2;padding:12px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
                 + '</div>'
@@ -2697,26 +2733,39 @@
             document.body.appendChild(el);
         }
 
+        function tpAdjust(type, delta) {
+            if (type === 'h') {
+                _tpHour = (_tpHour + delta + 24) % 24;
+                var el = document.getElementById('tp-hour-disp');
+                if (el) el.textContent = (_tpHour < 10 ? '0' : '') + _tpHour;
+            } else {
+                _tpMin = (_tpMin + delta + 60) % 60;
+                var el = document.getElementById('tp-min-disp');
+                if (el) el.textContent = (_tpMin < 10 ? '0' : '') + _tpMin;
+            }
+        }
+
         function openTimePicker(hiddenId, btnId) {
             ensureTimePickerModal();
             _tpHiddenId = hiddenId;
             _tpBtnId = btnId;
-            // 기존 값 있으면 select 초기화
+            // 기존 값 있으면 초기화
             var curVal = (document.getElementById(hiddenId) || {}).value || '';
             var parts = curVal.split(':');
-            var hSel = document.getElementById('tp-hour');
-            var mSel = document.getElementById('tp-min');
-            if (hSel && parts[0]) hSel.value = parts[0];
-            if (mSel && parts[1]) mSel.value = parts[1];
+            _tpHour = parts[0] ? parseInt(parts[0], 10) : 9;
+            _tpMin  = parts[1] ? parseInt(parts[1], 10) : 0;
+            if (isNaN(_tpHour)) _tpHour = 9;
+            if (isNaN(_tpMin))  _tpMin  = 0;
+            var hDisp = document.getElementById('tp-hour-disp');
+            var mDisp = document.getElementById('tp-min-disp');
+            if (hDisp) hDisp.textContent = (_tpHour < 10 ? '0' : '') + _tpHour;
+            if (mDisp) mDisp.textContent = (_tpMin  < 10 ? '0' : '') + _tpMin;
             var modal = document.getElementById('time-picker-modal');
             if (modal) modal.style.display = 'flex';
         }
 
         function confirmTimePicker() {
-            var hSel = document.getElementById('tp-hour');
-            var mSel = document.getElementById('tp-min');
-            if (!hSel || !mSel) return;
-            var timeVal = hSel.value + ':' + mSel.value;
+            var timeVal = (_tpHour < 10 ? '0' : '') + _tpHour + ':' + (_tpMin < 10 ? '0' : '') + _tpMin;
             // hidden input 업데이트
             var hidden = document.getElementById(_tpHiddenId);
             if (hidden) hidden.value = timeVal;
@@ -2786,7 +2835,8 @@
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:72px">'
                 +   '<input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center;min-width:64px"></td>'
                 + '<td class="fc" style="vertical-align:middle;min-width:100px">'
-                +   '<input id="ff-date" type="date" class="di" placeholder="지각 날짜"></td>'
+                +   '<input id="ff-date" type="date" class="di" placeholder="지각 날짜">'
+                +   '<div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
                 +   '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
                 +   '<input type="hidden" id="ff-sch-start" value="">'
@@ -2875,9 +2925,8 @@
                 + '<table class="dt" style="min-width:300px"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
-                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"></td>'
-                // 퇴직일: value 제거, 공란으로
-                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di"></td></tr>'
+                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
+                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
                 + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
                 // 관리자 전용 필드
@@ -2891,11 +2940,11 @@
                 + '<label><input type="checkbox" id="ff-c5"> 기타</label>'
                 + '</div></td></tr>'
                 + '<tr><th>지 급 방 법</th><td colspan="3" class="fc">'
-                + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
-                + '<input id="ff-bank" class="di" placeholder="은행명" style="width:70px">'
-                + '<span style="font-size:11px;font-weight:700">은행 (계좌번호 :</span>'
-                + '<input id="ff-account" class="di" placeholder="계좌번호" style="width:120px">'
-                + '<span style="font-size:11px;font-weight:700">)</span></div></td></tr>'
+                + '<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;width:100%">'
+                + '<input id="ff-bank" class="di" placeholder="은행명" style="width:62px;min-width:0;flex-shrink:0">'
+                + '<span style="font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">은행 (계좌번호:</span>'
+                + '<input id="ff-account" class="di" placeholder="계좌번호" style="flex:1;min-width:0">'
+                + '<span style="font-size:11px;font-weight:700;flex-shrink:0">)</span></div></td></tr>'
                 + '<tr><th>면담 직원</th>'
                 + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td>'
                 + '<th>물품접수 확인자</th>'

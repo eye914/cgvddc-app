@@ -72,6 +72,10 @@
         fetch('/api/misojigi', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name}) })
           .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
       },
+      deleteMisojigiHard: function(name) {
+        fetch('/api/misojigi', { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, hard:true}) })
+          .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
+      },
 
       // ── 출결 ──
       getAttendanceFromDB: function() {

@@ -74,18 +74,37 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE: 미소지기 비활성화 (soft delete)
+// DELETE: 미소지기 비활성화(soft) 또는 완전삭제(hard)
 export async function DELETE(req: NextRequest) {
   try {
-    const { name } = await req.json();
+    const body = await req.json();
+    const { name, hard } = body;
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });
 
-    const { error } = await supabaseAdmin
-      .from('misojigi')
-      .update({ active: false })
-      .eq('name', name);
+    if (hard) {
+      // 완전 삭제 (비활성 상태인 경우만)
+      const { data: existing } = await supabaseAdmin
+        .from('misojigi')
+        .select('active')
+        .eq('name', name)
+        .single();
+      if (!existing) return NextResponse.json({ error: '미소지기를 찾을 수 없습니다' }, { status: 404 });
+      if (existing.active) return NextResponse.json({ error: '활성 미소지기는 삭제할 수 없습니다. 먼저 퇴사 처리하세요.' }, { status: 400 });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      const { error } = await supabaseAdmin
+        .from('misojigi')
+        .delete()
+        .eq('name', name);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    } else {
+      // 소프트 삭제 (비활성화)
+      const { error } = await supabaseAdmin
+        .from('misojigi')
+        .update({ active: false })
+        .eq('name', name);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
