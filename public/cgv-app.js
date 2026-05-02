@@ -207,16 +207,18 @@
             // ── 버튼 상태 = Notification.permission 만 반영 (구독 상태와 무관) ──
             var perm = Notification.permission;
             if (perm === 'granted') {
-                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
+                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #16a34a;background:white;color:#16a34a;cursor:pointer;white-space:nowrap';
+                btn.innerHTML = '🔔 알림 ON';
                 btn.onclick = function() { alert('알림이 켜져 있습니다.\n끄려면 기기 설정에서 알림 권한을 해제하세요.'); };
-                btn.style.cursor = 'pointer';
-                doSubscribe(n); // 백그라운드 구독 (내부에서 중복 방지)
+                doSubscribe(n);
             } else if (perm === 'denied') {
-                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#ef4444">🔕 차단됨</span>';
-                btn.onclick = showPushDeniedGuide; btn.style.cursor = 'pointer';
+                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #ef4444;background:white;color:#ef4444;cursor:pointer;white-space:nowrap';
+                btn.innerHTML = '🔕 차단됨';
+                btn.onclick = showPushDeniedGuide;
             } else {
-                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#64748b">🔕 알림받기</span>';
-                btn.onclick = function() { requestPushPermission(n); }; btn.style.cursor = 'pointer';
+                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap';
+                btn.innerHTML = '🔕 알림받기';
+                btn.onclick = function() { requestPushPermission(n); };
             }
         }
 
@@ -228,7 +230,7 @@
         var _pushBannerName = '';
 
         function checkAndShowPushBanner(name) {
-            try { if (localStorage.getItem('push_banner_dismissed') === 'true') return; } catch(e) {}
+            if (sessionStorage.getItem('push_banner_dismissed') === 'true') return;
             var banner = document.getElementById('push-banner');
             if (!banner) return;
             var msg = document.getElementById('push-banner-msg');
@@ -267,7 +269,7 @@
         function dismissPushBanner() {
             var banner = document.getElementById('push-banner');
             if (banner) banner.style.display = 'none';
-            try { localStorage.setItem('push_banner_dismissed', 'true'); } catch(e) {}
+            sessionStorage.setItem('push_banner_dismissed', 'true');
         }
 
         // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
