@@ -116,9 +116,9 @@
             }).then(function(r) { return r.json(); }).then(function(d) {
                 if (d.ok) {
                     sessionStorage.setItem('cgv_push_subscribed', 'true');
-                    updatePushBtn(name);
                 }
-            }).catch(function(e) { console.error('Push 구독 실패:', e); });
+                updatePushBtn(name);
+            }).catch(function(e) { console.error('Push 구독 실패:', e); updatePushBtn(name); });
         }
 
         function requestPushPermission(name) {
@@ -127,12 +127,12 @@
             }
             var perm = Notification.permission;
             if (perm === 'denied') { showPushDeniedGuide(); return; }
-            if (perm === 'granted') { doSubscribe(name); return; }
+            if (perm === 'granted') { doSubscribe(name); updatePushBtn(name); return; }
             // default: 권한 요청 팝업
             Notification.requestPermission().then(function(p) {
+                updatePushBtn(name);
                 if (p === 'granted') { doSubscribe(name); dismissPushBanner(); }
                 else if (p === 'denied') showPushDeniedGuide();
-                else updatePushBtn(name);
             });
         }
 
@@ -227,8 +227,14 @@
             var perm = Notification.permission;
             if (perm === 'granted') {
                 btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
-                btn.onclick = null;
-                btn.style.cursor = 'default';
+                btn.style.cursor = 'pointer';
+                btn.onclick = function() {
+                    if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
+                        doSubscribe(n);
+                    } else {
+                        alert('알림이 정상적으로 설정되어 있습니다.\n\n알림을 끄려면 기기 설정에서\n이 사이트의 알림 권한을 해제하세요.');
+                    }
+                };
                 if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
                     doSubscribe(n);
                 }
@@ -672,6 +678,20 @@
             } else {
                 loadMisoForAuth();
             }
+            // 기기 설정에서 알림 권한 변경 시 즉시 버튼 업데이트
+            if ('permissions' in navigator) {
+                navigator.permissions.query({name: 'notifications'}).then(function(status) {
+                    status.onchange = function() {
+                        var n = getPushName();
+                        if (n) updatePushBtn(n);
+                        if (status.state !== 'granted') {
+                            sessionStorage.removeItem('cgv_push_subscribed');
+                            try { localStorage.removeItem('push_banner_dismissed'); } catch(e) {}
+                        }
+                    };
+                }).catch(function(){});
+            }
+
             // Pull-to-refresh
             var ptrStart = 0; var ptrActive = false;
             document.addEventListener("touchstart", function(e){ ptrStart = e.touches[0].clientY; }, {passive:true});
