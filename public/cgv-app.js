@@ -2530,12 +2530,14 @@
         // ── 폼 작성 ──
         window._signDataURL = null;
         window._submitterSignDataURL = null;
+        window._agreementSignDataURL = null;
 
         function openFormFillModal(reqId, type) {
             _formCurrentReqId = reqId;
             _formCurrentType = type;
             window._signDataURL = null;
             window._submitterSignDataURL = null;
+            window._agreementSignDataURL = null;
             var modal = document.getElementById('form-fill-modal');
             var title = document.getElementById('form-fill-title');
             var body = document.getElementById('form-fill-body');
@@ -2553,6 +2555,7 @@
             }
             modal.classList.remove('hidden');
             ensureSignPadModal();
+            ensureTimePickerModal();
         }
 
         function closeFormFillModal() {
@@ -2564,7 +2567,17 @@
         var _signPadDrawing = false;
         var _signPadCtx = null;
         var _signPadCanvas = null;
-        var _signPadMode = 'sign'; // 'sign' = 확인서명(late폼), 'submitter' = 제출자서명(absent/resign)
+        var _signPadMode = 'sign'; // 'sign' | 'submitter' | 'agreement'
+
+        // 캔버스가 완전히 비어있는지 확인 (alpha 채널 검사)
+        function isCanvasBlank(canvas) {
+            var ctx = canvas.getContext('2d');
+            var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            for (var i = 3; i < data.length; i += 4) {
+                if (data[i] > 10) return false; // alpha > 10 이면 그려진 픽셀 있음
+            }
+            return true;
+        }
 
         function ensureSignPadModal() {
             if (document.getElementById('sign-pad-modal')) return;
@@ -2627,6 +2640,11 @@
 
         function confirmSignPad() {
             if (!_signPadCanvas) return;
+            // 빈 서명 감지
+            if (isCanvasBlank(_signPadCanvas)) {
+                alert('서명을 먼저 해주세요. 손가락으로 그려주세요.');
+                return;
+            }
             var dataURL = _signPadCanvas.toDataURL('image/png');
             var modal = document.getElementById('sign-pad-modal');
             if (modal) modal.style.display = 'none';
@@ -2636,6 +2654,10 @@
                 window._submitterSignDataURL = dataURL;
                 btnId = 'ff-submitter-sign-btn';
                 imgId = 'ff-submitter-sign-img';
+            } else if (_signPadMode === 'agreement') {
+                window._agreementSignDataURL = dataURL;
+                btnId = 'ff-agree-sign-btn';
+                imgId = 'ff-agree-sign-img';
             } else {
                 window._signDataURL = dataURL;
                 btnId = 'ff-sign-btn';
@@ -2645,6 +2667,74 @@
             var img = document.getElementById(imgId);
             if (btn) { btn.textContent = '✅ 서명완료'; btn.style.background = '#dcfce7'; btn.style.borderColor = '#16a34a'; btn.style.color = '#15803d'; }
             if (img) { img.src = dataURL; img.style.display = 'block'; }
+        }
+
+        // ── 시간 선택 팝업 ──
+        var _tpHiddenId = '';
+        var _tpBtnId = '';
+
+        function ensureTimePickerModal() {
+            if (document.getElementById('time-picker-modal')) return;
+            var hours = '', mins = '';
+            for (var h = 0; h < 24; h++) hours += '<option value="' + (h < 10 ? '0' + h : h) + '">' + (h < 10 ? '0' + h : h) + '</option>';
+            for (var m = 0; m < 60; m++) mins  += '<option value="' + (m < 10 ? '0' + m : m) + '">' + (m < 10 ? '0' + m : m) + '</option>';
+            var el = document.createElement('div');
+            el.id = 'time-picker-modal';
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:19998;display:none;align-items:center;justify-content:center';
+            el.innerHTML = ''
+                + '<div style="background:white;border-radius:20px;padding:20px 24px;width:82%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:18px;color:#0f172a">⏰ 시간 선택</div>'
+                + '<div style="display:flex;align-items:center;justify-content:center;gap:8px">'
+                + '<select id="tp-hour" style="font-size:22px;font-weight:900;border:2px solid #334155;border-radius:10px;padding:8px 6px;background:#f8fafc;color:#0f172a;text-align:center">' + hours + '</select>'
+                + '<span style="font-size:26px;font-weight:900;color:#334155">:</span>'
+                + '<select id="tp-min" style="font-size:22px;font-weight:900;border:2px solid #334155;border-radius:10px;padding:8px 6px;background:#f8fafc;color:#0f172a;text-align:center">' + mins + '</select>'
+                + '</div>'
+                + '<div style="display:flex;gap:10px;margin-top:18px">'
+                + '<button onclick="cancelTimePicker()" style="flex:1;padding:12px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
+                + '<button onclick="confirmTimePicker()" style="flex:2;padding:12px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
+                + '</div>'
+                + '</div>';
+            document.body.appendChild(el);
+        }
+
+        function openTimePicker(hiddenId, btnId) {
+            ensureTimePickerModal();
+            _tpHiddenId = hiddenId;
+            _tpBtnId = btnId;
+            // 기존 값 있으면 select 초기화
+            var curVal = (document.getElementById(hiddenId) || {}).value || '';
+            var parts = curVal.split(':');
+            var hSel = document.getElementById('tp-hour');
+            var mSel = document.getElementById('tp-min');
+            if (hSel && parts[0]) hSel.value = parts[0];
+            if (mSel && parts[1]) mSel.value = parts[1];
+            var modal = document.getElementById('time-picker-modal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function confirmTimePicker() {
+            var hSel = document.getElementById('tp-hour');
+            var mSel = document.getElementById('tp-min');
+            if (!hSel || !mSel) return;
+            var timeVal = hSel.value + ':' + mSel.value;
+            // hidden input 업데이트
+            var hidden = document.getElementById(_tpHiddenId);
+            if (hidden) hidden.value = timeVal;
+            // 버튼 텍스트 업데이트
+            var btn = document.getElementById(_tpBtnId);
+            if (btn) {
+                btn.textContent = timeVal;
+                btn.style.background = '#eef4ff';
+                btn.style.borderColor = '#3b82f6';
+                btn.style.color = '#1d4ed8';
+            }
+            var modal = document.getElementById('time-picker-modal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function cancelTimePicker() {
+            var modal = document.getElementById('time-picker-modal');
+            if (modal) modal.style.display = 'none';
         }
 
         var DOC_STYLE = '<style>'
@@ -2698,11 +2788,17 @@
                 + '<td class="fc" style="vertical-align:middle;min-width:100px">'
                 +   '<input id="ff-date" type="date" class="di" placeholder="지각 날짜"></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
-                +   '<input id="ff-sch-start" type="time" class="di" style="width:46%;text-align:center">~'
-                +   '<input id="ff-sch-end" type="time" class="di" style="width:46%;text-align:center"></td>'
+                +   '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-end" value=""></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
-                +   '<input id="ff-act-start" type="time" class="di" style="width:46%;text-align:center">~'
-                +   '<input id="ff-act-end" type="time" class="di" style="width:46%;text-align:center"></td>'
+                +   '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-end" value=""></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
                 +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
                 +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
@@ -2753,8 +2849,16 @@
         }
 
         function buildResignForm(name, today) {
-            var signBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+            // 제출자 서명 버튼
+            var subSignBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
                 + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
+            // 합의문 서명 버튼
+            var agreeSignBtn = '<button type="button" id="ff-agree-sign-btn" onclick="openSignPad(\'agreement\')" style="font-size:10px;font-weight:900;padding:4px 7px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-agree-sign-img" src="" style="display:none;max-height:28px;max-width:70px;margin-left:4px;border:1px solid #ccc;border-radius:3px">';
+            // 연/월/일 입력 길이 제한 inline oninput
+            var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
+            var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
             var adminOnlyStyle = 'background:#f9f9f9;color:#aaa;font-size:11px;cursor:not-allowed';
             return DOC_STYLE
                 + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사  직  원</div>'
@@ -2762,9 +2866,9 @@
                 // 상기 문구
                 + '<p style="font-size:11px;font-weight:700;color:#222;line-height:1.8;margin-bottom:14px;text-align:center">'
                 + '상기 본인은&nbsp;&nbsp;'
-                + '<input id="ff-resign-year" class="di" type="number" placeholder="20__" style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
-                + '<input id="ff-resign-month" class="di" type="number" placeholder="_" min="1" max="12" style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
-                + '<input id="ff-resign-day" class="di" type="number" placeholder="_" min="1" max="31" style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '<input id="ff-resign-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-resign-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-resign-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
                 + '&nbsp;&nbsp;자로 당 사를 사직하고자 하오니 재가하여 주시기 바랍니다.'
                 + '</p>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
@@ -2772,13 +2876,13 @@
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
                 + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"></td>'
-                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" value="' + today + '"></td></tr>'
-                + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000"></td></tr>'
+                // 퇴직일: value 제거, 공란으로
+                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di"></td></tr>'
+                + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
                 + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
-                // 관리자 전용 필드 - disabled
+                // 관리자 전용 필드
                 + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th>'
-                + '<td colspan="3" style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#bbb;margin-bottom:2px">관리자 기입란 (제출 후 작성)</div>'
-                + '<textarea id="ff-interview" rows="2" disabled style="width:100%;border:none;outline:none;background:transparent;color:#bbb;font-size:11px;resize:none;cursor:not-allowed"></textarea></td></tr>'
+                + '<td colspan="3" style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 기입란 — 제출 후 작성</div></td></tr>'
                 + '<tr><th>체&nbsp;&nbsp;&nbsp;크</th><td colspan="3" class="ac"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-c1"> 유니폼</label>'
                 + '<label><input type="checkbox" id="ff-c2"> 명찰</label>'
@@ -2792,34 +2896,37 @@
                 + '<span style="font-size:11px;font-weight:700">은행 (계좌번호 :</span>'
                 + '<input id="ff-account" class="di" placeholder="계좌번호" style="width:120px">'
                 + '<span style="font-size:11px;font-weight:700">)</span></div></td></tr>'
-                // 관리자 전용 필드 - disabled
                 + '<tr><th>면담 직원</th>'
-                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px">'
-                + '<div style="font-size:10px;color:#bbb">관리자 작성</div></td>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td>'
                 + '<th>물품접수 확인자</th>'
-                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px">'
-                + '<div style="font-size:10px;color:#bbb">관리자 작성</div></td></tr>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td></tr>'
                 + '</tbody></table>'
                 + '</div>'
-                // 본문 합의문
-                + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin:12px 0 10px">'
-                + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다. '
-                + '<span style="margin-left:10px">확인 :</span><span style="border-bottom:1px solid #555;display:inline-block;width:70px;margin-left:6px"></span>(인)</div>'
-                // 하단 구분선 및 제출 문구
+                // 합의문 — 서명 란 포함
+                + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
+                + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
+                + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px">'
+                + '<span style="font-weight:800">확인 :</span>'
+                + '<input id="ff-agree-name" class="di" placeholder="이름" style="width:70px;border-bottom:1.5px solid #555;background:#eef4ff;text-align:center">'
+                + '<span style="font-weight:800">(서명)</span>'
+                + agreeSignBtn
+                + '</div>'
+                + '</div>'
+                // 제출 문구
                 + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
                 // 제출 날짜
                 + '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">'
-                + '<input id="ff-submit-year" class="di" type="number" placeholder="20__" style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
-                + '<input id="ff-submit-month" class="di" type="number" placeholder="_" min="1" max="12" style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
-                + '<input id="ff-submit-day" class="di" type="number" placeholder="_" min="1" max="31" style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '<input id="ff-submit-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-submit-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-submit-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
                 + '</p>'
                 // 제출자 + 관리자 확인 세로 배치
-                + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">'
-                + '<div style="display:flex;align-items:center;gap:8px">'
+                + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
+                + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
                 + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
-                + signBtn
+                + subSignBtn
                 + '</div>'
                 + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
@@ -2887,7 +2994,9 @@
                     bank: v('ff-bank'), account: v('ff-account'),
                     submitter: v('ff-name'),
                     submitYMD: (submitYear && submitMonth && submitDay) ? submitYear + '년 ' + submitMonth + '월 ' + submitDay + '일' : '',
-                    submitterSign: window._submitterSignDataURL || ''
+                    submitterSign: window._submitterSignDataURL || '',
+                    agreeName: v('ff-agree-name'),
+                    agreeSign: window._agreementSignDataURL || ''
                 };
                 if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
             }
@@ -3046,12 +3155,18 @@
                     + '<th>물품접수 확인자</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.receiver || '관리자 미기입') + '</span></td></tr>'
                     + '</tbody></table>'
                     + '</div>'
-                    + '<div style="font-size:10px;color:#444;line-height:1.6;border:1px solid #ccc;padding:8px 10px;margin:12px 0 10px">'
+                    + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
                     + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
+                    + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px">'
+                    + '<span style="font-weight:800">확인 :</span>'
+                    + (fd.agreeName ? tf(fd.agreeName) : '<span style="color:#ccc;border-bottom:1px solid #ccc;min-width:50px;display:inline-block">&nbsp;</span>')
+                    + '<span style="font-weight:800">(서명)</span>'
+                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:28px;max-width:70px;margin-left:2px">' : '')
+                    + '</div>'
                     + '</div>'
                     + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
                     + (fd.submitYMD ? '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">' + fd.submitYMD + '</p>' : '<p style="text-align:center;font-size:11px;color:#aaa;margin-bottom:14px">제출일: ' + today + '</p>')
-                    + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">'
+                    + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
                     + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                     + tf(fd.submitter || fd.name)
