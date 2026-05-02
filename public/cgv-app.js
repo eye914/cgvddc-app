@@ -101,7 +101,9 @@
         }
 
         function doSubscribe(name) {
+            // 버튼과 완전히 독립. 권한이 있을 때 백그라운드에서 구독 등록만 처리.
             if (!name) return;
+            if (sessionStorage.getItem('cgv_push_subscribed') === 'true') return;
             navigator.serviceWorker.ready.then(function(reg) {
                 return reg.pushManager.subscribe({
                     userVisibleOnly: true,
@@ -114,23 +116,18 @@
                     body: JSON.stringify({ name: name, subscription: sub.toJSON() })
                 });
             }).then(function(r) { return r.json(); }).then(function(d) {
-                if (d.ok) {
-                    sessionStorage.setItem('cgv_push_subscribed', 'true');
-                }
-                updatePushBtn(name);
-            }).catch(function(e) { console.error('Push 구독 실패:', e); updatePushBtn(name); });
+                if (d.ok) sessionStorage.setItem('cgv_push_subscribed', 'true');
+            }).catch(function(e) { console.error('Push 구독 실패:', e); });
         }
 
         function requestPushPermission(name) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                alert('이 브라우저는 푸시 알림을 지원하지 않습니다.\n크롬 브라우저 또는 PWA 앱에서 이용해주세요.'); return;
+                alert('크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기'); return;
             }
-            var perm = Notification.permission;
-            if (perm === 'denied') { showPushDeniedGuide(); return; }
-            if (perm === 'granted') { doSubscribe(name); updatePushBtn(name); return; }
-            // default: 권한 요청 팝업
+            if (Notification.permission === 'denied') { showPushDeniedGuide(); return; }
+            if (Notification.permission === 'granted') { doSubscribe(name); return; }
             Notification.requestPermission().then(function(p) {
-                updatePushBtn(name);
+                updatePushBtn(name); // 권한 응답 즉시 버튼 갱신
                 if (p === 'granted') { doSubscribe(name); dismissPushBanner(); }
                 else if (p === 'denied') showPushDeniedGuide();
             });
@@ -182,70 +179,44 @@
         function _setPushBtnEl(btn, name) {
             if (!btn) return;
             btn.style.display = '';
+            var n = name || getPushName();
 
+            // ── 플랫폼 지원 여부 ──
             if (isIOS()) {
-                var major = getIOSMajorVer();
-                var minor = getIOSMinorVer();
-                var isStandalone = isIOSStandalone();
-
-                if (!isStandalone) {
+                if (!isIOSStandalone()) {
                     btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">🔕 알림받기</span>';
-                    btn.onclick = showIOSInstallGuide;
-                    btn.style.cursor = 'pointer';
-                    return;
+                    btn.onclick = showIOSInstallGuide; btn.style.cursor = 'pointer'; return;
                 }
-
+                var major = getIOSMajorVer(); var minor = getIOSMinorVer();
                 if (major < 16 || (major === 16 && minor < 4)) {
                     btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#f59e0b">iOS구버전</span>';
-                    btn.onclick = function() {
-                        alert('아이폰 알림은 iOS 16.4 이상에서만 지원됩니다.\n현재: iOS ' + major + '.' + minor + '\n\niPhone 설정 → 일반 → 소프트웨어 업데이트에서 업그레이드하세요.');
-                    };
-                    btn.style.cursor = 'pointer';
-                    return;
+                    btn.onclick = function() { alert('아이폰 알림은 iOS 16.4 이상 필요\n현재: iOS ' + major + '.' + minor); };
+                    btn.style.cursor = 'pointer'; return;
                 }
-
                 if (!('Notification' in window)) {
                     btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#f59e0b">알림 재설치</span>';
-                    btn.onclick = function() {
-                        alert('알림 기능을 사용하려면 앱을 다시 설치해주세요.\n\n① 홈 화면에서 앱 아이콘 길게 탭\n② "앱 제거" → 삭제\n③ Safari에서 다시 "홈 화면에 추가"');
-                    };
-                    btn.style.cursor = 'pointer';
-                    return;
+                    btn.onclick = function() { alert('홈 화면에서 앱 삭제 후 Safari에서 다시 "홈 화면에 추가"해주세요.'); };
+                    btn.style.cursor = 'pointer'; return;
                 }
-            } else {
-                if (!('Notification' in window) || !('PushManager' in window)) {
-                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">🔕 알림받기</span>';
-                    btn.onclick = function() {
-                        alert('알림을 받으려면 크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기');
-                    };
-                    btn.style.cursor = 'pointer';
-                    return;
-                }
+            } else if (!('Notification' in window) || !('PushManager' in window)) {
+                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">🔕 알림받기</span>';
+                btn.onclick = function() { alert('알림을 받으려면 크롬(Chrome) 브라우저에서 접속해주세요.'); };
+                btn.style.cursor = 'pointer'; return;
             }
 
-            var n = name || getPushName();
+            // ── 버튼 상태 = Notification.permission 만 반영 (구독 상태와 무관) ──
             var perm = Notification.permission;
             if (perm === 'granted') {
                 btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
+                btn.onclick = function() { alert('알림이 켜져 있습니다.\n끄려면 기기 설정에서 알림 권한을 해제하세요.'); };
                 btn.style.cursor = 'pointer';
-                btn.onclick = function() {
-                    if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
-                        doSubscribe(n);
-                    } else {
-                        alert('알림이 정상적으로 설정되어 있습니다.\n\n알림을 끄려면 기기 설정에서\n이 사이트의 알림 권한을 해제하세요.');
-                    }
-                };
-                if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
-                    doSubscribe(n);
-                }
+                doSubscribe(n); // 백그라운드 구독 (내부에서 중복 방지)
             } else if (perm === 'denied') {
                 btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#ef4444">🔕 차단됨</span>';
-                btn.onclick = function() { showPushDeniedGuide(); };
-                btn.style.cursor = 'pointer';
+                btn.onclick = showPushDeniedGuide; btn.style.cursor = 'pointer';
             } else {
-                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#64748b">🔕 알림 받기</span>';
-                btn.onclick = function() { requestPushPermission(n); };
-                btn.style.cursor = 'pointer';
+                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#64748b">🔕 알림받기</span>';
+                btn.onclick = function() { requestPushPermission(n); }; btn.style.cursor = 'pointer';
             }
         }
 
@@ -678,20 +649,6 @@
             } else {
                 loadMisoForAuth();
             }
-            // 기기 설정에서 알림 권한 변경 시 즉시 버튼 업데이트
-            if ('permissions' in navigator) {
-                navigator.permissions.query({name: 'notifications'}).then(function(status) {
-                    status.onchange = function() {
-                        var n = getPushName();
-                        if (n) updatePushBtn(n);
-                        if (status.state !== 'granted') {
-                            sessionStorage.removeItem('cgv_push_subscribed');
-                            try { localStorage.removeItem('push_banner_dismissed'); } catch(e) {}
-                        }
-                    };
-                }).catch(function(){});
-            }
-
             // Pull-to-refresh
             var ptrStart = 0; var ptrActive = false;
             document.addEventListener("touchstart", function(e){ ptrStart = e.touches[0].clientY; }, {passive:true});
