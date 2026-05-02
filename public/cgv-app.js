@@ -159,26 +159,48 @@
             alert(msg);
         }
 
+        function isIOS() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent);
+        }
+        function isIOSPWA() {
+            return isIOS() && (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches);
+        }
+
+        function showIOSInstallGuide() {
+            alert('iPhone에서 알림을 받으려면\n홈 화면에 앱을 추가해야 합니다.\n\n[ 설치 방법 ]\n① Safari 하단 공유 버튼 (□↑) 탭\n② "홈 화면에 추가" 선택\n③ 오른쪽 위 "추가" 탭\n\n홈 화면 아이콘으로 앱을 열면\n알림 받기 버튼이 나타납니다.\n\n※ iOS 16.4 이상 필요');
+        }
+
         function updatePushBtn(name) {
             var btn = document.getElementById('push-subscribe-btn');
             if (!btn) return;
+
+            // iOS Safari (홈 화면 미설치) → 설치 안내 버튼 표시
+            if (isIOS() && !isIOSPWA()) {
+                btn.style.display = '';
+                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
+                btn.onclick = function() { showIOSInstallGuide(); };
+                btn.style.cursor = 'pointer';
+                return;
+            }
+
+            // 알림 API 자체가 없는 환경 (구형 브라우저 등)
             if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+
             var n = name || getPushName();
             var perm = Notification.permission;
             if (perm === 'granted') {
-                btn.innerHTML = '<span class="text-green-600 font-black text-xs">🔔 알림 ON</span>';
+                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
                 btn.onclick = null;
                 btn.style.cursor = 'default';
-                // 세션 재시작 시 백그라운드 재구독
                 if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
                     doSubscribe(n);
                 }
             } else if (perm === 'denied') {
-                btn.innerHTML = '<span class="font-black text-xs text-red-500">🔕 차단됨</span>';
+                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#ef4444">🔕 차단됨</span>';
                 btn.onclick = function() { showPushDeniedGuide(); };
                 btn.style.cursor = 'pointer';
             } else {
-                btn.innerHTML = '<span class="font-black text-xs text-slate-500">🔕 알림 받기</span>';
+                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#64748b">🔕 알림 받기</span>';
                 btn.onclick = function() { requestPushPermission(n); };
                 btn.style.cursor = 'pointer';
             }
