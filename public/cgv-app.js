@@ -179,8 +179,7 @@
             alert('iPhone에서 알림을 받으려면\n홈 화면에 앱을 설치해야 합니다.\n\n[ Safari에서 설치 ]\n① 하단 공유 버튼(□↑) 탭\n② "홈 화면에 추가" 선택\n③ 오른쪽 위 "추가" 탭\n\n홈 화면 아이콘으로 실행하면\n알림 받기 버튼이 활성화됩니다.\n\n※ iOS 16.4 이상 필요');
         }
 
-        function updatePushBtn(name) {
-            var btn = document.getElementById('push-subscribe-btn');
+        function _setPushBtnEl(btn, name) {
             if (!btn) return;
             btn.style.display = '';
 
@@ -189,7 +188,6 @@
                 var minor = getIOSMinorVer();
                 var isStandalone = isIOSStandalone();
 
-                // 홈 화면 미설치 → 설치 안내
                 if (!isStandalone) {
                     btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
                     btn.onclick = showIOSInstallGuide;
@@ -197,7 +195,6 @@
                     return;
                 }
 
-                // iOS 16.4 미만 → 버전 안내 (Web Push 미지원)
                 if (major < 16 || (major === 16 && minor < 4)) {
                     btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">iOS구버전</span>';
                     btn.onclick = function() {
@@ -207,7 +204,6 @@
                     return;
                 }
 
-                // iOS 16.4+ PWA — Notification API 없으면 재설치 안내
                 if (!('Notification' in window)) {
                     btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">알림 재설치</span>';
                     btn.onclick = function() {
@@ -216,9 +212,7 @@
                     btn.style.cursor = 'pointer';
                     return;
                 }
-                // iOS 16.4+ PWA + Notification 지원 → 아래 공통 로직으로 fall-through
             } else {
-                // 비iOS에서 알림 미지원
                 if (!('Notification' in window) || !('PushManager' in window)) {
                     btn.style.display = 'none';
                     return;
@@ -243,6 +237,11 @@
                 btn.onclick = function() { requestPushPermission(n); };
                 btn.style.cursor = 'pointer';
             }
+        }
+
+        function updatePushBtn(name) {
+            _setPushBtnEl(document.getElementById('push-subscribe-btn'), name);
+            _setPushBtnEl(document.getElementById('push-subscribe-btn-2'), name);
         }
 
         // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
@@ -622,6 +621,7 @@
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
             } else {
                 loadMisoForAuth();
+                updatePushBtn('');
             }
             // Pull-to-refresh
             var ptrStart = 0; var ptrActive = false;
