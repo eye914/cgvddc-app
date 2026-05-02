@@ -189,14 +189,14 @@
                 var isStandalone = isIOSStandalone();
 
                 if (!isStandalone) {
-                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
+                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#3b82f6">📲 앱 설치</span>';
                     btn.onclick = showIOSInstallGuide;
                     btn.style.cursor = 'pointer';
                     return;
                 }
 
                 if (major < 16 || (major === 16 && minor < 4)) {
-                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">iOS구버전</span>';
+                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#f59e0b">iOS구버전</span>';
                     btn.onclick = function() {
                         alert('아이폰 알림은 iOS 16.4 이상에서만 지원됩니다.\n현재: iOS ' + major + '.' + minor + '\n\niPhone 설정 → 일반 → 소프트웨어 업데이트에서 업그레이드하세요.');
                     };
@@ -205,7 +205,7 @@
                 }
 
                 if (!('Notification' in window)) {
-                    btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#f59e0b">알림 재설치</span>';
+                    btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#f59e0b">알림 재설치</span>';
                     btn.onclick = function() {
                         alert('알림 기능을 사용하려면 앱을 다시 설치해주세요.\n\n① 홈 화면에서 앱 아이콘 길게 탭\n② "앱 제거" → 삭제\n③ Safari에서 다시 "홈 화면에 추가"');
                     };
@@ -222,18 +222,18 @@
             var n = name || getPushName();
             var perm = Notification.permission;
             if (perm === 'granted') {
-                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
+                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#16a34a">🔔 알림 ON</span>';
                 btn.onclick = null;
                 btn.style.cursor = 'default';
                 if (sessionStorage.getItem('cgv_push_subscribed') !== 'true' && n) {
                     doSubscribe(n);
                 }
             } else if (perm === 'denied') {
-                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#ef4444">🔕 차단됨</span>';
+                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#ef4444">🔕 차단됨</span>';
                 btn.onclick = function() { showPushDeniedGuide(); };
                 btn.style.cursor = 'pointer';
             } else {
-                btn.innerHTML = '<span style="font-size:9px;font-weight:900;color:#64748b">🔕 알림 받기</span>';
+                btn.innerHTML = '<span style="font-size:11px;font-weight:900;color:#64748b">🔕 알림 받기</span>';
                 btn.onclick = function() { requestPushPermission(n); };
                 btn.style.cursor = 'pointer';
             }
@@ -241,7 +241,6 @@
 
         function updatePushBtn(name) {
             _setPushBtnEl(document.getElementById('push-subscribe-btn'), name);
-            _setPushBtnEl(document.getElementById('push-subscribe-btn-2'), name);
         }
 
         // 앱 복귀 시 자동 감지 (데이터 새로고침 + 알림 상태 갱신)
@@ -621,7 +620,6 @@
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
             } else {
                 loadMisoForAuth();
-                updatePushBtn('');
             }
             // Pull-to-refresh
             var ptrStart = 0; var ptrActive = false;
