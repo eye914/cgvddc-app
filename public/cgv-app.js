@@ -2382,7 +2382,7 @@
                     closeFormRequestModal();
                     clearFormReqName();
                     loadAdminForms();
-                    alert(_formSelectedName + '님게 ' + (FORM_TYPE_LABELS[_formCurrentType] || '') + ' 제출 요청을 발송했습니다.');
+                    alert(_formSelectedName + ' 님에게 ' + (FORM_TYPE_LABELS[_formCurrentType] || '') + ' 제출 요청을 발송했습니다.');
                 })
                 .withFailureHandler(function(e) {
                     showLoader(false);
@@ -2526,9 +2526,12 @@
         }
 
         // ── 폼 작성 ──
+        window._signDataURL = null; // 서명 데이터 초기화
+
         function openFormFillModal(reqId, type) {
             _formCurrentReqId = reqId;
             _formCurrentType = type;
+            window._signDataURL = null; // 매번 초기화
             var modal = document.getElementById('form-fill-modal');
             var title = document.getElementById('form-fill-title');
             var body = document.getElementById('form-fill-body');
@@ -2545,11 +2548,87 @@
                 body.innerHTML = buildResignForm(myName, today);
             }
             modal.classList.remove('hidden');
+            ensureSignPadModal();
         }
 
         function closeFormFillModal() {
             var modal = document.getElementById('form-fill-modal');
             if (modal) modal.classList.add('hidden');
+        }
+
+        // ── 서명 패드 ──
+        var _signPadDrawing = false;
+        var _signPadCtx = null;
+        var _signPadCanvas = null;
+
+        function ensureSignPadModal() {
+            if (document.getElementById('sign-pad-modal')) return;
+            var el = document.createElement('div');
+            el.id = 'sign-pad-modal';
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:19999;display:none;align-items:center;justify-content:center';
+            el.innerHTML = ''
+                + '<div style="background:white;border-radius:20px;padding:20px;width:92%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:14px;color:#0f172a">✏️ 확인 서명</div>'
+                + '<div style="font-size:11px;color:#888;font-weight:600;text-align:center;margin-bottom:8px">아래 흰 공간에 손가락으로 서명하세요</div>'
+                + '<canvas id="sign-pad-canvas" width="340" height="160" style="width:100%;height:160px;border:2px solid #334155;border-radius:10px;background:white;touch-action:none;display:block;cursor:crosshair"></canvas>'
+                + '<div style="display:flex;gap:10px;margin-top:14px">'
+                + '<button onclick="clearSignPad()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">🗑 지우기</button>'
+                + '<button onclick="confirmSignPad()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 서명 완료</button>'
+                + '</div>'
+                + '</div>';
+            document.body.appendChild(el);
+        }
+
+        function openSignPad() {
+            ensureSignPadModal();
+            var modal = document.getElementById('sign-pad-modal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+
+            _signPadCanvas = document.getElementById('sign-pad-canvas');
+            if (!_signPadCanvas) return;
+            _signPadCtx = _signPadCanvas.getContext('2d');
+            _signPadCtx.clearRect(0, 0, _signPadCanvas.width, _signPadCanvas.height);
+            _signPadCtx.strokeStyle = '#0f172a';
+            _signPadCtx.lineWidth = 2.5;
+            _signPadCtx.lineCap = 'round';
+            _signPadCtx.lineJoin = 'round';
+
+            function getPos(e) {
+                var rect = _signPadCanvas.getBoundingClientRect();
+                var scaleX = _signPadCanvas.width / rect.width;
+                var scaleY = _signPadCanvas.height / rect.height;
+                var src = e.touches ? e.touches[0] : e;
+                return { x: (src.clientX - rect.left) * scaleX, y: (src.clientY - rect.top) * scaleY };
+            }
+            function onStart(e) { e.preventDefault(); _signPadDrawing = true; var p = getPos(e); _signPadCtx.beginPath(); _signPadCtx.moveTo(p.x, p.y); }
+            function onMove(e) { e.preventDefault(); if (!_signPadDrawing) return; var p = getPos(e); _signPadCtx.lineTo(p.x, p.y); _signPadCtx.stroke(); }
+            function onEnd(e) { e.preventDefault(); _signPadDrawing = false; }
+
+            _signPadCanvas.onmousedown = onStart;
+            _signPadCanvas.onmousemove = onMove;
+            _signPadCanvas.onmouseup = onEnd;
+            _signPadCanvas.ontouchstart = onStart;
+            _signPadCanvas.ontouchmove = onMove;
+            _signPadCanvas.ontouchend = onEnd;
+        }
+
+        function clearSignPad() {
+            if (_signPadCtx && _signPadCanvas) {
+                _signPadCtx.clearRect(0, 0, _signPadCanvas.width, _signPadCanvas.height);
+            }
+        }
+
+        function confirmSignPad() {
+            if (!_signPadCanvas) return;
+            window._signDataURL = _signPadCanvas.toDataURL('image/png');
+            var modal = document.getElementById('sign-pad-modal');
+            if (modal) modal.style.display = 'none';
+            // 버튼 업데이트
+            var btn = document.getElementById('ff-sign-btn');
+            var img = document.getElementById('ff-sign-img');
+            if (btn) { btn.textContent = '✅ 서명완료'; btn.style.background = '#dcfce7'; btn.style.borderColor = '#16a34a'; btn.style.color = '#15803d'; }
+            if (img) { img.src = window._signDataURL; img.style.display = 'block'; }
         }
 
         var DOC_STYLE = '<style>'
@@ -2576,12 +2655,11 @@
 
         function buildLateForm(name, today) {
             return DOC_STYLE
-                + ''
-                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px">미소지기  지각확인서</div>'
-                + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:10px">'
+                + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 지각확인서</div>'
+                + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                 + '미소지기 <span style="border-bottom:1.5px solid #222;display:inline-block;min-width:60px;text-align:center;background:#eef4ff">' + name + '</span>'
                 + ' 은(는) 아래와 같이 지각 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
-                + '<div style="display:flex;border:1px solid #555;margin-bottom:12px;font-size:12px">'
+                + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                 + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                 + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>'
                 + '<div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">지각</div>'
@@ -2591,16 +2669,30 @@
                 + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="지각 사유를 구체적으로 작성하세요"></textarea></div>'
                 + '</div>'
                 + '</div>'
-                + '<table class="dt"><thead><tr class="hr">'
-                + '<th>이  름</th><th>날  짜</th><th>약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th><th>실제 근로시간</th><th>확인 서명</th>'
-                + '</tr></thead><tbody><tr style="height:52px">'
-                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center"></td>'
-                + '<td class="fc" style="vertical-align:middle"><input id="ff-date" type="date" class="di" placeholder="지각 날짜"></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-sch-start" class="di" placeholder="09:00" style="width:46%;text-align:center">~<input id="ff-sch-end" class="di" placeholder="14:30" style="width:46%;text-align:center"></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-act-start" class="di" placeholder="09:30" style="width:46%;text-align:center">~<input id="ff-act-end" class="di" placeholder="14:30" style="width:46%;text-align:center"></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center"><input id="ff-sign" class="di" placeholder="서명" style="text-align:center;border-bottom:1px solid #999;width:90%"></td>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
+                + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
+                + '<th style="min-width:72px">이  름</th>'
+                + '<th style="min-width:100px">날  짜</th>'
+                + '<th style="min-width:110px">약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th>'
+                + '<th style="min-width:110px">실제 근로시간</th>'
+                + '<th style="min-width:88px">확인 서명</th>'
+                + '</tr></thead><tbody><tr style="height:64px">'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:72px">'
+                +   '<input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center;min-width:64px"></td>'
+                + '<td class="fc" style="vertical-align:middle;min-width:100px">'
+                +   '<input id="ff-date" type="date" class="di" placeholder="지각 날짜"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<input id="ff-sch-start" type="time" class="di" style="width:46%;text-align:center">~'
+                +   '<input id="ff-sch-end" type="time" class="di" style="width:46%;text-align:center"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<input id="ff-act-start" type="time" class="di" style="width:46%;text-align:center">~'
+                +   '<input id="ff-act-end" type="time" class="di" style="width:46%;text-align:center"></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
+                +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
+                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
                 + '</tr></tbody></table>'
-                + '<div class="doc-footer"><div></div>'
+                + '</div>'
+                + '<div class="doc-footer" style="margin-top:20px"><div></div>'
                 + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
@@ -2608,8 +2700,8 @@
         function buildAbsentForm(name, today) {
             return DOC_STYLE
                 + ''
-                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사  유  서</div>'
-                + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사  유  서</div>'
+                + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                 + '<table class="dt"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
@@ -2642,8 +2734,8 @@
         function buildResignForm(name, today) {
             return DOC_STYLE
                 + ''
-                + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사  직  원</div>'
-                + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사  직  원</div>'
+                + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                 + '<table class="dt"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"><span style="font-size:10px;color:#888;font-weight:600"> (서명)</span></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
@@ -2703,7 +2795,8 @@
                     name: v('ff-name'), date: v('ff-date'),
                     content: v('ff-content'),
                     schStart: v('ff-sch-start'), schEnd: v('ff-sch-end'),
-                    actStart: v('ff-act-start'), actEnd: v('ff-act-end')
+                    actStart: v('ff-act-start'), actEnd: v('ff-act-end'),
+                    sign: window._signDataURL || ''
                 };
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 지각 사유는 필수입니다.'); return; }
             } else if (type === 'absent') {
@@ -2789,9 +2882,10 @@
         // 제출된 서류 데이터를 원본 문서 레이아웃으로 변환 (읽기 전용)
         function buildViewDoc(type, fd, sub, adminName, adminSigBase64) {
             var today = sub && sub.submitted_at ? sub.submitted_at.substring(0, 10) : getLocalYYYYMMDD(new Date());
+            // localStorage에 base64 있으면 사용, 없으면 static 파일 fallback
             var sigImg = adminSigBase64
                 ? '<img src="' + adminSigBase64 + '" style="height:38px;object-fit:contain;vertical-align:middle">'
-                : '<span style="color:#aaa;font-size:10px">서명 미등록</span>';
+                : '<img src="/admin-sig.png" style="height:38px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
             function tv(v) { return v ? '<span style="font-weight:700;color:#111">' + v + '</span>' : '<span style="color:#bbb">-</span>'; }
             function tf(v) { return '<span style="display:inline-block;min-width:60px;border-bottom:1.5px solid #333;text-align:center;background:#eef4ff;padding:0 6px;font-weight:700">' + (v || '') + '</span>'; }
 
@@ -2800,12 +2894,15 @@
                 + '<span style="margin-left:2px">(서명)</span>' + sigImg + '</div>';
 
             if (type === 'late') {
+                var signCell = fd.sign && fd.sign.indexOf('data:') === 0
+                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
+                    : tv(fd.sign || '');
                 return DOC_STYLE
-                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px">미소지기&nbsp;&nbsp;지각확인서</div>'
-                    + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:10px">'
+                    + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 지각확인서</div>'
+                    + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                     + '미소지기 ' + tf(fd.name)
                     + ' 은(는) 아래와 같이 지각 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
-                    + '<div style="display:flex;border:1px solid #555;margin-bottom:12px;font-size:12px">'
+                    + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                     + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                     + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">사유</div>'
                     + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">지각</div>'
@@ -2815,22 +2912,28 @@
                     + '<div style="flex:1;background:#eef4ff;padding:8px;font-size:12px;font-weight:600;min-height:60px;white-space:pre-wrap">' + tv(fd.content) + '</div>'
                     + '</div>'
                     + '</div>'
-                    + '<table class="dt"><thead><tr class="hr">'
-                    + '<th>이&nbsp;&nbsp;름</th><th>날&nbsp;&nbsp;짜</th><th>약정 근로시간</th><th>실제 근로시간</th><th>확인 서명</th>'
-                    + '</tr></thead><tbody><tr style="height:48px">'
+                    + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
+                    + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
+                    + '<th style="min-width:72px">이&nbsp;&nbsp;름</th>'
+                    + '<th style="min-width:100px">날&nbsp;&nbsp;짜</th>'
+                    + '<th style="min-width:110px">약정 근로시간</th>'
+                    + '<th style="min-width:110px">실제 근로시간</th>'
+                    + '<th style="min-width:88px">확인 서명</th>'
+                    + '</tr></thead><tbody><tr style="height:60px">'
                     + '<td class="fc" style="text-align:center">' + tv(fd.name) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv(fd.date) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
-                    + '<td class="fc" style="text-align:center"></td>'
+                    + '<td class="fc" style="text-align:center">' + signCell + '</td>'
                     + '</tr></tbody></table>'
-                    + '<div class="doc-footer"><div></div><div>' + adm + '</div></div>';
+                    + '</div>'
+                    + '<div class="doc-footer" style="margin-top:20px"><div></div><div>' + adm + '</div></div>';
             }
 
             if (type === 'absent') {
                 return DOC_STYLE
-                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
-                    + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                    + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
+                    + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                     + '<table class="dt"><tbody>'
                     + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
                     + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
@@ -2854,8 +2957,8 @@
 
             if (type === 'resign') {
                 return DOC_STYLE
-                    + '<div style="font-size:13px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:2px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
-                    + '<div style="text-align:center;font-size:11px;color:#555;font-weight:600;margin-bottom:10px">(미소지기 용)</div>'
+                    + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
+                    + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                     + '<table class="dt"><tbody>'
                     + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td>'
                     + '<th style="width:26%">주민번호 앞자리</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
@@ -2888,8 +2991,8 @@
             var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
             var today = sub.submitted_at ? sub.submitted_at.substring(0,10) : getLocalYYYYMMDD(new Date());
 
-            // 서류 원본 레이아웃으로 직접 표시
-            container.innerHTML = '<div id="form-print-area" style="padding:4px 0">'
+            // 서류 원본 레이아웃으로 직접 표시 (가로 스크롤 허용)
+            container.innerHTML = '<div id="form-print-area" style="padding:8px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y">'
                 + buildViewDoc(type, fd, sub, adminName, sig)
                 + '</div>';
         }

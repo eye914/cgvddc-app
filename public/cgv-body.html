@@ -480,13 +480,13 @@
 
     <!-- ── 서류 열람 모달 (관리자) ── -->
     <div id="form-view-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8300] flex items-end justify-center">
-        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;max-width:640px">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px">
             <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
             <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
                 <h3 class="font-black text-slate-900 text-lg" id="form-view-title">서류 열람</h3>
                 <button onclick="closeFormViewModal()" class="text-slate-400 text-3xl font-light">&times;</button>
             </div>
-            <div id="form-view-body" class="px-5 py-4"></div>
+            <div id="form-view-body" class="px-3 py-4"></div>
             <div class="px-5 pb-8 pt-3 border-t border-slate-100 space-y-2">
                 <button onclick="printFormView()" class="w-full py-4 rounded-2xl font-black text-sm active:scale-95 transition-all" style="background:#0f172a;color:#fff">📄 PDF 저장 / 인쇄</button>
                 <p class="text-center text-[11px] text-slate-400 font-bold">버튼 클릭 → 인쇄 화면 → "PDF로 저장" 선택</p>
