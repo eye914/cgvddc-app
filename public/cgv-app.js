@@ -127,8 +127,9 @@
             if (Notification.permission === 'denied') { showPushDeniedGuide(); return; }
             if (Notification.permission === 'granted') { doSubscribe(name); return; }
             Notification.requestPermission().then(function(p) {
-                updatePushBtn(name); // 권한 응답 즉시 버튼 갱신
-                if (p === 'granted') { doSubscribe(name); dismissPushBanner(); }
+                updatePushBtn(name);
+                updatePushBanner();
+                if (p === 'granted' && 'PushManager' in window) doSubscribe(name);
                 else if (p === 'denied') showPushDeniedGuide();
             });
         }
@@ -226,44 +227,82 @@
             _setPushBtnEl(document.getElementById('push-subscribe-btn'), name);
         }
 
-        // ── 알림 설정 배너 ──
+        // ── 알림 상태바 (영구 표시, 상태별 업데이트) ──
         var _pushBannerName = '';
 
-        function checkAndShowPushBanner(name) {
-            if (sessionStorage.getItem('push_banner_dismissed') === 'true') return;
-            var banner = document.getElementById('push-banner');
-            if (!banner) return;
-            var msg = document.getElementById('push-banner-msg');
-            _pushBannerName = name || '';
+        var _BANNER_BTN_BLUE = 'background:#2563eb;color:white;padding:5px 13px;border-radius:8px;font-size:12px;font-weight:900;border:none;cursor:pointer;';
+        var _BANNER_BTN_GRAY = 'color:#94a3b8;font-size:12px;font-weight:700;background:none;border:none;cursor:pointer;padding:5px 4px;';
 
+        function updatePushBanner() {
+            var banner = document.getElementById('push-banner');
+            var msg = document.getElementById('push-banner-msg');
+            var actions = document.getElementById('push-banner-actions');
+            if (!banner) return;
+
+            // iOS 홈 미설치
             if (isIOS() && !isIOSStandalone()) {
-                if (msg) msg.textContent = '📲 iPhone에서 알림을 받으려면 홈 화면에 앱을 설치하세요';
-                banner.style.display = '';
-            } else if (isIOS() && isIOSStandalone()) {
-                if ('Notification' in window && Notification.permission !== 'granted') {
-                    if (msg) msg.textContent = '🔔 교대·서류 알림을 받으려면 알림을 설정하세요';
-                    banner.style.display = '';
-                }
+                banner.style.cssText = 'display:;border-bottom:2px solid #bfdbfe;padding:10px 16px;background:#eff6ff;';
+                if (msg) { msg.textContent = '📲 알림을 받으려면 홈 화면에 앱을 추가하세요'; msg.style.color = '#1e40af'; }
+                if (actions) actions.innerHTML = '<button onclick="showIOSInstallGuide()" style="' + _BANNER_BTN_BLUE + '">추가 방법</button>';
+                return;
+            }
+
+            // Notification API 없음 (매우 구형 브라우저)
+            if (!('Notification' in window)) {
+                banner.style.cssText = 'display:;border-bottom:2px solid #fed7aa;padding:10px 16px;background:#fff7ed;';
+                if (msg) { msg.textContent = '🔕 이 브라우저는 알림을 지원하지 않습니다'; msg.style.color = '#9a3412'; }
+                if (actions) actions.innerHTML = '';
+                return;
+            }
+
+            var perm = Notification.permission;
+
+            if (perm === 'granted') {
+                // 알림 ON — 초록
+                banner.style.cssText = 'display:;border-bottom:2px solid #bbf7d0;padding:10px 16px;background:#f0fdf4;';
+                if (msg) { msg.textContent = '🔔 알림 ON — 교대·서류 알림이 켜져 있습니다'; msg.style.color = '#166534'; }
+                if (actions) actions.innerHTML = '';
+            } else if (perm === 'denied') {
+                // 차단됨 — 주황
+                banner.style.cssText = 'display:;border-bottom:2px solid #fed7aa;padding:10px 16px;background:#fff7ed;';
+                if (msg) { msg.textContent = '🔕 알림이 차단됨 — 기기 설정에서 허용해주세요'; msg.style.color = '#9a3412'; }
+                if (actions) actions.innerHTML = '<button onclick="showPushDeniedGuide()" style="' + _BANNER_BTN_BLUE.replace('#2563eb','#ea580c') + '">설정 방법</button>';
             } else {
-                if ('Notification' in window && 'PushManager' in window && Notification.permission !== 'granted') {
-                    if (msg) msg.textContent = '🔔 교대·서류 알림을 받으려면 알림을 설정하세요';
-                    banner.style.display = '';
-                } else if (!('PushManager' in window)) {
-                    if (msg) msg.textContent = '🔔 알림을 받으려면 크롬(Chrome) 브라우저로 접속하세요';
-                    banner.style.display = '';
+                // default — 파랑 (알림 미설정)
+                if (sessionStorage.getItem('push_banner_dismissed') === 'true') {
+                    banner.style.display = 'none'; return;
                 }
+                banner.style.cssText = 'display:;border-bottom:2px solid #bfdbfe;padding:10px 16px;background:#eff6ff;';
+                if (msg) { msg.textContent = '🔔 알림을 설정하면 교대·서류 알림을 받을 수 있어요'; msg.style.color = '#1e40af'; }
+                if (actions) actions.innerHTML =
+                    '<button onclick="setupPushFromBanner()" style="' + _BANNER_BTN_BLUE + '">알림 설정</button>' +
+                    '<button onclick="dismissPushBanner()" style="' + _BANNER_BTN_GRAY + '">나중에</button>';
             }
         }
 
+        function checkAndShowPushBanner(name) {
+            _pushBannerName = name || '';
+            updatePushBanner();
+        }
+
         function setupPushFromBanner() {
-            if (isIOS() && !isIOSStandalone()) {
-                showIOSInstallGuide(); return;
+            // iOS 홈 미설치
+            if (isIOS() && !isIOSStandalone()) { showIOSInstallGuide(); return; }
+            // Notification API 없으면 안내
+            if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않습니다.'); return; }
+            // 이미 차단된 경우
+            if (Notification.permission === 'denied') { showPushDeniedGuide(); return; }
+            // 이미 허용된 경우
+            if (Notification.permission === 'granted') {
+                if ('PushManager' in window) doSubscribe(_pushBannerName);
+                updatePushBanner(); updatePushBtn(_pushBannerName); return;
             }
-            if (!('PushManager' in window)) {
-                alert('알림을 받으려면 크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기'); return;
-            }
-            requestPushPermission(_pushBannerName);
-            dismissPushBanner();
+            // default → 직접 권한 요청 팝업 (PushManager 유무 무관)
+            Notification.requestPermission().then(function(p) {
+                updatePushBanner();
+                updatePushBtn(_pushBannerName);
+                if (p === 'granted' && 'PushManager' in window) doSubscribe(_pushBannerName);
+            });
         }
 
         function dismissPushBanner() {
@@ -279,6 +318,7 @@
             var n = getPushName();
             if (!n) return;
             updatePushBtn(n);
+            updatePushBanner(); // 기기 설정 변경 반영
         });
 
                 function testPushNotification(name) {
