@@ -1912,24 +1912,25 @@
                 var logHtml = att.logs.length
                     ? att.logs.map(function(l){ return "<p class='text-[9px] text-slate-400 font-medium leading-tight mb-1'>- "+l+"</p>"; }).join("")
                     : "<p class='text-[9px] text-slate-300 italic'>\uBCC0\uACBD \uC774\uB825 \uC5C6\uC74C</p>";
-                var cardHtml = "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+" overflow-hidden'>"
-                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest'>정지</div>" : "")
-                    + "<div class='px-2.5 py-2'>"
-                    + "<div class='flex items-center gap-1 mb-1.5'>"
-                    + "<span class='font-black text-xs "+(isP?"text-red-700":"text-slate-900")+" truncate'>"+m.name+"</span>"
-                    + "<span class='text-[8px] text-slate-400 truncate flex-1 ml-1'>"+m.pos.join("/")+"</span>"
+                var cardHtml = "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+"'>"
+                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest rounded-t-xl'>정지</div>" : "")
+                    + "<div class='px-2 py-2'>"
+                    + "<div class='flex items-center gap-1 mb-1'>"
+                    + "<span class='font-black text-xs "+(isP?"text-red-700":"text-slate-900")+" flex-1 min-w-0 truncate'>"+m.name+"</span>"
                     + "<span class='text-[8px] bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-400 whitespace-nowrap flex-shrink-0'>"+statsMap[m.name].count+"건</span>"
                     + "</div>"
-                    + "<div class='flex items-center gap-1'>"
-                    + "<span class='text-[9px] text-slate-500 font-black flex-shrink-0'>지각</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
-                    + "<span class='text-xs font-black min-w-[14px] text-center "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
-                    + "<span class='w-px h-3 bg-slate-200 mx-1.5 flex-shrink-0'></span>"
-                    + "<span class='text-[9px] text-slate-500 font-black flex-shrink-0'>결근</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
-                    + "<span class='text-xs font-black min-w-[14px] text-center "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
+                    + "<div class='text-[8px] text-slate-400 mb-1.5 truncate'>"+m.pos.join("/")+"</div>"
+                    + "<div class='flex items-center gap-0.5 mb-1'>"
+                    + "<span class='text-[9px] text-slate-500 font-black w-7 flex-shrink-0'>지각</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
+                    + "<span class='text-xs font-black w-5 text-center "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
+                    + "</div>"
+                    + "<div class='flex items-center gap-0.5'>"
+                    + "<span class='text-[9px] text-slate-500 font-black w-7 flex-shrink-0'>결근</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
+                    + "<span class='text-xs font-black w-5 text-center "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
                     + "</div>"
                     + "</div></div>";
                 container.innerHTML += cardHtml;
@@ -2545,27 +2546,25 @@
                     var canView = r.status === 'submitted' || r.status === 'viewed';
                     var chkDisabled = canView ? '' : ' disabled';
                     html += '<div class="rounded-xl border ' + statusClass + ' px-2.5 py-2 mb-1.5">';
-                    html += '<div class="flex items-center gap-2">';
-                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
+                    html += '<div class="flex items-start gap-2">';
+                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0 mt-0.5' + (chkDisabled ? ' opacity-30' : '') + '">';
                     html += '<div class="flex-1 min-w-0">';
-                    // Row 1: icon + label + name + status
-                    html += '<div class="flex items-center gap-1 flex-nowrap overflow-hidden">';
+                    // Row 1: icon + label + status dot (한 줄)
+                    html += '<div class="flex items-center gap-1 mb-0.5">';
                     html += '<span class="text-xs flex-shrink-0">' + icon + '</span>';
                     html += '<span class="font-black text-xs text-slate-800 flex-shrink-0">' + label + '</span>';
-                    html += '<span class="text-[10px] font-black text-blue-700 truncate flex-1 min-w-0">&nbsp;' + r.target_name + '</span>';
-                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 ml-1">';
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 ml-auto">';
                     html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + '"></span>';
                     html += '<span class="text-[9px] font-bold text-slate-500 whitespace-nowrap">' + statusLabel + '</span>';
                     html += '</span></div>';
-                    // Row 2: date + note
-                    if (dateStr || r.note) {
-                        html += '<div class="flex items-center gap-1 mt-0.5 overflow-hidden">';
-                        html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
-                        if (r.note) html += '<span class="text-[9px] text-slate-400 truncate min-w-0">· ' + r.note + '</span>';
-                        html += '</div>';
-                    }
+                    // Row 2: 이름 + 날짜
+                    html += '<div class="flex items-center gap-1">';
+                    html += '<span class="text-[11px] font-black text-blue-700 flex-1 min-w-0 truncate">' + r.target_name + '</span>';
+                    if (dateStr) html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
                     html += '</div>';
-                    html += '<div class="flex gap-1 flex-shrink-0">';
+                    if (r.note) html += '<div class="text-[9px] text-slate-400 truncate mt-0.5">' + r.note + '</div>';
+                    html += '</div>';
+                    html += '<div class="flex flex-col gap-1 flex-shrink-0">';
                     if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
                     html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
                     html += '</div>';
