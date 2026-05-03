@@ -1880,8 +1880,8 @@
                     + "<span class='ml-1 text-[8px] bg-slate-100 px-1 py-0.5 rounded-full font-black text-slate-400'>"+statsMap[m.name].count+"건</span></div>"
                     + "<p class='text-[8px] text-slate-400 font-medium mb-1.5 truncate'>"+m.pos.join("/")+"</p>"
                     + "<div class='flex gap-1'>"
-                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1 flex flex-col items-center'><span class='text-[8px] font-black text-slate-500'>지각</span><div class='flex items-center gap-0.5 mt-0.5'><button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>-</button><span class='text-xs font-black "+(att.late>0?"text-red-600":"")+"'>"+att.late+"</span><button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>+</button></div></div>"
-                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1 flex flex-col items-center'><span class='text-[8px] font-black text-slate-500'>결근</span><div class='flex items-center gap-0.5 mt-0.5'><button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>-</button><span class='text-xs font-black "+(att.absent>0?"text-red-600":"")+"'>"+att.absent+"</span><button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-white border border-slate-200 rounded text-xs shadow-sm leading-none'>+</button></div></div>"
+                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1.5 flex flex-col items-center gap-0.5 border border-slate-200'><span class='text-[8px] font-black text-slate-500'>지각</span><span class='text-base font-black "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span><div class='flex gap-1'><button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>-</button><button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>+</button></div></div>"
+                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1.5 flex flex-col items-center gap-0.5 border border-slate-200'><span class='text-[8px] font-black text-slate-500'>결근</span><span class='text-base font-black "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span><div class='flex gap-1'><button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>-</button><button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>+</button></div></div>"
                     + "</div></div></div>";
             });
         }
@@ -2340,8 +2340,8 @@
         var _formCurrentReqId = '';
         var _formCurrentType = '';
 
-        var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원' };
-        var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄' };
+        var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서' };
+        var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐' };
         var FORM_STATUS_LABELS = { pending: '제출대기', submitted: '제출완료', viewed: '확인완료' };
 
         // 관리자: 폼 패널 토글
@@ -2454,35 +2454,131 @@
                 el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">요청 내역이 없습니다</p>';
                 return;
             }
-            el.innerHTML = list.slice(0, 20).map(function(r) {
-                var statusClass = r.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
-                                  r.status === 'submitted' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200';
-                var statusDot = r.status === 'pending' ? 'bg-yellow-400' :
-                                r.status === 'submitted' ? 'bg-blue-500' : 'bg-green-400';
-                var statusLabel = FORM_STATUS_LABELS[r.status] || r.status;
-                var icon = FORM_TYPE_ICONS[r.type] || '📄';
-                var label = FORM_TYPE_LABELS[r.type] || r.type;
-                var dateStr = r.requested_at ? r.requested_at.substring(0,10) : '';
-                var canView = r.status === 'submitted' || r.status === 'viewed';
-                return '<div class="rounded-2xl border-2 ' + statusClass + ' p-3">'
-                    + '<div class="flex items-start justify-between gap-2">'
-                    + '<div class="flex-1 min-w-0">'
-                    + '<div class="flex items-center gap-1.5 mb-1">'
-                    + '<span class="text-sm">' + icon + '</span>'
-                    + '<span class="font-black text-slate-800 text-sm">' + label + '</span>'
-                    + '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>'
-                    + '<span class="text-[10px] font-bold text-slate-500">' + statusLabel + '</span>'
-                    + '</div>'
-                    + '<p class="text-xs font-bold text-slate-600">' + r.target_name + ' <span class="text-slate-400">' + dateStr + '</span></p>'
-                    + (r.note ? '<p class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">' + r.note + '</p>' : '')
-                    + '</div>'
-                    + '<div class="flex flex-col gap-1 flex-shrink-0">'
-                    + (canView ? '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[11px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl active:scale-95">열람</button>' : '')
-                    + '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95">취소</button>'
-                    + '</div>'
-                    + '</div>'
-                    + '</div>';
+            // 월별 그룹핑 (최신순)
+            var months = {}, monthOrder = [];
+            list.forEach(function(r) {
+                var m = r.requested_at ? r.requested_at.substring(0, 7) : '기타';
+                if (!months[m]) { months[m] = []; monthOrder.push(m); }
+                months[m].push(r);
+            });
+            monthOrder.sort(function(a, b) { return b.localeCompare(a); });
+            var html = '';
+            monthOrder.forEach(function(month) {
+                var forms = months[month];
+                var parts = month.split('-');
+                var monthLabel = (parts.length === 2) ? (parts[0] + '년 ' + parseInt(parts[1], 10) + '월') : month;
+                html += '<div class="mb-4">';
+                // 월 헤더: 전체선택 + 인쇄버튼
+                html += '<div class="flex items-center gap-2 mb-2 px-2 py-2 bg-slate-100 rounded-xl">';
+                html += '<label class="flex items-center gap-1.5 cursor-pointer">';
+                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-4 h-4">';
+                html += '<span class="text-xs font-black text-slate-700">' + monthLabel + '</span>';
+                html += '</label>';
+                html += '<span class="text-[10px] text-slate-400 font-bold">(' + forms.length + '건)</span>';
+                html += '<button onclick="downloadSelectedForms(\'' + month + '\')" class="ml-auto text-[10px] font-black bg-slate-800 text-white px-3 py-1.5 rounded-lg active:scale-95">📥 선택 인쇄</button>';
+                html += '</div>';
+                // 서류 목록
+                forms.forEach(function(r) {
+                    var statusClass = r.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                                      r.status === 'submitted' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200';
+                    var statusDot = r.status === 'pending' ? 'bg-yellow-400' :
+                                    r.status === 'submitted' ? 'bg-blue-500' : 'bg-green-400';
+                    var statusLabel = FORM_STATUS_LABELS[r.status] || r.status;
+                    var icon = FORM_TYPE_ICONS[r.type] || '📄';
+                    var label = FORM_TYPE_LABELS[r.type] || r.type;
+                    var dateStr = r.requested_at ? r.requested_at.substring(0, 10) : '';
+                    var canView = r.status === 'submitted' || r.status === 'viewed';
+                    var chkDisabled = canView ? '' : ' disabled';
+                    html += '<div class="rounded-2xl border-2 ' + statusClass + ' p-3 mb-2">';
+                    html += '<div class="flex items-start gap-2">';
+                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="mt-1 accent-blue-600 w-4 h-4 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
+                    html += '<div class="flex-1 min-w-0">';
+                    html += '<div class="flex items-center gap-1.5 mb-1">';
+                    html += '<span class="text-sm">' + icon + '</span>';
+                    html += '<span class="font-black text-slate-800 text-sm">' + label + '</span>';
+                    html += '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>';
+                    html += '<span class="text-[10px] font-bold text-slate-500">' + statusLabel + '</span>';
+                    html += '</div>';
+                    html += '<p class="text-xs font-bold text-slate-600">' + r.target_name + ' <span class="text-slate-400">' + dateStr + '</span></p>';
+                    html += (r.note ? '<p class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">' + r.note + '</p>' : '');
+                    html += '</div>';
+                    html += '<div class="flex flex-col gap-1 flex-shrink-0">';
+                    html += (canView ? '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[11px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl active:scale-95">열람</button>' : '');
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95">취소</button>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            });
+            el.innerHTML = html;
+        }
+
+        function toggleSelectAllForms(month, checked) {
+            var checkboxes = document.querySelectorAll('input[data-month="' + month + '"]:not(:disabled)');
+            for (var i = 0; i < checkboxes.length; i++) { checkboxes[i].checked = checked; }
+        }
+
+        function downloadSelectedForms(month) {
+            var all = document.querySelectorAll('input[data-month="' + month + '"]:not(:disabled)');
+            var ids = [];
+            for (var i = 0; i < all.length; i++) { if (all[i].checked) ids.push(all[i].getAttribute('data-form-id')); }
+            if (!ids.length) { alert('인쇄할 서류를 선택해 주세요.'); return; }
+            var selected = _formRequests.filter(function(r) {
+                return ids.indexOf(r.id) >= 0 && (r.status === 'submitted' || r.status === 'viewed');
+            });
+            if (!selected.length) { alert('출력 가능한 서류가 없습니다. (제출완료 상태 서류만 인쇄 가능)'); return; }
+            var sig = '';
+            try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            // 이름별로 묶어서 API 호출 최소화
+            var nameMap = {};
+            selected.forEach(function(r) {
+                if (!nameMap[r.target_name]) nameMap[r.target_name] = [];
+                nameMap[r.target_name].push(r);
+            });
+            var names = Object.keys(nameMap);
+            var allSubs = {};
+            var remaining = names.length;
+            showLoader(true, '서류 불러오는 중...');
+            names.forEach(function(name) {
+                google.script.run
+                    .withSuccessHandler(function(subs) {
+                        (subs || []).forEach(function(s) { allSubs[s.request_id] = s; });
+                        remaining--;
+                        if (remaining === 0) { showLoader(false); printBatchForms(selected, allSubs, adminName, sig); }
+                    })
+                    .withFailureHandler(function() {
+                        remaining--;
+                        if (remaining === 0) { showLoader(false); printBatchForms(selected, allSubs, adminName, sig); }
+                    })
+                    .getFormSubmissions(name);
+            });
+        }
+
+        function printBatchForms(selected, allSubs, adminName, sig) {
+            var parts = [];
+            selected.forEach(function(req) {
+                var sub = allSubs[req.id];
+                if (!sub) return;
+                parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
+            });
+            if (!parts.length) { alert('출력할 내용이 없습니다.\n서류가 아직 제출되지 않았을 수 있습니다.'); return; }
+            var win = window.open('', '_blank');
+            if (!win) { alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.'); return; }
+            var content = parts.map(function(p, i) {
+                return (i > 0 ? '<div style="page-break-before:always;margin-top:30px"></div>' : '') + p;
             }).join('');
+            win.document.write('<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>서류 일괄 출력</title>'
+                + '<style>html{background:#9ca3af;min-height:100%}body{font-family:"Apple SD Gothic Neo","Malgun Gothic","나눔고딕",sans-serif;background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:20mm 18mm 24mm 18mm;box-sizing:border-box;box-shadow:0 4px 24px rgba(0,0,0,.3)}'
+                + '@media print{html{background:#fff}@page{size:A4 portrait;margin:20mm 18mm 24mm 18mm}body{width:100%;min-height:auto;margin:0;padding:0;box-shadow:none}.no-print{display:none!important}}'
+                + '</style></head><body>' + content
+                + '<div class="no-print" style="position:fixed;bottom:16px;right:16px;z-index:999;display:flex;gap:8px">'
+                + '<button onclick="window.print()" style="padding:11px 22px;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:900;cursor:pointer">📄 PDF 저장 / 인쇄</button>'
+                + '<button onclick="window.close()" style="padding:11px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">닫기</button>'
+                + '</div><script>window.onload=function(){window.print();}<\/script>'
+                + '</body></html>');
+            win.document.close();
         }
 
         function cancelFormReq(id) {
@@ -2579,6 +2675,8 @@
                 body.innerHTML = buildAbsentForm(myName, today);
             } else if (type === 'resign') {
                 body.innerHTML = buildResignForm(myName, today);
+            } else if (type === 'earlyLeave') {
+                body.innerHTML = buildEarlyLeaveForm(myName, today);
             }
             modal.classList.remove('hidden');
             ensureSignPadModal();
@@ -2731,6 +2829,33 @@
                 + '</div>'
                 + '</div>';
             document.body.appendChild(el);
+            // 스크롤·터치 스와이프로 시간 조절
+            (function() {
+                function addScrollEvents(dispId, type) {
+                    var d = document.getElementById(dispId);
+                    if (!d) return;
+                    d.style.cursor = 'ns-resize';
+                    d.style.userSelect = 'none';
+                    d.addEventListener('wheel', function(e) {
+                        e.preventDefault();
+                        tpAdjust(type, e.deltaY > 0 ? -1 : 1);
+                    }, { passive: false });
+                    var _sy = 0;
+                    d.addEventListener('touchstart', function(e) {
+                        _sy = e.touches[0].clientY;
+                    }, { passive: true });
+                    d.addEventListener('touchmove', function(e) {
+                        var dy = e.touches[0].clientY - _sy;
+                        if (Math.abs(dy) > 18) {
+                            e.preventDefault();
+                            tpAdjust(type, dy < 0 ? 1 : -1);
+                            _sy = e.touches[0].clientY;
+                        }
+                    }, { passive: false });
+                }
+                addScrollEvents('tp-hour-disp', 'h');
+                addScrollEvents('tp-min-disp', 'm');
+            })();
         }
 
         function tpAdjust(type, delta) {
@@ -2824,6 +2949,7 @@
                 + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="지각 사유를 구체적으로 작성하세요"></textarea></div>'
                 + '</div>'
                 + '</div>'
+                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래에 날짜와 시간 정보도 꼭 입력해 주세요</div>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
                 + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
                 + '<th style="min-width:72px">이  름</th>'
@@ -2859,6 +2985,58 @@
                 + '</div>';
         }
 
+        function buildEarlyLeaveForm(name, today) {
+            return DOC_STYLE
+                + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
+                + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
+                + '미소지기 <span style="border-bottom:1.5px solid #222;display:inline-block;min-width:60px;text-align:center;background:#eef4ff">' + name + '</span>'
+                + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
+                + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
+                + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>'
+                + '<div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
+                + '</div>'
+                + '<div style="flex:1;display:flex;flex-direction:column">'
+                + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">내  용</div>'
+                + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="조퇴 사유를 구체적으로 작성하세요"></textarea></div>'
+                + '</div>'
+                + '</div>'
+                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래에 날짜와 시간 정보도 꼭 입력해 주세요</div>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
+                + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
+                + '<th style="min-width:72px">이  름</th>'
+                + '<th style="min-width:100px">날  짜</th>'
+                + '<th style="min-width:110px">약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th>'
+                + '<th style="min-width:110px">희망 퇴근 시간</th>'
+                + '<th style="min-width:88px">확인 서명</th>'
+                + '</tr></thead><tbody><tr style="height:64px">'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:72px">'
+                +   '<input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center;min-width:64px"></td>'
+                + '<td class="fc" style="vertical-align:middle;min-width:100px">'
+                +   '<input id="ff-date" type="date" class="di" placeholder="날짜">'
+                +   '<div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-end" value=""></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-end" value=""></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
+                +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
+                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
+                + '</tr></tbody></table>'
+                + '</div>'
+                + '<div class="doc-footer" style="margin-top:20px"><div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
+        }
+
         function buildAbsentForm(name, today) {
             var signBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
                 + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
@@ -2869,7 +3047,7 @@
                 + '<table class="dt" style="min-width:300px"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
-                + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc"><input id="ff-date" type="date" class="di"></td></tr>'
+                + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc"><input id="ff-date" type="date" class="di"><div style="font-size:9px;color:#aaa;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>제출사유</th><td colspan="3" class="fc"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-r1"> 경고</label>'
                 + '<label><input type="checkbox" id="ff-r2"> 근태</label>'
@@ -3009,6 +3187,8 @@
                     sign: window._signDataURL || ''
                 };
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 지각 사유는 필수입니다.'); return; }
+                if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
+                if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('실제 근로시간의 시작/종료 시간이 같습니다.'); return; }
             } else if (type === 'absent') {
                 var reasons = [];
                 if (chk('ff-r1')) reasons.push('경고');
@@ -3048,6 +3228,17 @@
                     agreeSign: window._agreementSignDataURL || ''
                 };
                 if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
+            } else if (type === 'earlyLeave') {
+                formData = {
+                    name: v('ff-name'), date: v('ff-date'),
+                    content: v('ff-content'),
+                    schStart: v('ff-sch-start'), schEnd: v('ff-sch-end'),
+                    actStart: v('ff-act-start'), actEnd: v('ff-act-end'),
+                    sign: window._signDataURL || ''
+                };
+                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 조퇴 사유는 필수입니다.'); return; }
+                if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
+                if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
             }
 
             if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
@@ -3141,6 +3332,43 @@
                     + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
                     + '<td class="fc" style="text-align:center">' + signCell + '</td>'
+                    + '</tr></tbody></table>'
+                    + '</div>'
+                    + '<div class="doc-footer" style="margin-top:20px"><div></div><div>' + adm + '</div></div>';
+            }
+
+            if (type === 'earlyLeave') {
+                var elSign = fd.sign && fd.sign.indexOf('data:') === 0
+                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
+                    : tv(fd.sign || '');
+                return DOC_STYLE
+                    + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
+                    + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
+                    + '미소지기 ' + tf(fd.name)
+                    + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                    + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
+                    + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
+                    + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">사유</div>'
+                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
+                    + '</div>'
+                    + '<div style="flex:1;display:flex;flex-direction:column">'
+                    + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">내&nbsp;&nbsp;용</div>'
+                    + '<div style="flex:1;background:#eef4ff;padding:8px;font-size:12px;font-weight:600;min-height:60px;white-space:pre-wrap">' + tv(fd.content) + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
+                    + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
+                    + '<th style="min-width:72px">이&nbsp;&nbsp;름</th>'
+                    + '<th style="min-width:100px">날&nbsp;&nbsp;짜</th>'
+                    + '<th style="min-width:110px">약정 근로시간</th>'
+                    + '<th style="min-width:110px">희망 퇴근 시간</th>'
+                    + '<th style="min-width:88px">확인 서명</th>'
+                    + '</tr></thead><tbody><tr style="height:60px">'
+                    + '<td class="fc" style="text-align:center">' + tv(fd.name) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv(fd.date) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + elSign + '</td>'
                     + '</tr></tbody></table>'
                     + '</div>'
                     + '<div class="doc-footer" style="margin-top:20px"><div></div><div>' + adm + '</div></div>';
