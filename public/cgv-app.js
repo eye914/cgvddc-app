@@ -1364,6 +1364,31 @@
             }
         }
 
+        // 공고자 근무시간(h)과 타임코드(e.g."D1")를 받아 실제 시작~종료 반환
+        function getActualTimeByCode(code, hours) {
+            if (!code) return '';
+            var prefix = code.charAt(0);
+            var slots = SHIFT_CODES[prefix];
+            if (!slots) return code;
+            var slot = null;
+            for (var _si = 0; _si < slots.length; _si++) {
+                if (slots[_si].code === code) { slot = slots[_si]; break; }
+            }
+            if (!slot) return code;
+            var tStr = slot.time;
+            var is45 = (hours <= 4.5);
+            if (prefix === 'N') {
+                // "18:00(19:00)-23:30" → 5.5h: 18:00-23:30 / 4.5h: 19:00-23:30
+                var nMatch = tStr.match(/^(\d{2}:\d{2})\((\d{2}:\d{2})\)-(.+)$/);
+                if (nMatch) return (is45 ? nMatch[2] : nMatch[1]) + '-' + nMatch[3];
+            } else {
+                // "09:00-14:30(13:30)" → 5.5h: 09:00-14:30 / 4.5h: 09:00-13:30
+                var dmMatch = tStr.match(/^(\d{2}:\d{2})-(\d{2}:\d{2})\((\d{2}:\d{2})\)$/);
+                if (dmMatch) return dmMatch[1] + '-' + (is45 ? dmMatch[3] : dmMatch[2]);
+            }
+            return tStr;
+        }
+
         function openSupportModal(id) {
             try {
                 selectedTradeId = id;
@@ -1379,9 +1404,24 @@
                 if (!isCapable){ alert("\uAD8C\uD55C \uBD80\uC871 (["+t.reqPos+"] \uD544\uC694)"); return; }
 
                 var shiftParts = (t.shiftDate||"\uB0B4\uC6A9 \uC5C6\uC74C").split(" / ");
-                document.getElementById("modal-target-shift").innerHTML = shiftParts.length > 1
-                    ? "<span class='block'>"+shiftParts[0]+"</span><span class='block text-blue-600'>"+shiftParts.slice(1).join(" / ")+"</span>"
-                    : t.shiftDate||"\uB0B4\uC6A9 \uC5C6\uC74C";
+                var _reqHours = 5.5;
+                for (var _mi = 0; _mi < MISO_DATA.length; _mi++) {
+                    if (MISO_DATA[_mi].name === t.reqName) { _reqHours = MISO_DATA[_mi].hours || 5.5; break; }
+                }
+                var _dateStr = shiftParts[0] || '';
+                var _codeStr = (shiftParts.length > 1 ? shiftParts.slice(1).join(' / ') : '').trim();
+                var _actualTime = _codeStr ? getActualTimeByCode(_codeStr, _reqHours) : '';
+                var _hoursLabel = _reqHours <= 4.5 ? '4.5h' : '5.5h';
+                var _shiftHtml = "<div class='font-black text-base text-slate-900 leading-tight'>" + _dateStr + "</div>";
+                if (_codeStr) {
+                    _shiftHtml += "<div class='flex items-center justify-center gap-1.5 mt-1.5 flex-wrap'>"
+                        + "<span class='bg-blue-100 text-blue-700 text-[11px] font-black px-2 py-0.5 rounded-md'>" + _codeStr + "</span>"
+                        + "<span class='text-sm font-black text-slate-800'>" + _actualTime + "</span>"
+                        + "<span class='text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold'>" + _hoursLabel + "</span>"
+                        + "</div>";
+                }
+                _shiftHtml += "<div class='text-[10px] text-slate-400 font-bold mt-1'>\uACF5\uACE0\uC790: " + t.reqName + " (" + _hoursLabel + ")</div>";
+                document.getElementById("modal-target-shift").innerHTML = _shiftHtml;
                 document.getElementById("modal-target-pos").innerText = "\uC694\uAD6C \uD3EC\uC9C0\uC158: "+(t.reqPos||"\uBB34\uAD00");
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var lines = safe.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
@@ -1872,17 +1912,27 @@
                 var logHtml = att.logs.length
                     ? att.logs.map(function(l){ return "<p class='text-[9px] text-slate-400 font-medium leading-tight mb-1'>- "+l+"</p>"; }).join("")
                     : "<p class='text-[9px] text-slate-300 italic'>\uBCC0\uACBD \uC774\uB825 \uC5C6\uC74C</p>";
-                container.innerHTML += "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+" relative overflow-hidden font-black'>"
-                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest uppercase animate-pulse'>정지</div>" : "")
-                    + "<div class='p-2'>"
-                    + "<div class='mb-1'>"
-                    + "<span class='font-black text-xs whitespace-nowrap "+(isP?"text-red-700":"text-slate-900")+"'>"+m.name+"</span>"
-                    + "<span class='ml-1 text-[8px] bg-slate-100 px-1 py-0.5 rounded-full font-black text-slate-400'>"+statsMap[m.name].count+"건</span></div>"
-                    + "<p class='text-[8px] text-slate-400 font-medium mb-1.5 truncate'>"+m.pos.join("/")+"</p>"
-                    + "<div class='flex gap-1'>"
-                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1.5 flex flex-col items-center gap-0.5 border border-slate-200'><span class='text-[8px] font-black text-slate-500'>지각</span><span class='text-base font-black "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span><div class='flex gap-1'><button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>-</button><button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>+</button></div></div>"
-                    + "<div class='flex-1 bg-slate-50 rounded-lg p-1.5 flex flex-col items-center gap-0.5 border border-slate-200'><span class='text-[8px] font-black text-slate-500'>결근</span><span class='text-base font-black "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span><div class='flex gap-1'><button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>-</button><button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-white border border-slate-300 rounded text-xs shadow-sm font-black'>+</button></div></div>"
-                    + "</div></div></div>";
+                var cardHtml = "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+" overflow-hidden'>"
+                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest'>정지</div>" : "")
+                    + "<div class='px-2.5 py-2'>"
+                    + "<div class='flex items-center gap-1 mb-1.5'>"
+                    + "<span class='font-black text-xs "+(isP?"text-red-700":"text-slate-900")+" truncate'>"+m.name+"</span>"
+                    + "<span class='text-[8px] text-slate-400 truncate flex-1 ml-1'>"+m.pos.join("/")+"</span>"
+                    + "<span class='text-[8px] bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-400 whitespace-nowrap flex-shrink-0'>"+statsMap[m.name].count+"건</span>"
+                    + "</div>"
+                    + "<div class='flex items-center gap-1'>"
+                    + "<span class='text-[9px] text-slate-500 font-black flex-shrink-0'>지각</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
+                    + "<span class='text-xs font-black min-w-[14px] text-center "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
+                    + "<span class='w-px h-3 bg-slate-200 mx-1.5 flex-shrink-0'></span>"
+                    + "<span class='text-[9px] text-slate-500 font-black flex-shrink-0'>결근</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
+                    + "<span class='text-xs font-black min-w-[14px] text-center "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span>"
+                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[10px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
+                    + "</div>"
+                    + "</div></div>";
+                container.innerHTML += cardHtml;
             });
         }
 
@@ -2339,6 +2389,7 @@
         var _formSelectedName = '';
         var _formCurrentReqId = '';
         var _formCurrentType = '';
+        var _formCollapsed = {};
 
         var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서' };
         var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐' };
@@ -2467,20 +2518,24 @@
                 var forms = months[month];
                 var parts = month.split('-');
                 var monthLabel = (parts.length === 2) ? (parts[0] + '년 ' + parseInt(parts[1], 10) + '월') : month;
-                html += '<div class="mb-4">';
-                // 월 헤더: 전체선택 + 인쇄버튼
-                html += '<div class="flex items-center gap-2 mb-2 px-2 py-2 bg-slate-100 rounded-xl">';
-                html += '<label class="flex items-center gap-1.5 cursor-pointer">';
-                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-4 h-4">';
-                html += '<span class="text-xs font-black text-slate-700">' + monthLabel + '</span>';
+                var isCollapsed = !!_formCollapsed[month];
+                html += '<div class="mb-3">';
+                // 월 헤더: 클릭으로 접기/펴기 + 전체선택 + 인쇄
+                html += '<div class="flex items-center gap-1.5 px-2.5 py-2 bg-slate-100 rounded-xl cursor-pointer select-none" onclick="toggleFormMonth(\'' + month + '\')">';
+                html += '<span id="form-month-arrow-' + month + '" class="text-[10px] text-slate-500 font-black w-3">' + (isCollapsed ? '▶' : '▼') + '</span>';
+                html += '<span class="text-xs font-black text-slate-700 flex-1">' + monthLabel + '</span>';
+                html += '<span class="text-[10px] text-slate-400 font-bold mr-1">(' + forms.length + '건)</span>';
+                html += '<label class="flex items-center gap-1 mr-1" onclick="event.stopPropagation()">';
+                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3.5 h-3.5">';
+                html += '<span class="text-[9px] text-slate-500 font-bold">전체</span>';
                 html += '</label>';
-                html += '<span class="text-[10px] text-slate-400 font-bold">(' + forms.length + '건)</span>';
-                html += '<button onclick="downloadSelectedForms(\'' + month + '\')" class="ml-auto text-[10px] font-black bg-slate-800 text-white px-3 py-1.5 rounded-lg active:scale-95">📥 선택 인쇄</button>';
+                html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="text-[9px] font-black bg-slate-800 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">📥 인쇄</button>';
                 html += '</div>';
-                // 서류 목록
+                // 접히는 목록 영역
+                html += '<div id="form-month-body-' + month + '" class="mt-1" style="' + (isCollapsed ? 'display:none' : '') + '">';
                 forms.forEach(function(r) {
-                    var statusClass = r.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
-                                      r.status === 'submitted' ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200';
+                    var statusClass = r.status === 'pending' ? 'border-yellow-200 bg-yellow-50' :
+                                      r.status === 'submitted' ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50';
                     var statusDot = r.status === 'pending' ? 'bg-yellow-400' :
                                     r.status === 'submitted' ? 'bg-blue-500' : 'bg-green-400';
                     var statusLabel = FORM_STATUS_LABELS[r.status] || r.status;
@@ -2489,29 +2544,44 @@
                     var dateStr = r.requested_at ? r.requested_at.substring(0, 10) : '';
                     var canView = r.status === 'submitted' || r.status === 'viewed';
                     var chkDisabled = canView ? '' : ' disabled';
-                    html += '<div class="rounded-2xl border-2 ' + statusClass + ' p-3 mb-2">';
-                    html += '<div class="flex items-start gap-2">';
-                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="mt-1 accent-blue-600 w-4 h-4 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
+                    html += '<div class="rounded-xl border ' + statusClass + ' px-2.5 py-2 mb-1.5">';
+                    html += '<div class="flex items-center gap-2">';
+                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
                     html += '<div class="flex-1 min-w-0">';
-                    html += '<div class="flex items-center gap-1.5 mb-1">';
-                    html += '<span class="text-sm">' + icon + '</span>';
-                    html += '<span class="font-black text-slate-800 text-sm">' + label + '</span>';
-                    html += '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>';
-                    html += '<span class="text-[10px] font-bold text-slate-500">' + statusLabel + '</span>';
+                    // Row 1: icon + label + name + status
+                    html += '<div class="flex items-center gap-1 flex-nowrap overflow-hidden">';
+                    html += '<span class="text-xs flex-shrink-0">' + icon + '</span>';
+                    html += '<span class="font-black text-xs text-slate-800 flex-shrink-0">' + label + '</span>';
+                    html += '<span class="text-[10px] font-black text-blue-700 truncate flex-1 min-w-0">&nbsp;' + r.target_name + '</span>';
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 ml-1">';
+                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + '"></span>';
+                    html += '<span class="text-[9px] font-bold text-slate-500 whitespace-nowrap">' + statusLabel + '</span>';
+                    html += '</span></div>';
+                    // Row 2: date + note
+                    if (dateStr || r.note) {
+                        html += '<div class="flex items-center gap-1 mt-0.5 overflow-hidden">';
+                        html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
+                        if (r.note) html += '<span class="text-[9px] text-slate-400 truncate min-w-0">· ' + r.note + '</span>';
+                        html += '</div>';
+                    }
                     html += '</div>';
-                    html += '<p class="text-xs font-bold text-slate-600">' + r.target_name + ' <span class="text-slate-400">' + dateStr + '</span></p>';
-                    html += (r.note ? '<p class="text-[10px] text-slate-400 font-bold mt-0.5 truncate">' + r.note + '</p>' : '');
+                    html += '<div class="flex gap-1 flex-shrink-0">';
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
                     html += '</div>';
-                    html += '<div class="flex flex-col gap-1 flex-shrink-0">';
-                    html += (canView ? '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[11px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-xl active:scale-95">열람</button>' : '');
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95">취소</button>';
-                    html += '</div>';
-                    html += '</div>';
-                    html += '</div>';
+                    html += '</div></div>';
                 });
-                html += '</div>';
+                html += '</div></div>';
             });
             el.innerHTML = html;
+        }
+
+        function toggleFormMonth(month) {
+            _formCollapsed[month] = !_formCollapsed[month];
+            var body = document.getElementById('form-month-body-' + month);
+            var arrow = document.getElementById('form-month-arrow-' + month);
+            if (body) body.style.display = _formCollapsed[month] ? 'none' : '';
+            if (arrow) arrow.textContent = _formCollapsed[month] ? '▶' : '▼';
         }
 
         function toggleSelectAllForms(month, checked) {
@@ -2799,6 +2869,24 @@
         var _tpBtnId = '';
         var _tpHour = 9;
         var _tpMin = 0;
+        var _tpTouchStartY = 0;
+
+        function tpTouchStart(type, e) {
+            _tpTouchStartY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+        }
+        function tpTouchMove(type, e) {
+            if (e.cancelable) e.preventDefault();
+            var curY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+            var dy = curY - _tpTouchStartY;
+            if (Math.abs(dy) > 18) {
+                tpAdjust(type, dy < 0 ? 1 : -1);
+                _tpTouchStartY = curY;
+            }
+        }
+        function tpWheel(type, e) {
+            e.preventDefault();
+            tpAdjust(type, e.deltaY > 0 ? -1 : 1);
+        }
 
         function ensureTimePickerModal() {
             if (document.getElementById('time-picker-modal')) return;
@@ -2813,13 +2901,13 @@
                 + '<div style="display:flex;align-items:center;justify-content:center;gap:14px">'
                 +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
                 +     '<button onclick="tpAdjust(\'h\',1)" style="' + btnStyle + '">▲</button>'
-                +     '<div id="tp-hour-disp" style="' + dispStyle + '">09</div>'
+                +     '<div id="tp-hour-disp" style="' + dispStyle + ';cursor:ns-resize;user-select:none;-webkit-user-select:none" ontouchstart="tpTouchStart(\'h\',event)" ontouchmove="tpTouchMove(\'h\',event)" onwheel="tpWheel(\'h\',event)">09</div>'
                 +     '<button onclick="tpAdjust(\'h\',-1)" style="' + btnStyle + '">▼</button>'
                 +   '</div>'
                 +   '<span style="font-size:38px;font-weight:900;color:#334155;margin-bottom:4px">:</span>'
                 +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
                 +     '<button onclick="tpAdjust(\'m\',1)" style="' + btnStyle + '">▲</button>'
-                +     '<div id="tp-min-disp" style="' + dispStyle + '">00</div>'
+                +     '<div id="tp-min-disp" style="' + dispStyle + ';cursor:ns-resize;user-select:none;-webkit-user-select:none" ontouchstart="tpTouchStart(\'m\',event)" ontouchmove="tpTouchMove(\'m\',event)" onwheel="tpWheel(\'m\',event)">00</div>'
                 +     '<button onclick="tpAdjust(\'m\',-1)" style="' + btnStyle + '">▼</button>'
                 +   '</div>'
                 + '</div>'
@@ -2829,33 +2917,6 @@
                 + '</div>'
                 + '</div>';
             document.body.appendChild(el);
-            // 스크롤·터치 스와이프로 시간 조절
-            (function() {
-                function addScrollEvents(dispId, type) {
-                    var d = document.getElementById(dispId);
-                    if (!d) return;
-                    d.style.cursor = 'ns-resize';
-                    d.style.userSelect = 'none';
-                    d.addEventListener('wheel', function(e) {
-                        e.preventDefault();
-                        tpAdjust(type, e.deltaY > 0 ? -1 : 1);
-                    }, { passive: false });
-                    var _sy = 0;
-                    d.addEventListener('touchstart', function(e) {
-                        _sy = e.touches[0].clientY;
-                    }, { passive: true });
-                    d.addEventListener('touchmove', function(e) {
-                        var dy = e.touches[0].clientY - _sy;
-                        if (Math.abs(dy) > 18) {
-                            e.preventDefault();
-                            tpAdjust(type, dy < 0 ? 1 : -1);
-                            _sy = e.touches[0].clientY;
-                        }
-                    }, { passive: false });
-                }
-                addScrollEvents('tp-hour-disp', 'h');
-                addScrollEvents('tp-min-disp', 'm');
-            })();
         }
 
         function tpAdjust(type, delta) {

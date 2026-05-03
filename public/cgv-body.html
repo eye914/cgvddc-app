@@ -358,44 +358,44 @@
     <!-- 지원 모달 -->
     <div id="support-modal" class="modal-overlay">
         <div class="support-modal-content shadow-2xl border-t-4 border-blue-500">
-            <div class="flex justify-between items-center mb-8 px-2">
-                <h2 class="text-3xl font-black italic tracking-tighter text-slate-800 uppercase">지원하기</h2>
-                <button onclick="closeModal()" class="text-slate-400 text-4xl font-light">&times;</button>
+            <div class="flex justify-between items-center mb-4 px-1">
+                <h2 class="text-2xl font-black italic tracking-tighter text-slate-800 uppercase">지원하기</h2>
+                <button onclick="closeModal()" class="text-slate-400 text-4xl font-light leading-none">&times;</button>
             </div>
-            <div class="space-y-8 pb-6">
-                <div class="bg-blue-50 p-7 rounded-[44px] border-2 border-blue-200 text-center space-y-4">
+            <div class="space-y-4 pb-4">
+                <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-200 text-center space-y-3">
                     <div>
-                        <p class="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">상대방의 근무 (OUT)</p>
-                        <p id="modal-target-shift" class="text-xl font-black text-slate-900"></p>
-                        <span id="modal-target-pos" class="inline-block mt-3 px-4 py-1.5 bg-white text-blue-700 text-[11px] font-black rounded-full border-2 border-blue-200 shadow-sm"></span>
+                        <p class="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1.5">상대방의 근무 (OUT)</p>
+                        <div id="modal-target-shift" class="text-slate-900"></div>
+                        <span id="modal-target-pos" class="inline-block mt-2 px-3 py-1 bg-white text-blue-700 text-[11px] font-black rounded-full border-2 border-blue-200 shadow-sm"></span>
                     </div>
-                    <div class="text-blue-300 text-2xl font-black italic">&#8645;</div>
+                    <div class="text-blue-300 text-xl font-black italic">&#8645;</div>
                     <div>
-                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-2">상대방의 희망 시간 (IN)</p>
-                        <div id="modal-target-wish" class="text-base font-black text-blue-900 leading-relaxed"></div>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-1.5">상대방의 희망 시간 (IN)</p>
+                        <div id="modal-target-wish" class="text-sm font-black text-blue-900 leading-relaxed"></div>
                     </div>
-                    <div id="support-day-section" class="bg-white p-4 rounded-3xl border border-blue-100 hidden">
-                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-3">내가 들어갈 날짜를 먼저 하나 선택하세요</p>
+                    <div id="support-day-section" class="bg-white p-3 rounded-2xl border border-blue-100 hidden">
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-2">내가 들어갈 날짜를 먼저 하나 선택하세요</p>
                         <div id="support-day-chips" class="flex flex-col gap-2"></div>
                         <input type="hidden" id="support-selected-target-date">
                     </div>
                 </div>
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <label class="text-[11px] text-slate-500 font-black">내 투입 포지션을 확인하세요.</label>
                     <div class="flex flex-wrap gap-2" id="support-pos-container">
-                        <div onclick="setSupportPosition('통합')" id="support-pos-통합" class="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
-                        <div onclick="setSupportPosition('매점')" id="support-pos-매점" class="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
-                        <div onclick="setSupportPosition('매점마감')" id="support-pos-매점마감" class="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
-                        <div onclick="setSupportPosition('플로어')" id="support-pos-플로어" class="support-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
+                        <div onclick="setSupportPosition('통합')" id="support-pos-통합" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
+                        <div onclick="setSupportPosition('매점')" id="support-pos-매점" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
+                        <div onclick="setSupportPosition('매점마감')" id="support-pos-매점마감" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
+                        <div onclick="setSupportPosition('플로어')" id="support-pos-플로어" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
                     </div>
                     <input type="hidden" id="support-selected-pos">
                 </div>
-                <div id="supporter-time-section" class="hidden p-7 rounded-[32px] border-2 border-green-200 bg-green-50/40 space-y-5 mt-4">
+                <div id="supporter-time-section" class="hidden p-4 rounded-2xl border-2 border-green-200 bg-green-50/40 space-y-3">
                     <span class="text-[11px] font-black text-green-700 uppercase tracking-widest bg-white border-2 border-green-200 px-3 py-1.5 rounded-lg shadow-sm inline-block">내 실제 근무 시간 제안</span>
-                    <div id="support-code-grid" class="grid grid-cols-2 gap-2 border-t-2 border-green-100 pt-6"></div>
+                    <div id="support-code-grid" class="grid grid-cols-2 gap-2 border-t-2 border-green-100 pt-4"></div>
                     <input type="hidden" id="support-selected-code">
                 </div>
-                <button onclick="confirmSupport()" class="w-full btn-c2 btn-c2-blue py-6 rounded-[32px] font-black text-xl active:scale-95 transition-all">조건 확인 후 지원</button>
+                <button onclick="confirmSupport()" class="w-full btn-c2 btn-c2-blue py-5 rounded-2xl font-black text-lg active:scale-95 transition-all">조건 확인 후 지원</button>
             </div>
         </div>
     </div>
