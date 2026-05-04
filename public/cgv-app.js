@@ -1032,7 +1032,7 @@
                     + "<div class='absolute -top-3 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-[11px] font-black shadow-sm'>\uC635\uC158 "+(idx+1)+"</div>"
                     + "<div class='font-black text-xl text-slate-800 mt-1'>"+dStr+"</div>"
                     + "<div class='space-y-3'><label class='text-[10px] text-slate-500 font-black'>\uC2DC\uAC04\uB300 \uADF8\uB8F9 \uC120\uD0DD (\uCD5C\uB300 2\uAC1C)</label>"
-                    + "<div class='grid grid-cols-4 gap-2'>"+tgHtml+"</div></div>"
+                    + "<div class='grid grid-cols-2 gap-2'>"+tgHtml+"</div></div>"
                     + "<div class='grid grid-cols-3 gap-2 pt-2'>"+codeGridHtml+"</div>"
                     + (isAllSelected ? "" : "<div class='pt-5 border-t-2 border-blue-100 space-y-3'><label class='text-[10px] text-blue-600 font-black block'>\uAD50\uD658 \uBC1B\uC744 \uD3EC\uC9C0\uC158 (\uB2E4\uC911\uC120\uD0DD)</label><div class='flex flex-wrap gap-2'>"+posHtml+"</div></div>")
                     + "</div>";
@@ -1412,17 +1412,18 @@
                 }
                 var _dateStr = shiftParts[0] || '';
                 var _codeStr = (shiftParts.length > 1 ? shiftParts.slice(1).join(' / ') : '').trim();
-                var _actualTime = _codeStr ? getActualTimeByCode(_codeStr, _reqHours) : '';
+                var _pureCodeM = (_codeStr.match(/^([A-Z]\d+)/) || ['',''])[1] || _codeStr.split(' ')[0];
+                var _actualTime = _pureCodeM ? getActualTimeByCode(_pureCodeM, _reqHours) : '';
                 var _hoursLabel = _reqHours <= 4.5 ? '4.5h' : '5.5h';
                 var _shiftHtml = "<div class='font-black text-base text-slate-900 leading-tight'>" + _dateStr + "</div>";
-                if (_codeStr) {
+                if (_pureCodeM) {
                     _shiftHtml += "<div class='flex items-center justify-center gap-1.5 mt-1.5 flex-wrap'>"
-                        + "<span class='bg-blue-100 text-blue-700 text-[11px] font-black px-2 py-0.5 rounded-md'>" + _codeStr + "</span>"
-                        + "<span class='text-sm font-black text-slate-800'>" + _actualTime + "</span>"
+                        + "<span class='bg-blue-100 text-blue-700 text-[11px] font-black px-2 py-0.5 rounded-md'>" + _pureCodeM + "</span>"
+                        + (_actualTime ? "<span class='text-sm font-black text-slate-800'>" + _actualTime + "</span>" : "")
                         + "<span class='text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold'>" + _hoursLabel + "</span>"
                         + "</div>";
                 }
-                _shiftHtml += "<div class='text-[10px] text-slate-400 font-bold mt-1'>\uACF5\uACE0\uC790: " + t.reqName + " (" + _hoursLabel + ")</div>";
+                _shiftHtml += "<div class='text-[10px] text-amber-600 font-black mt-1.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200'>\u26A0\uFE0F \uC9C0\uC6D0 \uC804 \uC0C1\uB300\uBC29\uC758 \uC2E4\uC81C \uADFC\uB85C\uC2DC\uAC04\uC744 \uD655\uC778\uD558\uC138\uC694</div>";
                 document.getElementById("modal-target-shift").innerHTML = _shiftHtml;
                 document.getElementById("modal-target-pos").innerText = "\uC694\uAD6C \uD3EC\uC9C0\uC158: "+(t.reqPos||"\uBB34\uAD00");
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
@@ -1972,7 +1973,7 @@
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
                 html += "<span class='text-lg font-black w-7 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
-                html += "</div></div></div></div>";
+                html += "</div></div></div></div></div>";
             });
             container.innerHTML = html;
         }
@@ -2383,8 +2384,6 @@
                 var isMineCard = currentUser && (t.reqName === currentUser || t.subName === currentUser);
                 var cardBorder = canApply ? "border-blue-300 ring-2 ring-blue-100" : isUrgent ? "border-red-400 ring-2 ring-red-100" : isMineCard ? "border-amber-300" : "border-slate-100";
                 var cardHtml = "<div class='bg-white rounded-[40px] p-6 sm:p-8 card-shadow border-2 "+cardBorder+" relative overflow-hidden mb-6 "+(isN&&isMine?"my-alert":"")+" transition-all hover:shadow-md'>"
-                    + (canApply ? "<div class='absolute top-3 right-4 bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm'>\uC9C0\uC6D0\uAC00\uB2A5</div>" : "")
-                    + (isUrgent ? "<div class='absolute top-3 right-4 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</div>" : "")
                     + "<div class='absolute top-0 left-0 w-2 h-full "+(isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400")+"'>"+"</div>"
                     + "<div class='flex justify-between items-center mb-6'>"
                     + "<div class='flex items-center gap-2'><span class='px-3 py-1.5 rounded-full text-[11px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-slate-800 text-white shadow-sm")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
@@ -2393,9 +2392,10 @@
                     + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-3 py-1.5 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 shadow-sm active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
                     + "<div class='flex flex-col items-end gap-1'>"
                     + "<span class='status-badge' style='"+(isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a")+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+(isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a")+"'></span>"+t.status+"</span>"
+                    + (canApply ? "<span class='text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full shadow-sm'>\uC9C0\uC6D0\uAC00\uB2A5</span>" : "")
+                    + (isUrgent ? "<span class='text-[9px] text-red-500 font-bold animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</span>" : "")
                     + (isMine&&isU ? "<span class='text-[9px] text-slate-400 font-bold'>\uB0B4 \uACF5\uACE0</span>" : "")
                     + (t.subName===currentUser&&isN ? "<span class='text-[9px] text-blue-500 font-bold'>\uB0B4\uAC00 \uC9C0\uC6D0\uD568</span>" : "")
-                    + (isUrgent ? "<span class='text-[9px] text-red-500 font-bold animate-pulse'>D-day \uC784\uBC15</span>" : "")
                     + "</div></div></div>"
                     + "<div class='flex justify-between items-start mb-5'>"
                     + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
@@ -2431,13 +2431,13 @@
                         +"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
                         +"\uD83D\uDCE2 \uCD5C\uC885 \uC2B9\uC778 \uC644\uB8CC!\n\u2705 \uC2A4\uCF00\uC904 \uD655\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.";
                     var encAdmin = encodeURIComponent(adminMsg).replace(/'/g,"%27");
-                    var aCardHtml = "<div class='bg-white rounded-[40px] p-8 border-4 "+(isD?"border-green-200 bg-green-50/10":"border-blue-100")+" shadow-xl space-y-6'>"
-                        + "<div class='flex items-center justify-between gap-2'>" + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>" + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>" + "\uC2B9\uC778: " + t.approvedBy + "</span>" : "") + "</div>"
-                        + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC2E0\uCCAD: "+t.reqName+"</p><div class='text-slate-800 font-bold'>"+outHtml+"</div></div>"
-                        + "<div class='text-center text-slate-300 text-2xl'>&#8645;</div>"
-                        + "<div class='bg-slate-50 p-5 rounded-[28px] border border-slate-100'><p class='text-sm font-black text-slate-600 mb-2'>\uC218\uB77D: "+t.subName+" "+(t.subPos||"")+"</p><div class='text-slate-800 font-bold'>"+inHtml+"</div></div>"
-                        + (isD ? "<button onclick=\"adminCopyToClipboard(decodeURIComponent('"+encAdmin+"'))\" class='w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black active:scale-95 shadow-md'>\uCE74\uD1A1 \uACF5\uC720 (\uC2B9\uC778\uC644\uB8CC \uACF5\uC9C0)</button>"
-                               : "<div class='flex gap-3'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-dark py-5 rounded-2xl font-black'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-primary py-5 rounded-2xl font-black'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-2 btn-c2 btn-c2-ghost py-3 rounded-2xl font-black text-sm'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
+                    var aCardHtml = "<div class='bg-white rounded-3xl p-4 border-2 "+(isD?"border-green-200 bg-green-50/10":"border-blue-100")+" shadow-md space-y-2'>"
+                        + "<div class='flex items-center justify-between gap-2 pb-1 border-b border-slate-100'>" + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>" + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>\uC2B9\uC778: " + t.approvedBy + "</span>" : "") + "</div>"
+                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-red-500 mb-1'>OUT \u00B7 \uC2E0\uCCAD: "+t.reqName+"</p><div class='text-slate-800 font-bold text-sm'>"+outHtml+"</div></div>"
+                        + "<div class='flex items-center gap-1.5'><div class='flex-1 h-px bg-slate-200'></div><span class='text-[10px] text-slate-300'>&#8645;</span><div class='flex-1 h-px bg-slate-200'></div></div>"
+                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-blue-500 mb-1'>IN \u00B7 \uC218\uB77D: "+t.subName+" "+(t.subPos?"["+t.subPos+"]":"")+"</p><div class='text-slate-800 font-bold text-sm'>"+inHtml+"</div></div>"
+                        + (isD ? "<button onclick=\"adminCopyToClipboard(decodeURIComponent('"+encAdmin+"'))\" class='w-full bg-[#fae100] text-amber-900 py-3 rounded-xl font-black active:scale-95 shadow-sm text-sm'>\uCE74\uD1A1 \uACF5\uC720 (\uC2B9\uC778\uC644\uB8CC \uACF5\uC9C0)</button>"
+                               : "<div class='flex gap-2'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-dark py-3 rounded-xl font-black text-sm'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-primary py-3 rounded-xl font-black text-sm'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-1.5 btn-c2 btn-c2-ghost py-2 rounded-xl font-black text-xs'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
                         + "</div>";
                     var wkA = getWeekKey(safeDate);
                     if (!adminGrouped[wkA]) adminGrouped[wkA] = [];

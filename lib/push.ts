@@ -13,14 +13,18 @@ export async function sendPushToNames(names: string[], title: string, body: stri
 
   const { data } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('subscription')
+    .select('name, subscription')
     .in('name', validNames);
   if (!data?.length) return;
 
+  // 동일 이름의 중복 구독 제거 — 마지막 row만 사용
+  const dedupMap = new Map<string, string>();
+  for (const row of data) dedupMap.set(row.name, row.subscription);
+
   await Promise.allSettled(
-    data.map((row: Record<string, any>) =>
+    [...dedupMap.values()].map((sub: string) =>
       webpush.sendNotification(
-        JSON.parse(row.subscription),
+        JSON.parse(sub),
         JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
       )
     )
@@ -44,13 +48,17 @@ export async function sendPushToAllExcept(excludeNames: string[], title: string,
     .select('name, subscription');
   if (!data?.length) return;
 
-  const targets = data.filter((row: Record<string, any>) => !excludeNames.includes(row.name));
+  // 동일 이름 중복 제거 후 제외 목록 필터
+  const dedupMap = new Map<string, string>();
+  for (const row of data) dedupMap.set(row.name, row.subscription);
+
+  const targets = [...dedupMap.entries()].filter(([name]) => !excludeNames.includes(name));
   if (!targets.length) return;
 
   await Promise.allSettled(
-    targets.map((row: Record<string, any>) =>
+    targets.map(([, sub]) =>
       webpush.sendNotification(
-        JSON.parse(row.subscription),
+        JSON.parse(sub),
         JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
       )
     )
