@@ -2613,14 +2613,13 @@
                 html += '<div class="mb-3">';
                 // 월 헤더: 클릭으로 접기/펴기 + 전체선택 + 인쇄
                 html += '<div class="flex items-center gap-1.5 px-2.5 py-2 bg-slate-100 rounded-xl cursor-pointer select-none" onclick="toggleFormMonth(\'' + month + '\')">';
-                html += '<span id="form-month-arrow-' + month + '" class="text-[10px] text-slate-500 font-black w-3">' + (isCollapsed ? '▶' : '▼') + '</span>';
-                html += '<span class="text-xs font-black text-slate-700 flex-1">' + monthLabel + '</span>';
-                html += '<span class="text-[10px] text-slate-400 font-bold mr-1">(' + forms.length + '건)</span>';
-                html += '<label class="flex items-center gap-1 mr-1" onclick="event.stopPropagation()">';
-                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3.5 h-3.5">';
+                html += '<span id="form-month-arrow-' + month + '" class="text-[10px] text-slate-500 font-black flex-shrink-0">' + (isCollapsed ? '▶' : '▼') + '</span>';
+                html += '<span class="text-xs font-black text-slate-700 flex-1 min-w-0 truncate">' + monthLabel + ' <span class="font-bold text-slate-400 text-[10px]">(' + forms.length + ')</span></span>';
+                html += '<label class="flex items-center gap-0.5 flex-shrink-0 ml-1" onclick="event.stopPropagation()">';
+                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3 h-3">';
                 html += '<span class="text-[9px] text-slate-500 font-bold">전체</span>';
                 html += '</label>';
-                html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="text-[9px] font-black bg-slate-800 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">📥 인쇄</button>';
+                html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-slate-700 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">📥 인쇄</button>';
                 html += '</div>';
                 // 접히는 목록 영역
                 html += '<div id="form-month-body-' + month + '" class="mt-1" style="' + (isCollapsed ? 'display:none' : '') + '">';
@@ -2635,30 +2634,30 @@
                     var dateStr = r.requested_at ? r.requested_at.substring(0, 10) : '';
                     var canView = r.status === 'submitted' || r.status === 'viewed';
                     var chkDisabled = canView ? '' : ' disabled';
+                    // ── 카드: 모바일 2행 레이아웃 ──
+                    var statusBgCls = r.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : r.status === 'submitted' ? 'bg-blue-100 text-blue-700'
+                        : 'bg-green-100 text-green-700';
                     html += '<div class="rounded-xl border ' + statusClass + ' px-2.5 py-2 mb-1.5">';
-                    html += '<div class="flex items-start gap-2">';
-                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0 mt-0.5' + (chkDisabled ? ' opacity-30' : '') + '">';
-                    html += '<div class="flex-1 min-w-0">';
-                    // Row 1: icon + label + status dot (한 줄)
-                    html += '<div class="flex items-center gap-1 mb-0.5">';
-                    html += '<span class="text-xs flex-shrink-0">' + icon + '</span>';
-                    html += '<span class="font-black text-xs text-slate-800 flex-shrink-0">' + label + '</span>';
-                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 ml-auto">';
-                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + '"></span>';
-                    html += '<span class="text-[9px] font-bold text-slate-500 whitespace-nowrap">' + statusLabel + '</span>';
-                    html += '</span></div>';
-                    // Row 2: 이름 + 날짜
-                    html += '<div class="flex items-center gap-1">';
+                    // Row 1: checkbox | icon | 서류명 | 상태뱃지
+                    html += '<div class="flex items-center gap-1.5 mb-1.5">';
+                    html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
+                    html += '<span class="text-sm flex-shrink-0">' + icon + '</span>';
+                    html += '<span class="font-black text-xs text-slate-800 flex-1 min-w-0">' + label + '</span>';
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '">';
+                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0 mr-0.5"></span>';
+                    html += statusLabel + '</span>';
+                    html += '</div>';
+                    // Row 2: 이름 | 날짜 | 버튼들
+                    html += '<div class="flex items-center gap-1.5 pl-5">';
                     html += '<span class="text-[11px] font-black text-blue-700 flex-1 min-w-0 truncate">' + r.target_name + '</span>';
                     if (dateStr) html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
                     html += '</div>';
-                    if (r.note) html += '<div class="text-[9px] text-slate-400 truncate mt-0.5">' + r.note + '</div>';
+                    if (r.note) html += '<div class="text-[9px] text-slate-400 truncate mt-1 pl-5">' + r.note + '</div>';
                     html += '</div>';
-                    html += '<div class="flex flex-col gap-1 flex-shrink-0">';
-                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
-                    html += '</div>';
-                    html += '</div></div>';
                 });
                 html += '</div></div>';
             });
