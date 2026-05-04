@@ -1958,18 +1958,20 @@
 
                 // 확장 영역 (지각/결근 컨트롤)
                 html += "<div id='sb-" + sid + "' style='" + (isExp ? '' : 'display:none') + "' class='px-4 pb-3 border-t border-slate-100 bg-slate-50'>";
-                html += "<div class='grid grid-cols-2 gap-2 pt-2.5'>";
-                html += "<div class='flex items-center gap-2 justify-center bg-white rounded-xl py-2'>";
-                html += "<span class='text-xs text-slate-500 font-black'>지각</span>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','late',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
-                html += "<span class='text-base font-black w-6 text-center " + (att.late > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.late + "</span>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','late',1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>+</button>";
-                html += "</div>";
-                html += "<div class='flex items-center gap-2 justify-center bg-white rounded-xl py-2'>";
-                html += "<span class='text-xs text-slate-500 font-black'>결근</span>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
-                html += "<span class='text-base font-black w-6 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>+</button>";
+                html += "<div class='flex flex-col gap-1.5 pt-2.5'>";
+                html += "<div class='flex items-center justify-between bg-white rounded-xl px-4 py-2.5'>";
+                html += "<span class='text-sm font-black text-slate-600'>지각</span>";
+                html += "<div class='flex items-center gap-2'>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','late',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
+                html += "<span class='text-lg font-black w-7 text-center " + (att.late > 0 ? 'text-orange-500' : 'text-slate-700') + "'>" + att.late + "</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','late',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
+                html += "</div></div>";
+                html += "<div class='flex items-center justify-between bg-white rounded-xl px-4 py-2.5'>";
+                html += "<span class='text-sm font-black text-slate-600'>결근</span>";
+                html += "<div class='flex items-center gap-2'>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
+                html += "<span class='text-lg font-black w-7 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
                 html += "</div></div></div></div>";
             });
             container.innerHTML = html;
@@ -2302,11 +2304,22 @@
                     + "<span class='text-slate-700'>" + _sdDate + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
                     + (_cardTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _cardTime + "</span>" : "")
-                    + "<span class='text-[9px] text-slate-400 font-bold'>[" + rPL + "]</span>"
+                    + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + rPL + "</span>"
                     + "<span class='text-[9px] font-black px-1.5 py-0.5 rounded-full " + _hoursCls + "'>" + _hoursLbl + "</span>"
                     + "</div>";
+                var _inParts = (safe && safe !== "\uB300\uD0C0 \uC694\uCCAD") ? safe.split(" / ") : [];
+                var _inDate = _inParts[0] || '';
+                var _inCode = _inParts.length > 1 ? _inParts.slice(1).join(' / ').trim() : '';
+                var _inCodeMatch = _inCode.match(/^([A-Z]\d+)/);
+                var _inPureCode = _inCodeMatch ? _inCodeMatch[1] : (_inCode.split(' ')[0] || '');
+                var _inTime = _inPureCode ? getActualTimeByCode(_inPureCode, _reqHoursCard) : '';
                 var inHtml = safe === "\uB300\uD0C0 \uC694\uCCAD" ? "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>"
-                    : safe.split("\n").map(function(l){ return "<div>"+l.trim()+"</div>"; }).join("");
+                    : "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
+                        + "<span class='text-slate-700'>" + _inDate + "</span>"
+                        + (_inPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _inPureCode + "</span>" : "")
+                        + (_inTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _inTime + "</span>" : "")
+                        + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + (t.subPos || t.reqPos || '\uBB34\uAD00') + "</span>"
+                        + "</div>";
 
                 var isExp = isExpired(safeDate);
                 var shiftTs = (function(){ var c=safeDate.split("(")[0].split("/")[0].trim(); var dt=new Date(c); return isNaN(dt.getTime())?999999:dt.getTime(); })();
