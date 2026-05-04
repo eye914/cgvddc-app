@@ -1551,12 +1551,20 @@
                     codeGrid.querySelectorAll(".support-code-chip").forEach(function(c){ c.classList.remove("selected","bg-blue-100","border-blue-400"); });
                     b.classList.add("selected","bg-blue-100","border-blue-400");
                     document.getElementById("support-selected-code").value = cStr;
+                    // 포지션 1개일 때 자동 선택 (아직 선택 안 된 경우)
+                    var _chips = posContainer.querySelectorAll(".support-pos-chip");
+                    if (_chips.length === 1 && !document.getElementById("support-selected-pos").value) {
+                        _chips[0].click();
+                    }
                 };
                 codeGrid.appendChild(b);
             });
 
             posContainer.innerHTML = "";
-            var allowedPos = opt.pos ? opt.pos.split("/").map(function(s){ return s.trim(); }) : ["\uD1B5\uD569","\uB9E4\uC810","\uB9E4\uC810\uB9C8\uAC10","\uD50C\uB85C\uC5B4"];
+            // opt.pos가 없으면 공고자의 reqPos를 기본 포지션으로 사용
+            var _trade = trades.find(function(tr){ return tr.id === selectedTradeId; });
+            var _defaultPos = (_trade && _trade.reqPos) ? _trade.reqPos : "\uD1B5\uD569";
+            var allowedPos = opt.pos ? opt.pos.split("/").map(function(s){ return s.trim(); }) : [_defaultPos];
             allowedPos.forEach(function(p){
                 var b = document.createElement("div");
                 var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
@@ -1568,7 +1576,6 @@
                 b.onclick = function(){
                     var isTotal2 = currentUserPos.indexOf("\uD1B5\uD569") > -1;
                     var canMM = currentUserPos.indexOf("\uB9E4\uC810") > -1 || isTotal2;
-                    // 역량 체크만 수행 — 시간대와의 교차 제한 없음
                     if (!isTotal2 && currentUserPos.indexOf(p) === -1 && !(p === "\uB9E4\uC810\uB9C8\uAC10" && canMM)){
                         alert("\uBCF8\uC778 \uC5ED\uB7C9 \uBC16\uC758 \uD3EC\uC9C0\uC158\uC785\uB2C8\uB2E4."); return;
                     }
@@ -1578,6 +1585,11 @@
                 };
                 posContainer.appendChild(b);
             });
+            // 포지션이 1개뿐이면 자동 선택
+            if (allowedPos.length === 1) {
+                var _autoChip = posContainer.querySelector(".support-pos-chip");
+                if (_autoChip) _autoChip.click();
+            }
         }
 
         function confirmSupport() {
