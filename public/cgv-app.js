@@ -2080,7 +2080,7 @@
                         '<div class="text-xs text-slate-500 font-bold pt-2 mb-2">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
                         '<div class="flex gap-1.5 flex-wrap">' +
                             '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 포지션</button>' +
-                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 초기화</button>' +
+                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
                             hoursEditBtn +
                             hardDeleteBtn +
@@ -2185,11 +2185,17 @@
         }
 
         function resetMisojigiPin(name) {
-            if (!confirm(name + ' PIN을 00000으로 초기화합니다.\n계속하시겠습니까?')) return;
+            var newPin = prompt(name + ' 님의 새 PIN을 입력하세요.\n(숫자 ' + PIN_LENGTH_STAFF + '자리)');
+            if (newPin === null) return; // 취소
+            newPin = newPin.replace(/\D/g, '').substring(0, PIN_LENGTH_STAFF);
+            if (newPin.length !== PIN_LENGTH_STAFF) {
+                alert('PIN은 숫자 ' + PIN_LENGTH_STAFF + '자리여야 합니다.');
+                return;
+            }
             google.script.run
-                .withSuccessHandler(function() { alert(name + ' PIN 초기화 완료 (00000)'); })
+                .withSuccessHandler(function() { alert(name + ' PIN이 ' + newPin + ' 으로 설정되었습니다.'); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
-                .updateMisojigi(name, { pin: '00000' });
+                .updateMisojigi(name, { pin: newPin });
         }
 
         function deleteMisojigiHard(name) {
