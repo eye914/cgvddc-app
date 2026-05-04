@@ -2048,9 +2048,15 @@
                 var hardDeleteBtn = m.active ? '' :
                     '<button data-miso-action="hard-delete" data-miso-name="' + m.name + '" ' +
                         'class="text-xs font-black px-3 py-1.5 rounded-xl bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 transition-all">🗑️ DB삭제</button>';
+                var hoursVal = parseFloat(m.hours) || 5.5;
+                var hoursBadge = hoursVal <= 4.5
+                    ? '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 ml-1">4.5h</span>'
+                    : '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 ml-1">5.5h</span>';
+                var hoursEditBtn = '<button data-miso-action="edit-hours" data-miso-name="' + m.name + '" data-miso-hours="' + (m.hours || '5.5') + '" '
+                    + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-all">⏱️ 근무시간</button>';
                 html += '<div class="rounded-2xl border-2 ' + activeClass + ' p-3 flex flex-col gap-2">' +
                     '<div class="flex items-center justify-between">' +
-                        '<span class="font-black text-slate-800">' + m.name + '</span>' +
+                        '<span class="font-black text-slate-800">' + m.name + hoursBadge + '</span>' +
                         statusBadge +
                     '</div>' +
                     '<div class="text-xs text-slate-500 font-bold">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
@@ -2061,6 +2067,7 @@
                             'class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 초기화</button>' +
                         '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" ' +
                             'class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
+                        hoursEditBtn +
                         hardDeleteBtn +
                     '</div>' +
                 '</div>';
@@ -2079,6 +2086,9 @@
                     } else if (action === 'toggle-active') {
                         var active = this.getAttribute('data-miso-active') === 'true';
                         toggleMisojigiActive(name, active);
+                    } else if (action === 'edit-hours') {
+                        var currentHours = this.getAttribute('data-miso-hours') || '5.5';
+                        toggleMisojigiHours(name, currentHours);
                     } else if (action === 'hard-delete') {
                         deleteMisojigiHard(name);
                     }
@@ -2086,6 +2096,22 @@
             });
         }
 
+        function toggleMisojigiHours(name, currentHours) {
+            var cur = parseFloat(currentHours) || 5.5;
+            var newHours = cur <= 4.5 ? '5.5' : '4.5';
+            if (!confirm(name + ' 근무시간을 ' + newHours + 'h로 변경하시겠습니까?')) return;
+            google.script.run
+                .withSuccessHandler(function() {
+                    // 로컬 MISO_DATA 업데이트
+                    for (var i = 0; i < MISO_DATA.length; i++) {
+                        if (MISO_DATA[i].name === name) { MISO_DATA[i].hours = newHours; break; }
+                    }
+                    showToast(name + ' 근무시간 ' + newHours + 'h로 변경됨');
+                    loadMisojigiAdmin();
+                })
+                .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
+                .updateMisojigi(name, { hours: newHours });
+        }
         function showAddMisojigiForm() {
             var form = document.getElementById('miso-add-form');
             if (!form) return;
@@ -2243,7 +2269,26 @@
                     +"\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n";
                 var encText = encodeURIComponent(shareText).replace(/'/g,"%27");
 
-                var outHtml = "<div class='text-slate-800 font-bold mt-1'>"+safeDate+" ["+rPL+"]</div>";
+                // 공고자 hours 조회 → 올바른 근무시간만 표시
+                var _reqHoursCard = 5.5;
+                for (var _miC = 0; _miC < MISO_DATA.length; _miC++) {
+                    if (MISO_DATA[_miC].name === t.reqName) { _reqHoursCard = parseFloat(MISO_DATA[_miC].hours) || 5.5; break; }
+                }
+                var _sdParts = safeDate.split(" / ");
+                var _sdDate  = _sdParts[0];
+                var _sdCode  = _sdParts.length > 1 ? _sdParts.slice(1).join(' / ').trim() : '';
+                var _codeMatch = _sdCode.match(/^([A-Z]\d+)/);
+                var _pureCode  = _codeMatch ? _codeMatch[1] : _sdCode.split(' ')[0];
+                var _cardTime  = _pureCode ? getActualTimeByCode(_pureCode, _reqHoursCard) : '';
+                var _hoursLbl  = _reqHoursCard <= 4.5 ? '4.5h' : '5.5h';
+                var _hoursCls  = _reqHoursCard <= 4.5 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
+                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
+                    + "<span class='text-slate-700'>" + _sdDate + "</span>"
+                    + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
+                    + (_cardTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _cardTime + "</span>" : "")
+                    + "<span class='text-[9px] text-slate-400 font-bold'>[" + rPL + "]</span>"
+                    + "<span class='text-[9px] font-black px-1.5 py-0.5 rounded-full " + _hoursCls + "'>" + _hoursLbl + "</span>"
+                    + "</div>";
                 var inHtml = safe === "\uB300\uD0C0 \uC694\uCCAD" ? "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>"
                     : safe.split("\n").map(function(l){ return "<div>"+l.trim()+"</div>"; }).join("");
 
