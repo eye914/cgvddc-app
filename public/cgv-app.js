@@ -1,4 +1,4 @@
-
+﻿
 
         var KAKAO_URL = "https://open.kakao.com/o/gGsMiRli";
         var DEPLOY_URL = "https://tinyurl.com/y7enzns9";
@@ -71,6 +71,7 @@
         var currentUserPos = [];
         var attendanceData = {};
         var currentStatsDate = new Date();
+        var _statsExpanded = {};
         var wishData = {};
         var currentSupportOptions = [];
         var kakaoOpened = false;
@@ -1889,52 +1890,80 @@
             renderStaffStats(); renderList();
         }
 
+        function toggleStatItem(name, sid) {
+            _statsExpanded[name] = !_statsExpanded[name];
+            var body = document.getElementById('sb-' + sid);
+            var arrow = document.getElementById('sa-' + sid);
+            if (body) body.style.display = _statsExpanded[name] ? '' : 'none';
+            if (arrow) arrow.textContent = _statsExpanded[name] ? '▲' : '▼';
+        }
+
         function renderStaffStats() {
             var header = document.getElementById("staff-stats-header");
             var container = document.getElementById("staff-stats-grid");
-            if (!container||!header) return;
+            if (!container || !header) return;
             var wk = getWeekKey(getLocalYYYYMMDD(currentStatsDate));
-                        header.innerHTML = "<div class='flex justify-between items-center gap-1 bg-slate-50 px-3 py-2 rounded-2xl border-2 border-slate-200 mb-3 font-black'><button onclick='changeStatsWeek(-1)' class='shrink-0 px-2 py-1 bg-white rounded-lg shadow-sm border font-black text-slate-500 text-xs'>\uC774\uC804</button><span class='font-black text-xs text-slate-700 text-center flex-1'>"+wk+"</span><button onclick='changeStatsWeek(1)' class='shrink-0 px-2 py-1 bg-white rounded-lg shadow-sm border font-black text-slate-500 text-xs'>\uB2E4\uC74C</button></div>";
-            container.innerHTML = "";
+            // 주간 헤더 짧게: "5/4(월)~5/10(일)"
+            var wkShort = (function(){
+                var m2 = wk.match(/(\d+\/\d+\(.\)) ~ (\d+\/\d+\(.\))/);
+                return m2 ? m2[1] + ' ~ ' + m2[2] : wk;
+            })();
+            header.innerHTML = "<div class='flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 mb-2'>"
+                + "<button onclick='changeStatsWeek(-1)' class='flex-shrink-0 w-8 h-8 bg-white rounded-lg border border-slate-200 font-black text-slate-500 text-base leading-none'>◀</button>"
+                + "<span class='font-black text-xs text-slate-700 text-center flex-1 truncate'>" + wkShort + "</span>"
+                + "<button onclick='changeStatsWeek(1)' class='flex-shrink-0 w-8 h-8 bg-white rounded-lg border border-slate-200 font-black text-slate-500 text-base leading-none'>▶</button>"
+                + "</div>";
+
             var statsMap = {};
-            MISO_DATA.forEach(function(m){ statsMap[m.name] = { count:0 }; });
+            MISO_DATA.forEach(function(m){ statsMap[m.name] = { count: 0 }; });
             trades.forEach(function(t){
                 if (getWeekKey(t.shiftDate) === wk) {
                     if (statsMap[t.reqName]) statsMap[t.reqName].count++;
-                    if (t.subName !== "\uBAA8\uC9D1\uC911" && statsMap[t.subName]) statsMap[t.subName].count++;
+                    if (t.subName !== "모집중" && statsMap[t.subName]) statsMap[t.subName].count++;
                 }
             });
-            MISO_DATA.forEach(function(m){
+
+            var html = '';
+            MISO_DATA.forEach(function(m, idx){
                 if (!attendanceData[m.name]) attendanceData[m.name] = {};
                 if (!attendanceData[m.name][wk]) attendanceData[m.name][wk] = { late:0, absent:0, logs:[] };
                 var att = attendanceData[m.name][wk];
                 var isP = checkPenaltyStatus(m.name);
-                var logHtml = att.logs.length
-                    ? att.logs.map(function(l){ return "<p class='text-[9px] text-slate-400 font-medium leading-tight mb-1'>- "+l+"</p>"; }).join("")
-                    : "<p class='text-[9px] text-slate-300 italic'>\uBCC0\uACBD \uC774\uB825 \uC5C6\uC74C</p>";
-                var cardHtml = "<div class='bg-white rounded-xl border-2 shadow-sm "+(isP?"border-red-400 bg-red-50":"border-slate-200")+"'>"
-                    + (isP ? "<div class='bg-red-500 text-white text-[8px] font-black py-0.5 text-center tracking-widest rounded-t-xl'>정지</div>" : "")
-                    + "<div class='px-2 py-2'>"
-                    + "<div class='flex items-center gap-1 mb-1'>"
-                    + "<span class='font-black text-xs "+(isP?"text-red-700":"text-slate-900")+" flex-1 min-w-0 truncate'>"+m.name+"</span>"
-                    + "<span class='text-[8px] bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-400 whitespace-nowrap flex-shrink-0'>"+statsMap[m.name].count+"건</span>"
-                    + "</div>"
-                    + "<div class='text-[8px] text-slate-400 mb-1.5 truncate'>"+m.pos.join("/")+"</div>"
-                    + "<div class='flex items-center gap-0.5 mb-1'>"
-                    + "<span class='text-[9px] text-slate-500 font-black w-7 flex-shrink-0'>지각</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','late',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
-                    + "<span class='text-xs font-black w-5 text-center "+(att.late>0?"text-red-600":"text-slate-700")+"'>"+att.late+"</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','late',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
-                    + "</div>"
-                    + "<div class='flex items-center gap-0.5'>"
-                    + "<span class='text-[9px] text-slate-500 font-black w-7 flex-shrink-0'>결근</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',-1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>-</button>"
-                    + "<span class='text-xs font-black w-5 text-center "+(att.absent>0?"text-red-600":"text-slate-700")+"'>"+att.absent+"</span>"
-                    + "<button onclick=\"updateAttendance('"+m.name+"','absent',1)\" class='w-5 h-5 bg-slate-100 border border-slate-200 rounded text-[11px] font-black text-slate-600 leading-none flex-shrink-0'>+</button>"
-                    + "</div>"
-                    + "</div></div>";
-                container.innerHTML += cardHtml;
+                var isExp = !!_statsExpanded[m.name];
+                var cnt = statsMap[m.name].count;
+                var posStr = Array.isArray(m.pos) ? m.pos.join('/') : (m.pos || '');
+                var sid = 'si' + idx;
+                var borderCls = isP ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white';
+
+                // 헤더 행 (항상 표시 - 접혀 있음)
+                html += "<div class='" + borderCls + " rounded-xl border mb-1 overflow-hidden'>";
+                html += "<div class='flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none active:bg-slate-50' onclick=\"toggleStatItem('" + m.name + "','" + sid + "')\">";
+                if (isP) html += "<span class='w-2 h-2 rounded-full bg-red-500 flex-shrink-0'></span>";
+                html += "<span class='font-black text-sm " + (isP ? 'text-red-700' : 'text-slate-800') + " flex-1 min-w-0'>" + m.name + "</span>";
+                html += "<span class='text-[9px] text-slate-400 flex-shrink-0'>" + posStr + "</span>";
+                if (att.late > 0)   html += "<span class='text-[9px] font-black text-white bg-orange-400 px-1.5 py-0.5 rounded-full flex-shrink-0'>지각" + att.late + "</span>";
+                if (att.absent > 0) html += "<span class='text-[9px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded-full flex-shrink-0'>결근" + att.absent + "</span>";
+                if (cnt > 0) html += "<span class='text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0'>" + cnt + "건</span>";
+                html += "<span id='sa-" + sid + "' class='text-[10px] text-slate-400 flex-shrink-0 ml-1'>" + (isExp ? '▲' : '▼') + "</span>";
+                html += "</div>";
+
+                // 확장 영역 (지각/결근 컨트롤)
+                html += "<div id='sb-" + sid + "' style='" + (isExp ? '' : 'display:none') + "' class='px-4 pb-3 border-t border-slate-100 bg-slate-50'>";
+                html += "<div class='flex items-center gap-6 pt-2.5'>";
+                html += "<div class='flex items-center gap-1.5'>";
+                html += "<span class='text-xs text-slate-500 font-black'>지각</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','late',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
+                html += "<span class='text-base font-black w-6 text-center " + (att.late > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.late + "</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','late',1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>+</button>";
+                html += "</div>";
+                html += "<div class='flex items-center gap-1.5'>";
+                html += "<span class='text-xs text-slate-500 font-black'>결근</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
+                html += "<span class='text-base font-black w-6 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>+</button>";
+                html += "</div></div></div></div>";
             });
+            container.innerHTML = html;
         }
 
         function changeStatsWeek(o){ currentStatsDate.setDate(currentStatsDate.getDate()+(o*7)); renderStaffStats(); }
