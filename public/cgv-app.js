@@ -72,6 +72,7 @@
         var attendanceData = {};
         var currentStatsDate = new Date();
         var _statsExpanded = {};
+        var _misoExpanded = {};
         var wishData = {};
         var currentSupportOptions = [];
         var kakaoOpened = false;
@@ -1898,6 +1899,14 @@
             if (arrow) arrow.textContent = _statsExpanded[name] ? '▲' : '▼';
         }
 
+        function toggleMisoAdmin(name, sid) {
+            _misoExpanded[name] = !_misoExpanded[name];
+            var body = document.getElementById('ma-b-' + sid);
+            var arrow = document.getElementById('ma-a-' + sid);
+            if (body) body.style.display = _misoExpanded[name] ? '' : 'none';
+            if (arrow) arrow.textContent = _misoExpanded[name] ? '▲' : '▼';
+        }
+
         function renderStaffStats() {
             var header = document.getElementById("staff-stats-header");
             var container = document.getElementById("staff-stats-grid");
@@ -2034,6 +2043,7 @@
                 return;
             }
             var html = '';
+            var misoIdx = 0;
             list.forEach(function(m) {
                 var posStr = Array.isArray(m.pos) ? m.pos.join(', ') : (m.pos || '없음');
                 var posJson = JSON.stringify(Array.isArray(m.pos) ? m.pos : []);
@@ -2054,21 +2064,24 @@
                     : '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 ml-1">5.5h</span>';
                 var hoursEditBtn = '<button data-miso-action="edit-hours" data-miso-name="' + m.name + '" data-miso-hours="' + (m.hours || '5.5') + '" '
                     + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-all">⏱️ 근무시간</button>';
-                html += '<div class="rounded-2xl border-2 ' + activeClass + ' p-3 flex flex-col gap-2">' +
-                    '<div class="flex items-center justify-between">' +
-                        '<span class="font-black text-slate-800">' + m.name + hoursBadge + '</span>' +
+                var sid = 'mi' + misoIdx;
+                misoIdx++;
+                var isExp = !!_misoExpanded[m.name];
+                html += '<div id="ma-wrap-' + sid + '" class="rounded-xl border mb-1 overflow-hidden ' + (m.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60') + '">' +
+                    '<div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none active:bg-slate-50" onclick="toggleMisoAdmin(\'' + m.name + '\',\'' + sid + '\')">' +
+                        '<span class="font-black text-sm text-slate-800 flex-1 min-w-0 truncate">' + m.name + hoursBadge + '</span>' +
                         statusBadge +
+                        '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
-                    '<div class="text-xs text-slate-500 font-bold">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
-                    '<div class="flex gap-1.5 flex-wrap">' +
-                        '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' ' +
-                            'class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 포지션</button>' +
-                        '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" ' +
-                            'class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 초기화</button>' +
-                        '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" ' +
-                            'class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
-                        hoursEditBtn +
-                        hardDeleteBtn +
+                    '<div id="ma-b-' + sid + '" style="' + (isExp ? '' : 'display:none') + '" class="px-3 pb-3 border-t border-slate-100 bg-slate-50">' +
+                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-2">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
+                        '<div class="flex gap-1.5 flex-wrap">' +
+                            '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 포지션</button>' +
+                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 초기화</button>' +
+                            '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
+                            hoursEditBtn +
+                            hardDeleteBtn +
+                        '</div>' +
                     '</div>' +
                 '</div>';
             });
@@ -2085,7 +2098,8 @@
                         resetMisojigiPin(name);
                     } else if (action === 'toggle-active') {
                         var active = this.getAttribute('data-miso-active') === 'true';
-                        toggleMisojigiActive(name, active);
+                        var wrapId = this.getAttribute('data-miso-wrap') || '';
+                        toggleMisojigiActive(name, active, wrapId);
                     } else if (action === 'edit-hours') {
                         var currentHours = this.getAttribute('data-miso-hours') || '5.5';
                         toggleMisojigiHours(name, currentHours);
@@ -2106,7 +2120,7 @@
                     for (var i = 0; i < MISO_DATA.length; i++) {
                         if (MISO_DATA[i].name === name) { MISO_DATA[i].hours = newHours; break; }
                     }
-                    showToast(name + ' 근무시간 ' + newHours + 'h로 변경됨');
+                    alert(name + ' 근무시간 ' + newHours + 'h로 변경됨');
                     loadMisojigiAdmin();
                 })
                 .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
@@ -2187,7 +2201,7 @@
                 .deleteMisojigiHard(name);
         }
 
-        function toggleMisojigiActive(name, isActive) {
+        function toggleMisojigiActive(name, isActive, wrapId) {
             var msg = isActive
                 ? name + ' 퇴사 처리합니다.\n로그인 목록에서 제거됩니다.\n계속하시겠습니까?'
                 : name + ' 복직 처리합니다.\n로그인 목록에 다시 표시됩니다.\n계속하시겠습니까?';
@@ -2195,9 +2209,11 @@
             if (isActive) {
                 google.script.run
                     .withSuccessHandler(function() {
-                        alert(name + ' 퇴사 처리 완료');
-                        loadMisojigiAdmin();
                         sessionStorage.removeItem('cgv_miso');
+                        if (wrapId) {
+                            var wEl = document.getElementById(wrapId);
+                            if (wEl) wEl.remove();
+                        } else { loadMisojigiAdmin(); }
                     })
                     .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                     .deactivateMisojigi(name);
