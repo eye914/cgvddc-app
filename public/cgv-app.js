@@ -1958,14 +1958,14 @@
 
                 // 확장 영역 (지각/결근 컨트롤)
                 html += "<div id='sb-" + sid + "' style='" + (isExp ? '' : 'display:none') + "' class='px-4 pb-3 border-t border-slate-100 bg-slate-50'>";
-                html += "<div class='flex items-center gap-6 pt-2.5'>";
-                html += "<div class='flex items-center gap-1.5'>";
+                html += "<div class='grid grid-cols-2 gap-2 pt-2.5'>";
+                html += "<div class='flex items-center gap-2 justify-center bg-white rounded-xl py-2'>";
                 html += "<span class='text-xs text-slate-500 font-black'>지각</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','late',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
                 html += "<span class='text-base font-black w-6 text-center " + (att.late > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.late + "</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','late',1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>+</button>";
                 html += "</div>";
-                html += "<div class='flex items-center gap-1.5'>";
+                html += "<div class='flex items-center gap-2 justify-center bg-white rounded-xl py-2'>";
                 html += "<span class='text-xs text-slate-500 font-black'>결근</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-7 h-7 bg-white border border-slate-200 rounded-lg text-base font-black text-slate-600 shadow-sm'>-</button>";
                 html += "<span class='text-base font-black w-6 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
@@ -2649,12 +2649,15 @@
                     html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0 mr-0.5"></span>';
                     html += statusLabel + '</span>';
                     html += '</div>';
-                    // Row 2: 이름 | 날짜 | 버튼들
+                    // Row 2: 이름 + 날짜
+                    html += '<div class="flex items-baseline gap-1.5 pl-5 mb-1">';
+                    html += '<span class="text-[12px] font-black text-blue-700">' + r.target_name + '</span>';
+                    if (dateStr) html += '<span class="text-[9px] text-slate-400 ml-1">' + dateStr + '</span>';
+                    html += '</div>';
+                    // Row 3: 버튼들
                     html += '<div class="flex items-center gap-1.5 pl-5">';
-                    html += '<span class="text-[11px] font-black text-blue-700 flex-1 min-w-0 truncate">' + r.target_name + '</span>';
-                    if (dateStr) html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
-                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
                     html += '</div>';
                     if (r.note) html += '<div class="text-[9px] text-slate-400 truncate mt-1 pl-5">' + r.note + '</div>';
                     html += '</div>';
