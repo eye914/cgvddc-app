@@ -2892,98 +2892,104 @@
             if (img) { img.src = dataURL; img.style.display = 'block'; }
         }
 
-        // ── 시간 선택 팝업 (▲▼ 버튼 방식) ──
+        // ── 시간 선택 팝업 (드럼롤 스크롤 방식) ──
         var _tpHiddenId = '';
-        var _tpBtnId = '';
-        var _tpHour = 9;
-        var _tpMin = 0;
-        var _tpTouchStartY = 0;
-
-        function tpTouchStart(type, e) {
-            _tpTouchStartY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
-        }
-        function tpTouchMove(type, e) {
-            if (e.cancelable) e.preventDefault();
-            var curY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
-            var dy = curY - _tpTouchStartY;
-            if (Math.abs(dy) > 18) {
-                tpAdjust(type, dy < 0 ? 1 : -1);
-                _tpTouchStartY = curY;
-            }
-        }
-        function tpWheel(type, e) {
-            e.preventDefault();
-            tpAdjust(type, e.deltaY > 0 ? -1 : 1);
-        }
+        var _tpBtnId    = '';
+        var _tpHour     = 9;
+        var _tpMin      = 0;
+        var TP_ITEM_H   = 44;  // 항목 높이 (px)
+        var TP_VISIBLE  = 5;   // 보이는 항목 수 (홀수 권장)
 
         function ensureTimePickerModal() {
             if (document.getElementById('time-picker-modal')) return;
-            var btnStyle = 'width:48px;height:40px;border-radius:10px;background:#f1f5f9;border:1.5px solid #cbd5e1;font-size:20px;font-weight:900;cursor:pointer;color:#334155;line-height:1;display:flex;align-items:center;justify-content:center';
-            var dispStyle = 'font-size:38px;font-weight:900;min-width:66px;text-align:center;color:#0f172a;background:#f8fafc;border-radius:12px;padding:10px 4px;border:2px solid #e2e8f0';
+
+            // 시간(00-23), 분(00-59) 목록
+            var hours = [], mins = [];
+            for (var h = 0; h < 24; h++) hours.push(h < 10 ? '0'+h : ''+h);
+            for (var m = 0; m < 60; m++) mins.push(m < 10 ? '0'+m : ''+m);
+
+            var contH  = TP_ITEM_H * TP_VISIBLE;          // 220px
+            var padH   = TP_ITEM_H * Math.floor(TP_VISIBLE / 2); // 88px
+            var selTop = TP_ITEM_H * Math.floor(TP_VISIBLE / 2); // 88px
+
+            function makeDrum(id, items) {
+                var s = '<div style="position:relative;width:80px;flex-shrink:0">';
+                // 선택 강조 띠
+                s += '<div style="position:absolute;top:'+selTop+'px;left:4px;right:4px;height:'+TP_ITEM_H+'px;'
+                   + 'background:rgba(231,26,15,0.07);border-top:2.5px solid #e71a0f;border-bottom:2.5px solid #e71a0f;'
+                   + 'border-radius:10px;pointer-events:none;z-index:2"></div>';
+                // 위 페이드
+                s += '<div style="position:absolute;top:0;left:0;right:0;height:'+padH+'px;'
+                   + 'background:linear-gradient(to bottom,rgba(255,255,255,1) 30%,rgba(255,255,255,0));pointer-events:none;z-index:1"></div>';
+                // 아래 페이드
+                s += '<div style="position:absolute;bottom:0;left:0;right:0;height:'+padH+'px;'
+                   + 'background:linear-gradient(to top,rgba(255,255,255,1) 30%,rgba(255,255,255,0));pointer-events:none;z-index:1"></div>';
+                // 스크롤 컨테이너
+                s += '<div id="'+id+'" style="height:'+contH+'px;overflow-y:scroll;'
+                   + 'scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;'
+                   + 'scrollbar-width:none;-ms-overflow-style:none">';
+                // 상단 패딩
+                s += '<div style="height:'+padH+'px"></div>';
+                items.forEach(function(val) {
+                    s += '<div style="height:'+TP_ITEM_H+'px;display:flex;align-items:center;justify-content:center;'
+                       + 'font-size:32px;font-weight:900;color:#0f172a;scroll-snap-align:center;flex-shrink:0">'+val+'</div>';
+                });
+                // 하단 패딩
+                s += '<div style="height:'+padH+'px"></div>';
+                s += '</div></div>';
+                return s;
+            }
+
             var el = document.createElement('div');
-            el.id = 'time-picker-modal';
+            el.id  = 'time-picker-modal';
             el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:19998;display:none;align-items:center;justify-content:center';
             el.innerHTML = ''
-                + '<div style="background:white;border-radius:22px;padding:24px 28px;width:78%;max-width:280px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
-                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:20px;color:#0f172a">⏰ 시간 선택</div>'
-                + '<div style="display:flex;align-items:center;justify-content:center;gap:14px">'
-                +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
-                +     '<button onclick="tpAdjust(\'h\',1)" style="' + btnStyle + '">▲</button>'
-                +     '<div id="tp-hour-disp" style="' + dispStyle + ';cursor:ns-resize;user-select:none;-webkit-user-select:none" ontouchstart="tpTouchStart(\'h\',event)" ontouchmove="tpTouchMove(\'h\',event)" onwheel="tpWheel(\'h\',event)">09</div>'
-                +     '<button onclick="tpAdjust(\'h\',-1)" style="' + btnStyle + '">▼</button>'
-                +   '</div>'
-                +   '<span style="font-size:38px;font-weight:900;color:#334155;margin-bottom:4px">:</span>'
-                +   '<div style="display:flex;flex-direction:column;align-items:center;gap:8px">'
-                +     '<button onclick="tpAdjust(\'m\',1)" style="' + btnStyle + '">▲</button>'
-                +     '<div id="tp-min-disp" style="' + dispStyle + ';cursor:ns-resize;user-select:none;-webkit-user-select:none" ontouchstart="tpTouchStart(\'m\',event)" ontouchmove="tpTouchMove(\'m\',event)" onwheel="tpWheel(\'m\',event)">00</div>'
-                +     '<button onclick="tpAdjust(\'m\',-1)" style="' + btnStyle + '">▼</button>'
-                +   '</div>'
+                + '<style>#tp-hour-drum::-webkit-scrollbar,#tp-min-drum::-webkit-scrollbar{display:none}</style>'
+                + '<div style="background:white;border-radius:22px;padding:20px 24px 22px;width:84%;max-width:300px;box-shadow:0 20px 60px rgba(0,0,0,0.4)">'
+                + '<div style="font-size:15px;font-weight:900;text-align:center;margin-bottom:14px;color:#0f172a">⏰ 시간 선택</div>'
+                + '<div style="display:flex;align-items:center;justify-content:center;gap:6px">'
+                + makeDrum('tp-hour-drum', hours)
+                + '<span style="font-size:34px;font-weight:900;color:#334155;align-self:center;padding-bottom:4px">:</span>'
+                + makeDrum('tp-min-drum', mins)
                 + '</div>'
-                + '<div style="display:flex;gap:10px;margin-top:22px">'
-                + '<button onclick="cancelTimePicker()" style="flex:1;padding:12px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
-                + '<button onclick="confirmTimePicker()" style="flex:2;padding:12px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
-                + '</div>'
-                + '</div>';
+                + '<div style="display:flex;gap:10px;margin-top:18px">'
+                + '<button onclick="cancelTimePicker()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
+                + '<button onclick="confirmTimePicker()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
+                + '</div></div>';
             document.body.appendChild(el);
-        }
-
-        function tpAdjust(type, delta) {
-            if (type === 'h') {
-                _tpHour = (_tpHour + delta + 24) % 24;
-                var el = document.getElementById('tp-hour-disp');
-                if (el) el.textContent = (_tpHour < 10 ? '0' : '') + _tpHour;
-            } else {
-                _tpMin = (_tpMin + delta + 60) % 60;
-                var el = document.getElementById('tp-min-disp');
-                if (el) el.textContent = (_tpMin < 10 ? '0' : '') + _tpMin;
-            }
         }
 
         function openTimePicker(hiddenId, btnId) {
             ensureTimePickerModal();
             _tpHiddenId = hiddenId;
-            _tpBtnId = btnId;
-            // 기존 값 있으면 초기화
+            _tpBtnId    = btnId;
             var curVal = (document.getElementById(hiddenId) || {}).value || '';
-            var parts = curVal.split(':');
-            _tpHour = parts[0] ? parseInt(parts[0], 10) : 9;
-            _tpMin  = parts[1] ? parseInt(parts[1], 10) : 0;
-            if (isNaN(_tpHour)) _tpHour = 9;
-            if (isNaN(_tpMin))  _tpMin  = 0;
-            var hDisp = document.getElementById('tp-hour-disp');
-            var mDisp = document.getElementById('tp-min-disp');
-            if (hDisp) hDisp.textContent = (_tpHour < 10 ? '0' : '') + _tpHour;
-            if (mDisp) mDisp.textContent = (_tpMin  < 10 ? '0' : '') + _tpMin;
+            var parts  = curVal.split(':');
+            _tpHour = parseInt(parts[0], 10); if (isNaN(_tpHour) || _tpHour < 0 || _tpHour > 23) _tpHour = 9;
+            _tpMin  = parseInt(parts[1], 10); if (isNaN(_tpMin)  || _tpMin  < 0 || _tpMin  > 59) _tpMin  = 0;
+
             var modal = document.getElementById('time-picker-modal');
             if (modal) modal.style.display = 'flex';
+
+            // display 후 스크롤 위치 설정 (두 프레임 뒤에)
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    var hd = document.getElementById('tp-hour-drum');
+                    var md = document.getElementById('tp-min-drum');
+                    if (hd) { hd.scrollTop = _tpHour * TP_ITEM_H; }
+                    if (md) { md.scrollTop = _tpMin  * TP_ITEM_H; }
+                });
+            });
         }
 
         function confirmTimePicker() {
+            var hd = document.getElementById('tp-hour-drum');
+            var md = document.getElementById('tp-min-drum');
+            if (hd) _tpHour = Math.min(23, Math.max(0, Math.round(hd.scrollTop / TP_ITEM_H)));
+            if (md) _tpMin  = Math.min(59, Math.max(0, Math.round(md.scrollTop / TP_ITEM_H)));
             var timeVal = (_tpHour < 10 ? '0' : '') + _tpHour + ':' + (_tpMin < 10 ? '0' : '') + _tpMin;
-            // hidden input 업데이트
             var hidden = document.getElementById(_tpHiddenId);
             if (hidden) hidden.value = timeVal;
-            // 버튼 텍스트 업데이트
             var btn = document.getElementById(_tpBtnId);
             if (btn) {
                 btn.textContent = timeVal;
@@ -2999,6 +3005,7 @@
             var modal = document.getElementById('time-picker-modal');
             if (modal) modal.style.display = 'none';
         }
+
 
         var DOC_STYLE = '<style>'
             + '.dt{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px}'
