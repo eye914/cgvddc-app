@@ -1,6 +1,6 @@
 // Service Worker — CGV동두천 맞교대 PWA
 // ⚠️ CACHE_VER 를 올리면 모든 캐시 초기화 → 모바일 강제 업데이트
-const CACHE_VER = 'cgv-v5';
+const CACHE_VER = 'cgv-v6';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // 대기 없이 즉시 활성화
