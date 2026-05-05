@@ -1442,17 +1442,18 @@
                         }
                         var codes = timeStr ? timeStr.split(",").map(function(c){ return c.trim(); }).filter(Boolean) : [];
                         var codeHtml = codes.map(function(c){
-                            return "<span class='bg-slate-800 text-white px-2 py-0.5 rounded-md text-[11px] font-black'>" + c + "</span>";
+                            return "<span class='bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-md text-[11px] font-black'>" + c + "</span>";
                         }).join("");
                         var posHtml = pos ? pos.split("/").map(function(p){
                             return "<span class='bg-violet-100 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full text-[10px] font-black'>" + p.trim() + "</span>";
                         }).join("") : "";
-                        return "<div class='bg-white rounded-xl px-3 py-2 border border-blue-100'>"
-                            + "<div class='flex items-center gap-1.5 mb-1'>"
+                        return "<div class='bg-white rounded-xl px-3 py-2.5 border border-blue-100 text-center'>"
+                            + "<div class='flex items-center justify-center gap-1.5 mb-1.5'>"
                             + "<span class='text-[9px] font-black text-blue-400 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100'>\uC635\uC158" + (idx+1) + "</span>"
                             + "<span class='text-[12px] font-black text-slate-700'>" + date + "</span>"
                             + "</div>"
-                            + "<div class='flex items-center gap-1.5 flex-wrap'>" + codeHtml + posHtml + "</div>"
+                            + (codeHtml ? "<div class='flex items-center justify-center gap-1.5 flex-wrap mb-1'>" + codeHtml + "</div>" : "")
+                            + (posHtml ? "<div class='flex items-center justify-center gap-1.5 flex-wrap'>" + posHtml + "</div>" : "")
                             + "</div>";
                     }).join("");
 
