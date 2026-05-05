@@ -1428,7 +1428,33 @@
                 document.getElementById("modal-target-pos").innerText = "\uC694\uAD6C \uD3EC\uC9C0\uC158: "+(t.reqPos||"\uBB34\uAD00");
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var lines = safe.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
-                document.getElementById("modal-target-wish").innerHTML = safe === "\uB300\uD0C0 \uC694\uCCAD" ? safe : lines.map(function(l){ return "<div>"+l+"</div>"; }).join("");
+                document.getElementById("modal-target-wish").innerHTML = safe === "\uB300\uD0C0 \uC694\uCCAD"
+                    ? "<div class='text-slate-400 italic text-sm'>\uB300\uD0C0 \uC694\uCCAD</div>"
+                    : lines.map(function(l, idx){
+                        var parts = l.split(" / ");
+                        var date = parts[0] || '';
+                        var rest = parts.slice(1).join(" / ").trim();
+                        var pos = '';
+                        var timeStr = rest;
+                        if (rest.indexOf("[") > -1) {
+                            pos = rest.split("[")[1].split("]")[0].trim();
+                            timeStr = rest.split("[")[0].trim();
+                        }
+                        var codes = timeStr ? timeStr.split(",").map(function(c){ return c.trim(); }).filter(Boolean) : [];
+                        var codeHtml = codes.map(function(c){
+                            return "<span class='bg-slate-800 text-white px-2 py-0.5 rounded-md text-[11px] font-black'>" + c + "</span>";
+                        }).join("");
+                        var posHtml = pos ? pos.split("/").map(function(p){
+                            return "<span class='bg-violet-100 text-violet-700 border border-violet-200 px-2 py-0.5 rounded-full text-[10px] font-black'>" + p.trim() + "</span>";
+                        }).join("") : "";
+                        return "<div class='bg-white rounded-xl px-3 py-2 border border-blue-100'>"
+                            + "<div class='flex items-center gap-1.5 mb-1'>"
+                            + "<span class='text-[9px] font-black text-blue-400 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100'>\uC635\uC158" + (idx+1) + "</span>"
+                            + "<span class='text-[12px] font-black text-slate-700'>" + date + "</span>"
+                            + "</div>"
+                            + "<div class='flex items-center gap-1.5 flex-wrap'>" + codeHtml + posHtml + "</div>"
+                            + "</div>";
+                    }).join("");
 
                 var dc = document.getElementById("support-day-chips"); dc.innerHTML = "";
                 document.getElementById("support-selected-target-date").value = "";
