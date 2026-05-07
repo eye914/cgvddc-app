@@ -107,6 +107,16 @@ export async function PATCH(req: NextRequest) {
       if (otherAdmins.length) {
         await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver}이(가) ${row.reqName}↔${row.subName} ${row.shiftDate} 교대를 승인했습니다.`);
       }
+      // GAS 스케줄 시트 자동 반영
+      const GAS_URL = process.env.GAS_URL;
+      if (GAS_URL) {
+        try {
+          await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'applySwapFromData', params: [row] }),
+          });
+        } catch (_) { /* 실패해도 승인은 완료 */ }
+      }
     } else if (ns === '모집중' && before?.status === '승인대기') {
       await sendPushToNames([row.reqName], '🔄 교대 반려', `관리자가 ${row.shiftDate} 교대 신청을 반려했습니다. 재모집 중입니다.`);
       if (prevSubName && prevSubName !== '모집중') {
