@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+async function callGAS(action: string, params: any[]) {
+  const GAS_URL = process.env.GAS_URL;
+  if (!GAS_URL) return;
+  try { await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params }) }); } catch (_) {}
+}
+
 // GET: 활성 미소지기 목록 (앱용)
 export async function GET(req: NextRequest) {
   try {
@@ -43,6 +49,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // GAS 미소지기DB 동기화
+    await callGAS('addMisojigiToDB', [name.trim(), Array.isArray(pos) ? pos.join(',') : (pos || ''), hours ?? 5.5]);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -68,6 +76,11 @@ export async function PATCH(req: NextRequest) {
 
     const { error } = await supabaseAdmin.from('misojigi').update(updates).eq('name', name);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // GAS 미소지기DB 동기화 (PIN 변경 제외)
+    const { pin: _pin, ...gasUpdates } = updates;
+    if (Object.keys(gasUpdates).length > 0) {
+      await callGAS('updateMisojigiInDB', [name, gasUpdates]);
+    }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -103,6 +116,8 @@ export async function DELETE(req: NextRequest) {
         .update({ active: false })
         .eq('name', name);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      // GAS 미소지기DB 동기화 (활성=N으로)
+      await callGAS('updateMisojigiInDB', [name, { active: false }]);
     }
 
     return NextResponse.json({ ok: true });
