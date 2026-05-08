@@ -175,6 +175,16 @@ export async function DELETE(req: NextRequest) {
     const { id } = body;
     const { error } = await supabaseAdmin.from('trades').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // GAS 요청DB에서도 삭제
+    const GAS_URL = process.env.GAS_URL;
+    if (GAS_URL) {
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'deleteTradeFromDB', params: [id] }),
+        });
+      } catch (_) {}
+    }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
