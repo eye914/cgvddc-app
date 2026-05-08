@@ -135,6 +135,23 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
+    // GAS 요청DB 상태·수락자 실시간 동기화 (모든 상태변경)
+    if (ns) {
+      const GAS_URL = process.env.GAS_URL;
+      if (GAS_URL) {
+        try {
+          const gasUpdate: Record<string, any> = { status: ns };
+          if (updateData.subName !== undefined) gasUpdate.subName = updateData.subName;
+          if (updateData.subPos  !== undefined) gasUpdate.subPos  = updateData.subPos;
+          if (updateData.desiredShift !== undefined) gasUpdate.desiredShift = updateData.desiredShift;
+          await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateTradeInDB', params: [id, gasUpdate] }),
+          });
+        } catch (_) {}
+      }
+    }
+
     return NextResponse.json(row);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
