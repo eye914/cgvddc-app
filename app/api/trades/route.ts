@@ -58,6 +58,17 @@ export async function POST(req: NextRequest) {
       `${row.reqName}님의 ${shiftShort} [${row.reqPos}] 공고가 등록됐습니다.`
     );
 
+    // GAS 요청DB 시트에도 기록
+    const GAS_URL = process.env.GAS_URL;
+    if (GAS_URL) {
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'saveTradeToDB', params: [row] }),
+        });
+      } catch (_) { /* 실패해도 등록은 완료 */ }
+    }
+
     return NextResponse.json(row);
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
