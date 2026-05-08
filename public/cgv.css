@@ -228,6 +228,9 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
     box-shadow: none !important;
     text-transform: none !important;
     letter-spacing: 0 !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    max-width: none !important;
 }
 .badge-dot {
     width: 6px;

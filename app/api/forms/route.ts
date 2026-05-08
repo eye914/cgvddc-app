@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendPushToNames, sendPushToAdmins } from '@/lib/push';
 
+async function callGAS(action: string, params: any[]) {
+  const GAS_URL = process.env.GAS_URL;
+  if (!GAS_URL) return;
+  try { await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params }) }); } catch (_) {}
+}
+
 function makeId(prefix: string) {
   const now = new Date();
   const date = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
@@ -73,8 +79,10 @@ export async function POST(req: NextRequest) {
     await sendPushToNames(
       [targetName],
       `📋 ${typeName} 제출 요청`,
-      `관리자(${requestedBy})가 ${typeName} 제출을 요청했습니다.`
+      `관리자(${requestedBy})가 ${typeName} 제출을 요청했습니다. 3일 이내에 제출해주세요.`
     );
+    // GAS 사유서DB 기록
+    await callGAS('saveFormRequestToDB', [{ type, targetName, requestedBy, note: note || '' }]);
 
     return NextResponse.json(data);
   } catch (e: any) {
@@ -126,6 +134,8 @@ export async function PATCH(req: NextRequest) {
           `${reqRow.target_name}님이 ${typeName}를 제출했습니다.`
         );
       }
+      // GAS 사유서DB 상태 업데이트
+      await callGAS('updateFormStatusInDB', [reqRow.target_name, reqRow.type, 'submitted']);
 
       return NextResponse.json({ ok: true, submissionId: subId });
     }

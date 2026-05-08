@@ -2580,6 +2580,8 @@
                     clearFormReqName();
                     loadAdminForms();
                     alert(sentName + ' 님에게 ' + (FORM_TYPE_LABELS[sentType] || '') + ' 제출 요청을 발송했습니다.');
+                    // 수신자에게 3일 기한 안내 (관리자 화면에 표시)
+                    showToast('⚠️ ' + sentName + ' 님은 3일 이내(~' + (function(){ var d=new Date(); d.setDate(d.getDate()+3); return (d.getMonth()+1)+'/'+(d.getDate()); })() + ')에 제출해야 합니다.', 5000);
                 })
                 .withFailureHandler(function(e) {
                     showLoader(false);
@@ -2665,27 +2667,36 @@
                         ? 'bg-yellow-100 text-yellow-700'
                         : r.status === 'submitted' ? 'bg-blue-100 text-blue-700'
                         : 'bg-green-100 text-green-700';
-                    html += '<div class="rounded-xl border ' + statusClass + ' px-2.5 py-2 mb-1.5">';
-                    // Row 1: checkbox | icon | 서류명 | 상태뱃지
-                    html += '<div class="flex items-center gap-1.5 mb-1.5">';
+                    // 3일 기한 계산
+                    var dueInfo = '';
+                    if (r.status === 'pending' && r.requested_at) {
+                        var reqD = new Date(r.requested_at);
+                        var dueD = new Date(reqD); dueD.setDate(dueD.getDate() + 3);
+                        var diffD = Math.ceil((dueD - new Date()) / (1000*60*60*24));
+                        if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">기한초과</span>';
+                        else if (diffD <= 1) dueInfo = '<span class="text-[9px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">D-' + diffD + '</span>';
+                    }
+                    // 단일 행 컴팩트 카드
+                    html += '<div class="flex items-center gap-2 rounded-xl border ' + statusClass + ' px-3 py-2.5 mb-1.5 min-w-0">';
                     html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
                     html += '<span class="text-sm flex-shrink-0">' + icon + '</span>';
-                    html += '<span class="font-black text-xs text-slate-800 flex-1 min-w-0">' + label + '</span>';
-                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '">';
-                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0 mr-0.5"></span>';
+                    // 이름 + 서류명
+                    html += '<div class="flex-1 min-w-0">';
+                    html += '<div class="flex items-baseline gap-1.5 min-w-0">';
+                    html += '<span class="font-black text-[12px] text-slate-800 truncate">' + r.target_name + '</span>';
+                    html += '<span class="text-[10px] text-slate-500 font-bold truncate">' + label + '</span>';
+                    html += '</div>';
+                    if (dateStr) html += '<span class="text-[9px] text-slate-400">' + dateStr + '</span>';
+                    html += '</div>';
+                    // 기한 뱃지
+                    if (dueInfo) html += dueInfo;
+                    // 상태뱃지
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '">';
+                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0"></span>';
                     html += statusLabel + '</span>';
-                    html += '</div>';
-                    // Row 2: 이름 + 날짜
-                    html += '<div class="flex items-baseline gap-1.5 pl-5 mb-1">';
-                    html += '<span class="text-[12px] font-black text-blue-700">' + r.target_name + '</span>';
-                    if (dateStr) html += '<span class="text-[9px] text-slate-400 ml-1">' + dateStr + '</span>';
-                    html += '</div>';
-                    // Row 3: 버튼들
-                    html += '<div class="flex items-center gap-1.5 pl-5">';
-                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
-                    html += '</div>';
-                    if (r.note) html += '<div class="text-[9px] text-slate-400 truncate mt-1 pl-5">' + r.note + '</div>';
+                    // 버튼
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
                     html += '</div>';
                 });
                 html += '</div></div>';
@@ -2815,14 +2826,29 @@
                         var icon = FORM_TYPE_ICONS[r.type] || '📄';
                         var label = FORM_TYPE_LABELS[r.type] || r.type;
                         var dateStr = r.requested_at ? r.requested_at.substring(0,10) : '';
-                        return '<div class="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4">'
+                        // 3일 기한 계산
+                        var dueStr = '';
+                        var isOverdue = false;
+                        if (r.requested_at) {
+                            var req = new Date(r.requested_at);
+                            var due = new Date(req); due.setDate(due.getDate() + 3);
+                            var now = new Date();
+                            var diffMs = due - now;
+                            var diffDays = Math.ceil(diffMs / (1000*60*60*24));
+                            isOverdue = diffDays < 0;
+                            dueStr = isOverdue
+                                ? '⚠️ 기한 초과! (' + (due.getMonth()+1) + '/' + due.getDate() + '까지였음)'
+                                : '⏰ 제출 기한: ' + (due.getMonth()+1) + '/' + due.getDate() + ' (' + diffDays + '일 남음)';
+                        }
+                        return '<div class="' + (isOverdue ? 'bg-red-50 border-2 border-red-300' : 'bg-yellow-50 border-2 border-yellow-200') + ' rounded-2xl p-4">'
                             + '<div class="flex items-center gap-2 mb-2">'
                             + '<span class="text-xl">' + icon + '</span>'
                             + '<div><p class="font-black text-slate-800">' + label + ' 제출 요청</p>'
                             + '<p class="text-xs text-slate-500 font-bold">' + dateStr + ' · ' + (r.requested_by || '관리자') + '</p></div>'
                             + '</div>'
+                            + (dueStr ? '<div class="text-xs font-black ' + (isOverdue ? 'text-red-600 bg-red-100' : 'text-amber-700 bg-amber-100') + ' rounded-xl px-3 py-2 mb-2">' + dueStr + '</div>' : '')
                             + (r.note ? '<p class="text-xs text-slate-600 font-bold bg-white rounded-xl px-3 py-2 mb-3 border border-yellow-200">' + r.note + '</p>' : '')
-                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">작성하기</button>'
+                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">✏️ 작성하기</button>'
                             + '</div>';
                     }).join('');
                 })
