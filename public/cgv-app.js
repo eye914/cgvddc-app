@@ -2691,23 +2691,23 @@
                         if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">기한초과</span>';
                         else if (diffD <= 1) dueInfo = '<span class="text-[9px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">D-' + diffD + '</span>';
                     }
-                    // 2행 카드 레이아웃 (모바일 최적화)
-                    html += '<div class="rounded-xl border ' + statusClass + ' px-3 py-2 mb-1.5">';
-                    // ── 1행: 체크박스 + 아이콘 + 이름 + 서류명 + 기한뱃지 ──
-                    html += '<div class="flex items-center gap-1.5 min-w-0">';
+                    // ── 카드 (overflow:hidden으로 절대 넘침 방지) ──
+                    html += '<div class="rounded-xl border ' + statusClass + ' px-3 py-2 mb-1.5 overflow-hidden">';
+                    // ── 1행: 체크박스 + 아이콘 + 이름 + 서류명(truncate) + 상태뱃지 ──
+                    html += '<div class="flex items-center gap-1.5 w-full min-w-0">';
                     html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
-                    html += '<span class="text-sm flex-shrink-0">' + icon + '</span>';
+                    html += '<span class="flex-shrink-0">' + icon + '</span>';
                     html += '<span class="font-black text-[13px] text-slate-800 whitespace-nowrap flex-shrink-0">' + r.target_name + '</span>';
-                    html += '<span class="text-[10px] text-slate-500 font-bold flex-1 min-w-0 truncate overflow-hidden">' + label + '</span>';
-                    if (dueInfo) html += dueInfo;
+                    html += '<span class="text-[10px] text-slate-500 font-bold flex-1 min-w-0 truncate">' + label + '</span>';
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ' + statusBgCls + ' ml-1"><span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>' + statusLabel + '</span>';
                     html += '</div>';
-                    // ── 2행: 날짜(좌) + 상태뱃지 + 버튼(우) ──
-                    html += '<div class="flex items-center gap-1 mt-1.5">';
+                    // ── 2행: 날짜(좌) + 기한뱃지 + 버튼(우) — 버튼만 있어서 절대 안 넘침 ──
+                    html += '<div class="flex items-center gap-1.5 mt-1.5 w-full">';
                     if (dateStr) html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
+                    if (dueInfo) html += dueInfo;
                     html += '<div class="flex-1"></div>';
-                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '"><span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0"></span>' + statusLabel + '</span>';
-                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap ml-1">열람</button>';
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap ml-1">취소</button>';
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg active:scale-95">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg active:scale-95">취소</button>';
                     html += '</div>';
                     html += '</div>';
                 });
