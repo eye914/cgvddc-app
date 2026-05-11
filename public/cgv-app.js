@@ -2508,8 +2508,8 @@
         var _formCurrentType = '';
         var _formCollapsed = {};
 
-        var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서' };
-        var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐' };
+        var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서', privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서' };
+        var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐', privacy: '🔒', overtime: '🌙', workCondition: '📋' };
         var FORM_STATUS_LABELS = { pending: '제출대기', submitted: '제출완료', viewed: '확인완료' };
 
         // 관리자: 폼 패널 토글
@@ -2890,6 +2890,12 @@
                 body.innerHTML = buildResignForm(myName, today);
             } else if (type === 'earlyLeave') {
                 body.innerHTML = buildEarlyLeaveForm(myName, today);
+            } else if (type === 'privacy') {
+                body.innerHTML = buildPrivacyForm(myName, today);
+            } else if (type === 'overtime') {
+                body.innerHTML = buildOvertimeForm(myName, today);
+            } else if (type === 'workCondition') {
+                body.innerHTML = buildWorkConditionForm(myName, today);
             }
             modal.classList.remove('hidden');
             ensureSignPadModal();
@@ -3370,6 +3376,122 @@
                 + '</div>';
         }
 
+        // ── 개인정보보호 서약서 ──
+        function buildPrivacyForm(name, today) {
+            var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
+            var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            return DOC_STYLE
+                + '<div style="font-size:11px;font-weight:700;color:#555;text-align:right;margin-bottom:4px">[별첨 1]</div>'
+                + '<div style="font-size:22px;font-weight:900;text-align:center;letter-spacing:0.05em;margin-bottom:18px;margin-top:4px;line-height:1.4">개인정보 취급자에 대한<br>개인정보보호 서약서</div>'
+                + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.1;text-align:center;border:1.5px solid #555;padding:18px 24px;margin-bottom:22px;background:#fafafa">'
+                + '본인은 CJ CGV와 연관된 업무를 수행하면서 취급 및 지득한<br>'
+                + 'CJ CGV 내부자와 외부고객들의 개인정보를 개인적인 목적으로<br>'
+                + '사용하지 않으며, 관련 개인정보를 내부지침에 따라 안전하게<br>'
+                + '관리할 것이고 이를 위반하여 발생하는 형·민사 상의 모든<br>'
+                + '책임은 본인이 감수할 것으로 서약합니다.'
+                + '</div>'
+                + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0 22px">'
+                + '<input id="ff-year" class="di" type="number" value="2026" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '</p>'
+                + '<table class="dt" style="width:280px;margin:0 auto 18px"><tbody>'
+                + '<tr><th style="width:80px">소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
+                + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
+                + '<tr><th>핸드폰</th><td class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
+                + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="font-weight:700"></td></tr>'
+                + '</tbody></table>'
+                + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
+                + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
+                + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '</div>'
+                + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
+        }
+
+        // ── 연장·야간·휴일 근로동의서 ──
+        function buildOvertimeForm(name, today) {
+            var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
+            var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            return DOC_STYLE
+                + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.06em;margin-bottom:22px;margin-top:8px">연장·야간·휴일 근로 동의서</div>'
+                + '<table class="dt" style="margin-bottom:22px"><tbody>'
+                + '<tr><th style="width:32%">◎ 성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="font-weight:700"></td></tr>'
+                + '<tr><th>◎ 소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
+                + '<tr><th>◎ 주민등록번호</th><td class="fc"><input id="ff-birth" class="di" placeholder="앞자리 6자리 (예: 001215)" maxlength="6"></td></tr>'
+                + '</tbody></table>'
+                + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;margin-bottom:26px;padding:0 2px">'
+                + '<p style="margin:0 0 14px"><b>1.</b>&nbsp;상기인은 회사로부터 근로시간 외 추가로 연장근로 및 야간, 휴일근로를 실시할 수 있다는 내용에 대하여 충분히 설명을 들었으며, 연장근로 및 야간, 휴일근로를 실시함에 동의합니다.</p>'
+                + '<p style="margin:0"><b>2.</b>&nbsp;연장 및 야간, 휴일근로에 대해 문제제기를 하지 않겠습니다.</p>'
+                + '</div>'
+                + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:20px 0">'
+                + '<input id="ff-year" class="di" type="number" value="2026" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '</p>'
+                + '<p style="font-size:12px;font-weight:700;text-align:right;margin-bottom:18px">(주)한연개발 동두천지점 귀하</p>'
+                + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
+                + '<span style="font-size:12px;font-weight:800;color:#222">성명 :</span>'
+                + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
+                + '<span style="font-size:12px;font-weight:700">(인)</span>'
+                + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '</div>'
+                + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
+        }
+
+        // ── 근로조건 변경동의서 ──
+        function buildWorkConditionForm(name, today) {
+            var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
+            var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
+            return DOC_STYLE
+                + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.06em;margin-bottom:20px;margin-top:8px">근로조건 변경 동의서</div>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px">'
+                + '<table class="dt" style="min-width:340px"><tbody>'
+                + '<tr>'
+                + '<th rowspan="2" style="width:12%;background:#e8eaf6;vertical-align:middle;text-align:center;line-height:1.5">사용자<br>(갑)</th>'
+                + '<th style="width:22%;background:#f0f0f0">사업체명</th><td class="ac" style="font-weight:700">㈜한연개발</td>'
+                + '<th style="width:18%;background:#f0f0f0">대표이사</th><td class="ac" style="font-weight:700">이상순</td>'
+                + '</tr>'
+                + '<tr>'
+                + '<th style="background:#f0f0f0">소재지</th>'
+                + '<td colspan="3" class="ac" style="font-weight:600;font-size:11px">경기도 동두천시 생연동 364-1 시네마플러스 5F, 6F</td>'
+                + '</tr>'
+                + '<tr>'
+                + '<th rowspan="2" style="background:#e8eaf6;vertical-align:middle;text-align:center;line-height:1.5">근로자<br>(을)</th>'
+                + '<th style="background:#f0f0f0">성&nbsp;&nbsp;&nbsp;명</th>'
+                + '<td class="fc"><input id="ff-name" class="di" value="' + name + '" style="font-weight:700"></td>'
+                + '<th style="background:#f0f0f0">생년월일</th>'
+                + '<td class="fc"><input id="ff-birth" class="di" placeholder="예) 001215" maxlength="6"></td>'
+                + '</tr>'
+                + '<tr>'
+                + '<th style="background:#f0f0f0">지&nbsp;&nbsp;&nbsp;점</th>'
+                + '<td class="ac" style="font-weight:700">CGV동두천</td>'
+                + '<th style="background:#f0f0f0">직&nbsp;&nbsp;&nbsp;책</th>'
+                + '<td class="ac" style="font-weight:700">미소지기</td>'
+                + '</tr>'
+                + '</tbody></table>'
+                + '</div>'
+                + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;border:1.5px solid #555;padding:14px 18px;margin-bottom:22px;background:#fafafa">'
+                + '상기 본인은 ㈜한연개발 동두천지점 과 체결된 파견 근로계약서의 근로조건에서 근무 중 영화관 운영 사정상 필요에 의해 소정근로일수 및 소정근로시간이 변경될 수 있는 점에 대하여 동의하며 이로 인한 어떠한 문제제기도 하지 않을 것입니다.'
+                + '</div>'
+                + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0">'
+                + '<input id="ff-year" class="di" type="number" value="2026" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '</p>'
+                + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
+                + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
+                + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '<span style="font-size:12px;font-weight:700">(인)</span>'
+                + '</div>'
+                + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순 (인)</div>';
+        }
+
         function fField(label, inputHtml) {
             return '<div>'
                 + '<label class="text-xs font-black text-slate-600 mb-1 block">' + label + '</label>'
@@ -3450,6 +3572,31 @@
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 조퇴 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
+            } else if (type === 'privacy') {
+                formData = {
+                    name: v('ff-name'), phone: v('ff-phone'),
+                    year: v('ff-year'), month: v('ff-month'), day: v('ff-day'),
+                    sign: window._signDataURL || ''
+                };
+                if (!formData.name) { alert('성명은 필수입니다.'); return; }
+                if (!formData.month || !formData.day) { alert('날짜(월/일)를 입력해주세요.'); return; }
+            } else if (type === 'overtime') {
+                formData = {
+                    name: v('ff-name'), birth: v('ff-birth'),
+                    year: v('ff-year'), month: v('ff-month'), day: v('ff-day'),
+                    sign: window._signDataURL || ''
+                };
+                if (!formData.name) { alert('성명은 필수입니다.'); return; }
+                if (!formData.birth) { alert('주민등록번호 앞자리를 입력해주세요.'); return; }
+                if (!formData.month || !formData.day) { alert('날짜(월/일)를 입력해주세요.'); return; }
+            } else if (type === 'workCondition') {
+                formData = {
+                    name: v('ff-name'), birth: v('ff-birth'),
+                    year: v('ff-year'), month: v('ff-month'), day: v('ff-day'),
+                    sign: window._signDataURL || ''
+                };
+                if (!formData.name) { alert('성명은 필수입니다.'); return; }
+                if (!formData.month || !formData.day) { alert('날짜(월/일)를 입력해주세요.'); return; }
             }
 
             if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
@@ -3665,6 +3812,107 @@
                     + '</div>'
                     + '<div>' + adm + '</div>'
                     + '</div>';
+            }
+
+            if (type === 'privacy') {
+                var pvSign = fd.sign && fd.sign.indexOf('data:') === 0
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    : '';
+                var pvDate = (fd.year || '____') + '년 ' + (fd.month || '__') + '월 ' + (fd.day || '__') + '일';
+                return DOC_STYLE
+                    + '<div style="font-size:11px;font-weight:700;color:#555;text-align:right;margin-bottom:4px">[별첨 1]</div>'
+                    + '<div style="font-size:22px;font-weight:900;text-align:center;letter-spacing:0.05em;margin-bottom:18px;margin-top:4px;line-height:1.4">개인정보 취급자에 대한<br>개인정보보호 서약서</div>'
+                    + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.1;text-align:center;border:1.5px solid #555;padding:18px 24px;margin-bottom:22px;background:#fafafa">'
+                    + '본인은 CJ CGV와 연관된 업무를 수행하면서 취급 및 지득한<br>'
+                    + 'CJ CGV 내부자와 외부고객들의 개인정보를 개인적인 목적으로<br>'
+                    + '사용하지 않으며, 관련 개인정보를 내부지침에 따라 안전하게<br>'
+                    + '관리할 것이고 이를 위반하여 발생하는 형·민사 상의 모든<br>'
+                    + '책임은 본인이 감수할 것으로 서약합니다.'
+                    + '</div>'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0 22px">' + pvDate + '</p>'
+                    + '<table class="dt" style="width:280px;margin:0 auto 18px"><tbody>'
+                    + '<tr><th style="width:80px">소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
+                    + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
+                    + '<tr><th>핸드폰</th><td class="fc">' + tv(fd.phone) + '</td></tr>'
+                    + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td></tr>'
+                    + '</tbody></table>'
+                    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
+                    + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
+                    + pvSign
+                    + '</div>'
+                    + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
+            }
+
+            if (type === 'overtime') {
+                var otSign = fd.sign && fd.sign.indexOf('data:') === 0
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    : '';
+                var otDate = (fd.year || '____') + '년 ' + (fd.month || '__') + '월 ' + (fd.day || '__') + '일';
+                return DOC_STYLE
+                    + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.06em;margin-bottom:22px;margin-top:8px">연장·야간·휴일 근로 동의서</div>'
+                    + '<table class="dt" style="margin-bottom:22px"><tbody>'
+                    + '<tr><th style="width:32%">◎ 성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td></tr>'
+                    + '<tr><th>◎ 소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
+                    + '<tr><th>◎ 주민등록번호</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
+                    + '</tbody></table>'
+                    + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;margin-bottom:26px;padding:0 2px">'
+                    + '<p style="margin:0 0 14px"><b>1.</b>&nbsp;상기인은 회사로부터 근로시간 외 추가로 연장근로 및 야간, 휴일근로를 실시할 수 있다는 내용에 대하여 충분히 설명을 들었으며, 연장근로 및 야간, 휴일근로를 실시함에 동의합니다.</p>'
+                    + '<p style="margin:0"><b>2.</b>&nbsp;연장 및 야간, 휴일근로에 대해 문제제기를 하지 않겠습니다.</p>'
+                    + '</div>'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:20px 0">' + otDate + '</p>'
+                    + '<p style="font-size:12px;font-weight:700;text-align:right;margin-bottom:18px">(주)한연개발 동두천지점 귀하</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
+                    + '<span style="font-size:12px;font-weight:800;color:#222">성명 :</span>'
+                    + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
+                    + '<span style="font-size:12px;font-weight:700">(인)</span>'
+                    + otSign
+                    + '</div>'
+                    + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
+            }
+
+            if (type === 'workCondition') {
+                var wcSign = fd.sign && fd.sign.indexOf('data:') === 0
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    : '';
+                var wcDate = (fd.year || '____') + '년 ' + (fd.month || '__') + '월 ' + (fd.day || '__') + '일';
+                return DOC_STYLE
+                    + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.06em;margin-bottom:20px;margin-top:8px">근로조건 변경 동의서</div>'
+                    + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px">'
+                    + '<table class="dt" style="min-width:340px"><tbody>'
+                    + '<tr>'
+                    + '<th rowspan="2" style="width:12%;background:#e8eaf6;vertical-align:middle;text-align:center;line-height:1.5">사용자<br>(갑)</th>'
+                    + '<th style="width:22%;background:#f0f0f0">사업체명</th><td class="ac" style="font-weight:700">㈜한연개발</td>'
+                    + '<th style="width:18%;background:#f0f0f0">대표이사</th><td class="ac" style="font-weight:700">이상순</td>'
+                    + '</tr>'
+                    + '<tr>'
+                    + '<th style="background:#f0f0f0">소재지</th>'
+                    + '<td colspan="3" class="ac" style="font-weight:600;font-size:11px">경기도 동두천시 생연동 364-1 시네마플러스 5F, 6F</td>'
+                    + '</tr>'
+                    + '<tr>'
+                    + '<th rowspan="2" style="background:#e8eaf6;vertical-align:middle;text-align:center;line-height:1.5">근로자<br>(을)</th>'
+                    + '<th style="background:#f0f0f0">성&nbsp;&nbsp;&nbsp;명</th>'
+                    + '<td class="fc">' + tv(fd.name) + '</td>'
+                    + '<th style="background:#f0f0f0">생년월일</th>'
+                    + '<td class="fc">' + tv(fd.birth) + '</td>'
+                    + '</tr>'
+                    + '<tr>'
+                    + '<th style="background:#f0f0f0">지&nbsp;&nbsp;&nbsp;점</th>'
+                    + '<td class="ac" style="font-weight:700">CGV동두천</td>'
+                    + '<th style="background:#f0f0f0">직&nbsp;&nbsp;&nbsp;책</th>'
+                    + '<td class="ac" style="font-weight:700">미소지기</td>'
+                    + '</tr>'
+                    + '</tbody></table>'
+                    + '</div>'
+                    + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;border:1.5px solid #555;padding:14px 18px;margin-bottom:22px;background:#fafafa">'
+                    + '상기 본인은 ㈜한연개발 동두천지점 과 체결된 파견 근로계약서의 근로조건에서 근무 중 영화관 운영 사정상 필요에 의해 소정근로일수 및 소정근로시간이 변경될 수 있는 점에 대하여 동의하며 이로 인한 어떠한 문제제기도 하지 않을 것입니다.'
+                    + '</div>'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0">' + wcDate + '</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
+                    + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
+                    + wcSign
+                    + '<span style="font-size:12px;font-weight:700">(인)</span>'
+                    + '</div>'
+                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순 (인)</div>';
             }
 
             return '<p style="color:#e00;font-weight:700">알 수 없는 서류 유형: ' + type + '</p>';

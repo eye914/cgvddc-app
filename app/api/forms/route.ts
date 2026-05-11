@@ -20,6 +20,9 @@ const TYPE_NAMES: Record<string, string> = {
   absent: '결근사유서',
   resign: '사직원',
   earlyLeave: '희망조퇴확인서',
+  privacy: '개인정보보호 서약서',
+  overtime: '연장·야간·휴일 근로동의서',
+  workCondition: '근로조건 변경동의서',
 };
 
 export async function GET(req: NextRequest) {
