@@ -2964,7 +2964,7 @@
             _signPadCtx = _signPadCanvas.getContext('2d');
             _signPadCtx.clearRect(0, 0, _signPadCanvas.width, _signPadCanvas.height);
             _signPadCtx.strokeStyle = '#0f172a';
-            _signPadCtx.lineWidth = 7.5;
+            _signPadCtx.lineWidth = 5;
             _signPadCtx.lineCap = 'round';
             _signPadCtx.lineJoin = 'round';
 
@@ -3481,7 +3481,7 @@
                 + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
                 + '<span style="font-size:12px;font-weight:700">(인)</span>'
                 + '</div>'
-                + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순 (인)</div>';
+                + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
         }
 
         function fField(label, inputHtml) {
@@ -3900,7 +3900,7 @@
                     + wcSign
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + '</div>'
-                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순 (인)</div>';
+                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
             }
 
             return '<p style="color:#e00;font-weight:700">알 수 없는 서류 유형: ' + type + '</p>';
