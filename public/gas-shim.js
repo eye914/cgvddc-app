@@ -4,6 +4,9 @@
  * → fetch('/api/...') 로 변환
  */
 (function() {
+  // Vercel 환경 플래그 — cgv-app.js 에서 카카오 분기에 사용
+  window.__IS_VERCEL__ = true;
+
   function makeRunner() {
     var _success = function(){};
     var _failure = function(e){ alert('오류: ' + (e && e.message ? e.message : e)); };

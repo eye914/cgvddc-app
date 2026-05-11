@@ -560,6 +560,10 @@
                 .checkPinAuth('', pin, 'admin');
         }
 function showKakaoModal(text, forced) {
+            // Vercel 앱에서는 카카오 모달 표시 안 함
+            if (window.__IS_VERCEL__) return;
+            var modal = document.getElementById("kakao-modal");
+            if (!modal) return;
             pendingShareText = text;
             kakaoOpened = false;
             var ta = document.getElementById("kakao-copy-textarea");
@@ -568,17 +572,18 @@ function showKakaoModal(text, forced) {
             var hint = document.getElementById("kakao-copy-hint");
             if (hint) hint.style.display = isMobile ? "none" : "block";
             var btn = document.getElementById("kakao-done-btn");
-            btn.disabled = true;
-            btn.className = "w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed";
-            btn.innerText = "공유 완료했어요 (카톡방 열기 후 활성화)";
+            if (btn) {
+                btn.disabled = true;
+                btn.className = "w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed";
+                btn.innerText = "공유 완료했어요 (카톡방 열기 후 활성화)";
+            }
             var xBtn = document.getElementById("kakao-close-btn");
             if (xBtn) xBtn.style.display = forced ? "none" : "block";
             var forceMsg = document.getElementById("kakao-force-msg");
             if (forceMsg) forceMsg.style.display = forced ? "block" : "none";
             silentCopy(text);
-            document.getElementById("kakao-modal").style.display = "flex";
+            modal.style.display = "flex";
         }
-
         function doKakaoOpen() {
             silentCopy(pendingShareText);
             var ta = document.getElementById("kakao-copy-textarea");
