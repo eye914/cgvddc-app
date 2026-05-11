@@ -2594,9 +2594,8 @@
                     closeFormRequestModal();
                     clearFormReqName();
                     loadAdminForms();
-                    alert(sentName + ' 님에게 ' + (FORM_TYPE_LABELS[sentType] || '') + ' 제출 요청을 발송했습니다.');
-                    // 수신자에게 3일 기한 안내 (관리자 화면에 표시)
-                    showToast('⚠️ ' + sentName + ' 님은 3일 이내(~' + (function(){ var d=new Date(); d.setDate(d.getDate()+3); return (d.getMonth()+1)+'/'+(d.getDate()); })() + ')에 제출해야 합니다.', 5000);
+                    var dueDate = (function(){ var d=new Date(); d.setDate(d.getDate()+3); return (d.getMonth()+1)+'/'+(d.getDate()); })();
+                    alert(sentName + ' 님에게 ' + (FORM_TYPE_LABELS[sentType] || '') + ' 제출 요청을 발송했습니다.\n⚠️ 제출 기한: ' + dueDate + ' 까지 (3일 이내)');
                 })
                 .withFailureHandler(function(e) {
                     showLoader(false);
