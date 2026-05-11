@@ -305,16 +305,24 @@
                             <div id="form-req-name-grid" class="flex flex-wrap gap-1.5 mb-3"></div>
                             <div id="form-req-selected" class="hidden space-y-2">
                                 <p class="text-xs font-black text-slate-700">요청 서류 선택 <span id="form-req-target-label" class="text-red-600"></span></p>
-                                <div class="flex gap-2 flex-wrap">
-                                    <button onclick="openFormRequestModal('late')" class="flex-1 min-w-0 bg-yellow-50 border-2 border-yellow-200 text-yellow-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">⏰ 지각확인서</button>
-                                    <button onclick="openFormRequestModal('absent')" class="flex-1 min-w-0 bg-red-50 border-2 border-red-200 text-red-700 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">❌ 결근사유서</button>
-                                    <button onclick="openFormRequestModal('resign')" class="flex-1 min-w-0 bg-slate-50 border-2 border-slate-200 text-slate-700 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">📄 사직원</button>
-                                    <button onclick="openFormRequestModal('earlyLeave')" class="flex-1 min-w-0 bg-blue-50 border-2 border-blue-200 text-blue-700 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">🕐 희망조퇴확인서</button>
+                                <!-- 일반 서류 -->
+                                <div class="grid grid-cols-2 gap-1.5">
+                                    <button onclick="openFormRequestModal('late')" class="bg-yellow-50 border-2 border-yellow-200 text-yellow-800 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">⏰ 지각확인서</button>
+                                    <button onclick="openFormRequestModal('absent')" class="bg-red-50 border-2 border-red-200 text-red-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">❌ 결근사유서</button>
+                                    <button onclick="openFormRequestModal('resign')" class="bg-slate-50 border-2 border-slate-200 text-slate-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">📄 사직원</button>
+                                    <button onclick="openFormRequestModal('earlyLeave')" class="bg-blue-50 border-2 border-blue-200 text-blue-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">🕐 희망조퇴확인서</button>
                                 </div>
-                                <div class="flex gap-2 flex-wrap mt-1.5">
-                                    <button onclick="openFormRequestModal('privacy')" class="flex-1 min-w-0 bg-purple-50 border-2 border-purple-200 text-purple-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">🔒 개인정보서약서</button>
-                                    <button onclick="openFormRequestModal('overtime')" class="flex-1 min-w-0 bg-orange-50 border-2 border-orange-200 text-orange-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">🌙 연장·야간·휴일동의서</button>
-                                    <button onclick="openFormRequestModal('workCondition')" class="flex-1 min-w-0 bg-teal-50 border-2 border-teal-200 text-teal-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all">📋 근로조건변경동의서</button>
+                                <!-- 신규입사자용 접기/펴기 -->
+                                <div>
+                                    <button onclick="toggleNewcomerForms()" class="flex items-center gap-1.5 w-full text-left text-xs font-black text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-xl active:scale-95 transition-all">
+                                        <span id="newcomer-arrow" class="text-[10px]">▶</span>
+                                        🆕 신규입사자용 서류
+                                    </button>
+                                    <div id="newcomer-form-btns" style="display:none" class="grid grid-cols-1 gap-1.5 mt-1.5">
+                                        <button onclick="openFormRequestModal('privacy')" class="bg-purple-50 border-2 border-purple-200 text-purple-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">🔒 개인정보보호 서약서</button>
+                                        <button onclick="openFormRequestModal('overtime')" class="bg-orange-50 border-2 border-orange-200 text-orange-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">🌙 연장·야간·휴일 근로동의서</button>
+                                        <button onclick="openFormRequestModal('workCondition')" class="bg-teal-50 border-2 border-teal-200 text-teal-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">📋 근로조건 변경동의서</button>
+                                    </div>
                                 </div>
                                 <button onclick="clearFormReqName()" class="text-xs text-slate-400 font-bold underline">선택 취소</button>
                             </div>

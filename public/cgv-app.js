@@ -2547,6 +2547,20 @@
             _formSelectedName = '';
             var sel = document.getElementById('form-req-selected');
             if (sel) sel.classList.add('hidden');
+            // 신규입사자용 섹션 초기화 (접힌 상태로)
+            var nb = document.getElementById('newcomer-form-btns');
+            var na = document.getElementById('newcomer-arrow');
+            if (nb) nb.style.display = 'none';
+            if (na) na.textContent = '▶';
+        }
+
+        function toggleNewcomerForms() {
+            var div = document.getElementById('newcomer-form-btns');
+            var arrow = document.getElementById('newcomer-arrow');
+            if (!div) return;
+            var isHidden = div.style.display === 'none' || div.style.display === '';
+            div.style.display = isHidden ? 'grid' : 'none';
+            if (arrow) arrow.textContent = isHidden ? '▼' : '▶';
         }
 
         function openFormRequestModal(type) {
@@ -2677,27 +2691,24 @@
                         if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">기한초과</span>';
                         else if (diffD <= 1) dueInfo = '<span class="text-[9px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">D-' + diffD + '</span>';
                     }
-                    // 단일 행 컴팩트 카드
-                    html += '<div class="flex items-center gap-2 rounded-xl border ' + statusClass + ' px-3 py-2.5 mb-1.5 min-w-0">';
+                    // 2행 카드 레이아웃 (모바일 최적화)
+                    html += '<div class="rounded-xl border ' + statusClass + ' px-3 py-2 mb-1.5">';
+                    // ── 1행: 체크박스 + 아이콘 + 이름 + 서류명 + 기한뱃지 ──
+                    html += '<div class="flex items-center gap-1.5 min-w-0">';
                     html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
                     html += '<span class="text-sm flex-shrink-0">' + icon + '</span>';
-                    // 이름 + 서류명
-                    html += '<div class="flex-1 min-w-0">';
-                    html += '<div class="flex items-baseline gap-1.5 min-w-0">';
-                    html += '<span class="font-black text-[12px] text-slate-800 truncate">' + r.target_name + '</span>';
-                    html += '<span class="text-[10px] text-slate-500 font-bold truncate">' + label + '</span>';
-                    html += '</div>';
-                    if (dateStr) html += '<span class="text-[9px] text-slate-400">' + dateStr + '</span>';
-                    html += '</div>';
-                    // 기한 뱃지
+                    html += '<span class="font-black text-[13px] text-slate-800 whitespace-nowrap flex-shrink-0">' + r.target_name + '</span>';
+                    html += '<span class="text-[10px] text-slate-500 font-bold flex-1 min-w-0 truncate overflow-hidden">' + label + '</span>';
                     if (dueInfo) html += dueInfo;
-                    // 상태뱃지
-                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '">';
-                    html += '<span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0"></span>';
-                    html += statusLabel + '</span>';
-                    // 버튼
-                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">열람</button>';
-                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap">취소</button>';
+                    html += '</div>';
+                    // ── 2행: 날짜(좌) + 상태뱃지 + 버튼(우) ──
+                    html += '<div class="flex items-center gap-1 mt-1.5">';
+                    if (dateStr) html += '<span class="text-[9px] text-slate-400 whitespace-nowrap flex-shrink-0">' + dateStr + '</span>';
+                    html += '<div class="flex-1"></div>';
+                    html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black whitespace-nowrap ' + statusBgCls + '"><span class="w-1.5 h-1.5 rounded-full ' + statusDot + ' flex-shrink-0"></span>' + statusLabel + '</span>';
+                    if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap ml-1">열람</button>';
+                    html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-500 px-2.5 py-1.5 rounded-lg active:scale-95 whitespace-nowrap ml-1">취소</button>';
+                    html += '</div>';
                     html += '</div>';
                 });
                 html += '</div></div>';
