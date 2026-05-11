@@ -2818,11 +2818,16 @@
                 .getFormRequests(myName);
         }
 
+        // ── 모달 배경 스크롤 방지 헬퍼 ──
+        function lockBodyScroll() { document.body.style.overflow = 'hidden'; document.body.style.touchAction = 'none'; }
+        function unlockBodyScroll() { document.body.style.overflow = ''; document.body.style.touchAction = ''; }
+
         function openMyFormsModal() {
             var myName = sessionStorage.getItem('cgv_currentUser');
             if (!myName) return;
             var modal = document.getElementById('my-forms-modal');
             if (modal) modal.classList.remove('hidden');
+            lockBodyScroll();
             var el = document.getElementById('my-forms-list');
             if (el) el.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>';
             google.script.run
@@ -2872,6 +2877,7 @@
         function closeMyFormsModal() {
             var modal = document.getElementById('my-forms-modal');
             if (modal) modal.classList.add('hidden');
+            unlockBodyScroll();
         }
 
         // ── 폼 작성 ──
@@ -2880,6 +2886,7 @@
         window._agreementSignDataURL = null;
 
         function openFormFillModal(reqId, type) {
+            lockBodyScroll();
             _formCurrentReqId = reqId;
             _formCurrentType = type;
             window._signDataURL = null;
@@ -2916,6 +2923,7 @@
         function closeFormFillModal() {
             var modal = document.getElementById('form-fill-modal');
             if (modal) modal.classList.add('hidden');
+            unlockBodyScroll();
         }
 
         // ── 서명 패드 ──
@@ -3610,6 +3618,7 @@
 
         // ── 관리자: 제출된 서류 열람 ──
         function openFormViewModal(reqId) {
+            lockBodyScroll();
             var req = _formRequests.find(function(r) { return r.id === reqId; });
             var modal = document.getElementById('form-view-modal');
             var body = document.getElementById('form-view-body');
@@ -3923,6 +3932,7 @@
         function closeFormViewModal() {
             var modal = document.getElementById('form-view-modal');
             if (modal) modal.classList.add('hidden');
+            unlockBodyScroll();
         }
 
         function printFormView() {
