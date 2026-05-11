@@ -19,6 +19,7 @@ const TYPE_NAMES: Record<string, string> = {
   late: '지각확인서',
   absent: '결근사유서',
   resign: '사직원',
+  earlyLeave: '희망조퇴확인서',
 };
 
 export async function GET(req: NextRequest) {

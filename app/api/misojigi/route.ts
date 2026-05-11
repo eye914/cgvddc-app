@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const result = (data ?? []).map((row: Record<string, any>) => ({
       name: row.name,
       pos: row.pos ? row.pos.split(',').map((p: string) => p.trim()) : [],
-      hours: row.hours ?? 5.5,
+      hours: row.hours ?? '5.5',
       active: row.active,
       pin: row.pin ?? '00000',
     }));

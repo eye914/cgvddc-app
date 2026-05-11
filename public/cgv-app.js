@@ -3482,7 +3482,9 @@
 
             google.script.run
                 .withSuccessHandler(function(list) {
-                    var sub = list && list[0];
+                    // request_id로 정확한 제출 서류 찾기 (같은 사람이 여러 서류 제출한 경우 대비)
+                    var sub = (list || []).find(function(s){ return s.request_id === reqId; })
+                              || (list && list[0]);
                     if (!sub) {
                         body.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">제출된 서류가 없습니다</p>';
                         return;
