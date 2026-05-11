@@ -2559,7 +2559,7 @@
             var arrow = document.getElementById('newcomer-arrow');
             if (!div) return;
             var isHidden = div.style.display === 'none' || div.style.display === '';
-            div.style.display = isHidden ? 'grid' : 'none';
+            div.style.display = isHidden ? 'flex' : 'none';
             if (arrow) arrow.textContent = isHidden ? '▼' : '▶';
         }
 

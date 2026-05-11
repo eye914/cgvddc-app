@@ -303,28 +303,42 @@
                         <div class="pt-4 pb-3 border-b border-slate-100 mb-4">
                             <p class="text-xs font-bold text-slate-500 mb-3">미소지기 선택 후 서류를 요청하세요</p>
                             <div id="form-req-name-grid" class="flex flex-wrap gap-1.5 mb-3"></div>
-                            <div id="form-req-selected" class="hidden space-y-2">
-                                <p class="text-xs font-black text-slate-700">요청 서류 선택 <span id="form-req-target-label" class="text-red-600"></span></p>
-                                <!-- 일반 서류 -->
-                                <div class="grid grid-cols-2 gap-1.5">
-                                    <button onclick="openFormRequestModal('late')" class="bg-yellow-50 border-2 border-yellow-200 text-yellow-800 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">⏰ 지각확인서</button>
-                                    <button onclick="openFormRequestModal('absent')" class="bg-red-50 border-2 border-red-200 text-red-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">❌ 결근사유서</button>
-                                    <button onclick="openFormRequestModal('resign')" class="bg-slate-50 border-2 border-slate-200 text-slate-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">📄 사직원</button>
-                                    <button onclick="openFormRequestModal('earlyLeave')" class="bg-blue-50 border-2 border-blue-200 text-blue-700 text-xs font-black py-2.5 px-2 rounded-xl active:scale-95 transition-all text-center">🕐 희망조퇴확인서</button>
+                            <div id="form-req-selected" class="hidden">
+                                <p class="text-xs font-black text-slate-700 mb-2">요청 서류 선택 <span id="form-req-target-label" class="text-red-600"></span></p>
+                                <!-- 일반 서류: 1열 텍스트 리스트 -->
+                                <div class="flex flex-col gap-1">
+                                    <button onclick="openFormRequestModal('late')" class="flex items-center gap-2.5 w-full text-left bg-yellow-50 border border-yellow-200 text-yellow-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">⏰</span><span>지각확인서</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('absent')" class="flex items-center gap-2.5 w-full text-left bg-red-50 border border-red-200 text-red-800 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">❌</span><span>결근사유서</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('resign')" class="flex items-center gap-2.5 w-full text-left bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">📄</span><span>사직원</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('earlyLeave')" class="flex items-center gap-2.5 w-full text-left bg-blue-50 border border-blue-200 text-blue-800 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">🕐</span><span>희망조퇴확인서</span>
+                                    </button>
                                 </div>
                                 <!-- 신규입사자용 접기/펴기 -->
-                                <div>
-                                    <button onclick="toggleNewcomerForms()" class="flex items-center gap-1.5 w-full text-left text-xs font-black text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-xl active:scale-95 transition-all">
-                                        <span id="newcomer-arrow" class="text-[10px]">▶</span>
-                                        🆕 신규입사자용 서류
+                                <div class="mt-1.5">
+                                    <button onclick="toggleNewcomerForms()" class="flex items-center gap-2 w-full text-left text-sm font-black text-purple-700 bg-purple-50 border border-purple-200 px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span id="newcomer-arrow" class="text-[11px]">▶</span>
+                                        <span>🆕 신규입사자용 서류</span>
                                     </button>
-                                    <div id="newcomer-form-btns" style="display:none" class="grid grid-cols-1 gap-1.5 mt-1.5">
-                                        <button onclick="openFormRequestModal('privacy')" class="bg-purple-50 border-2 border-purple-200 text-purple-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">🔒 개인정보보호 서약서</button>
-                                        <button onclick="openFormRequestModal('overtime')" class="bg-orange-50 border-2 border-orange-200 text-orange-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">🌙 연장·야간·휴일 근로동의서</button>
-                                        <button onclick="openFormRequestModal('workCondition')" class="bg-teal-50 border-2 border-teal-200 text-teal-800 text-xs font-black py-2.5 px-3 rounded-xl active:scale-95 transition-all text-center">📋 근로조건 변경동의서</button>
+                                    <div id="newcomer-form-btns" style="display:none" class="flex flex-col gap-1 mt-1">
+                                        <button onclick="openFormRequestModal('privacy')" class="flex items-center gap-2.5 w-full text-left bg-purple-50 border border-purple-200 text-purple-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">🔒</span><span>개인정보보호 서약서</span>
+                                        </button>
+                                        <button onclick="openFormRequestModal('overtime')" class="flex items-center gap-2.5 w-full text-left bg-orange-50 border border-orange-200 text-orange-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">🌙</span><span>연장·야간·휴일 근로동의서</span>
+                                        </button>
+                                        <button onclick="openFormRequestModal('workCondition')" class="flex items-center gap-2.5 w-full text-left bg-teal-50 border border-teal-200 text-teal-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">📋</span><span>근로조건 변경동의서</span>
+                                        </button>
                                     </div>
                                 </div>
-                                <button onclick="clearFormReqName()" class="text-xs text-slate-400 font-bold underline">선택 취소</button>
+                                <button onclick="clearFormReqName()" class="text-xs text-slate-400 font-bold underline mt-2 block">선택 취소</button>
                             </div>
                         </div>
                         <!-- 제출된/대기 중 서류 목록 -->
