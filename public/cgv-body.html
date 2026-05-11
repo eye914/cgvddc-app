@@ -437,6 +437,31 @@
     </div>
 
 
+    <!-- 카카오 공유 강제 모달 -->
+    <div id="kakao-modal" class="modal-overlay" style="z-index:9500;">
+        <div class="kakao-modal-content" style="position:relative;">
+            <button id="kakao-close-btn" onclick="document.getElementById('kakao-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;padding:4px;">&#10005;</button>
+            <p id="kakao-force-msg" style="display:none;" class="text-[11px] font-black text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2">&#9888; 단톡방 공유 전까지 닫기가 안 돼요. 반드시 공유 후 완료 버튼을 눌러주세요!</p>
+            <div class="w-14 h-14 bg-[#fae100] rounded-[18px] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <span style="font-size:28px;line-height:1;">&#128172;</span>
+            </div>
+            <h3 class="text-xl font-black text-slate-900 mb-2">단톡방에 꼭 공유해주세요!</h3>
+            <p class="text-[13px] font-bold text-slate-500 mb-1 leading-relaxed">단톡방 공유 없이는 <span class="text-red-500 font-black">공식 신청으로 인정되지 않아요.</span></p>
+            <textarea id="kakao-copy-textarea" readonly onclick="this.select();"
+                style="width:100%;height:120px;margin:8px 0 10px;padding:10px;border-radius:12px;border:2px solid #e2e8f0;font-size:11px;font-family:inherit;resize:none;background:#f8fafc;color:#334155;cursor:pointer;outline:none;"
+                placeholder=""></textarea>
+            <p id="kakao-copy-hint" class="text-[11px] text-blue-600 font-black mb-2" style="display:none;">&#9757; PC: 위 텍스트를 클릭 후 Ctrl+C 로 복사하세요</p>
+            <button onclick="doKakaoOpen()" class="w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black text-base shadow-lg active:scale-95 transition-all mb-3 hover:bg-yellow-300">
+                복사 후 카톡방 열기
+            </button>
+            <button id="kakao-done-btn" onclick="closeKakaoModal()" disabled
+                class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed">
+                공유 완료했어요 (카톡방 열기 후 활성화)
+            </button>
+            <p class="text-[10px] text-slate-400 font-bold mt-3">카톡방 열기를 누른 후 완료 버튼이 활성화됩니다.</p>
+        </div>
+    </div>
+
     <!-- 로딩 -->
     <div id="loader" style="display:none;" class="fixed inset-0 bg-white/90 backdrop-blur-md z-[8000] flex flex-col items-center justify-center">
         <div class="w-16 h-16 border-8 border-slate-200 border-t-red-600 rounded-full animate-spin mb-6"></div>

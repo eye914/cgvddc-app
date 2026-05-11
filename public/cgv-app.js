@@ -1,5 +1,7 @@
 ﻿
-
+        var KAKAO_URL = "https://open.kakao.com/o/gGsMiRli";
+        var DEPLOY_URL = "https://tinyurl.com/y7enzns9";
+        var KAKAO_DEEPLINK = "kakaotalk://open/chat/gGsMiRli";
         // ── PIN 인증 설정 ──
         var PIN_LENGTH_STAFF = 5;
         var PIN_LENGTH_ADMIN = 5;
@@ -72,6 +74,8 @@
         var _misoExpanded = {};
         var wishData = {};
         var currentSupportOptions = [];
+        var kakaoOpened = false;
+        var pendingShareText = "";
 
         function getLocalYYYYMMDD(d) {
             var y = d.getFullYear();
@@ -555,7 +559,50 @@
                 })
                 .checkPinAuth('', pin, 'admin');
         }
-function silentCopy(text) {
+function showKakaoModal(text, forced) {
+            pendingShareText = text;
+            kakaoOpened = false;
+            var ta = document.getElementById("kakao-copy-textarea");
+            if (ta) ta.value = text;
+            var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            var hint = document.getElementById("kakao-copy-hint");
+            if (hint) hint.style.display = isMobile ? "none" : "block";
+            var btn = document.getElementById("kakao-done-btn");
+            btn.disabled = true;
+            btn.className = "w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed";
+            btn.innerText = "공유 완료했어요 (카톡방 열기 후 활성화)";
+            var xBtn = document.getElementById("kakao-close-btn");
+            if (xBtn) xBtn.style.display = forced ? "none" : "block";
+            var forceMsg = document.getElementById("kakao-force-msg");
+            if (forceMsg) forceMsg.style.display = forced ? "block" : "none";
+            silentCopy(text);
+            document.getElementById("kakao-modal").style.display = "flex";
+        }
+
+        function doKakaoOpen() {
+            silentCopy(pendingShareText);
+            var ta = document.getElementById("kakao-copy-textarea");
+            if (ta) { ta.select(); ta.setSelectionRange(0, 99999); }
+            var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (isMobile) {
+                window.location.href = KAKAO_DEEPLINK;
+                setTimeout(function(){ window.open(KAKAO_URL, "_blank"); }, 600);
+            } else {
+                window.open(KAKAO_URL, "_blank");
+            }
+            kakaoOpened = true;
+            var btn = document.getElementById("kakao-done-btn");
+            btn.disabled = false;
+            btn.className = "w-full bg-green-500 text-white py-4 rounded-2xl font-black text-sm border-2 border-green-600 active:scale-95 hover:bg-green-600";
+            btn.innerText = "공유 완료했어요";
+        }
+
+        function closeKakaoModal() {
+            if (!kakaoOpened) return;
+            document.getElementById("kakao-modal").style.display = "none";
+        }
+
+        function silentCopy(text) {
             try {
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(text).catch(function(){ legacyCopy(text); });
@@ -573,29 +620,37 @@ function silentCopy(text) {
         }
 
         window.copyToClipboard = function(text) {
-            if (!currentUser) { alert("\uC774\uB984\uC744 \uBA3C\uC800 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
+            if (!currentUser) { alert("이름을 먼저 선택해 주세요!"); return; }
             silentCopy(text);
-            var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (isMobile) {
-                window.location.href = KAKAO_DEEPLINK;
-                setTimeout(function(){ window.open(KAKAO_URL,"_blank"); }, 600);
+            if (typeof google !== "undefined" && google.script) {
+                var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    window.location.href = KAKAO_DEEPLINK;
+                    setTimeout(function(){ window.open(KAKAO_URL,"_blank"); }, 600);
+                } else {
+                    window.open(KAKAO_URL,"_blank");
+                }
+                setTimeout(function(){ alert("복사 완료! 카톡방에 붙여넣기 해주세요."); }, 700);
             } else {
-                window.open(KAKAO_URL,"_blank");
+                alert("복사 완료! 단톡방에 붙여넣기 해주세요.");
             }
-            setTimeout(function(){ alert("\uBCF5\uC0AC \uC644\uB8CC! \uCE74\uD1A1\uBC29\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694."); }, 700);
         };
 
         // 관리자 전용 - 이름 선택 불필요
         window.adminCopyToClipboard = function(text) {
             silentCopy(text);
-            var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (isMobile) {
-                window.location.href = KAKAO_DEEPLINK;
-                setTimeout(function(){ window.open(KAKAO_URL,"_blank"); }, 600);
+            if (typeof google !== "undefined" && google.script) {
+                var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isMobile) {
+                    window.location.href = KAKAO_DEEPLINK;
+                    setTimeout(function(){ window.open(KAKAO_URL,"_blank"); }, 600);
+                } else {
+                    window.open(KAKAO_URL,"_blank");
+                }
+                setTimeout(function(){ alert("복사 완료! 카톡방에 붙여넣기 해주세요."); }, 700);
             } else {
-                window.open(KAKAO_URL,"_blank");
+                alert("복사 완료! 단톡방에 붙여넣기 해주세요.");
             }
-            setTimeout(function(){ alert("\uBCF5\uC0AC \uC644\uB8CC! \uCE74\uD1A1\uBC29\uC5D0 \uBD99\uC5EC\uB123\uAE30 \uD574\uC8FC\uC138\uC694."); }, 700);
         };
         function updateHeaderDatetime() {
             var el = document.getElementById("header-datetime");
@@ -1298,6 +1353,7 @@ function silentCopy(text) {
                     .withSuccessHandler(function(){
                         showLoader(false);
                         fetchData(); clearReqData(); clearWishData();
+                        showKakaoModal(shareText);
                         setTimeout(function(){
                             var el = document.getElementById("main-list-board");
                             if (el) el.scrollIntoView({ behavior:"smooth", block:"start" });
@@ -1603,6 +1659,7 @@ function silentCopy(text) {
                 google.script.run
                     .withSuccessHandler(function(){
                         showLoader(false); fetchData(); closeModal();
+                        showKakaoModal(shareText, true);
                     })
                     .withFailureHandler(function(e){ showLoader(false); alert("\uC624\uB958: "+e.message); })
                     .updateTradeInDB(selectedTradeId, { subName:currentUser, subPos:sPos, status:"\uD611\uC758\uC911", desiredShift:fD });
@@ -1743,6 +1800,7 @@ function silentCopy(text) {
                     .withSuccessHandler(function(){
                         showLoader(false);
                         fetchData();
+                        showKakaoModal(msg, false);
                     })
                     .withFailureHandler(function(e){ showLoader(false); alert("\uBC18\uB824 \uC2E4\uD328: "+e.message); })
                     .updateTradeInDB(id, { subName:"\uBAA8\uC9D1\uC911", subPos:"", status:"\uBAA8\uC9D1\uC911", desiredShift:t.desiredShift.replace(" (\uC2DC\uAC04/\uD3EC\uC9C0\uC158 \uACE0\uC815)","") });
@@ -1798,6 +1856,7 @@ function silentCopy(text) {
                 .withSuccessHandler(function(){
                     showLoader(false);
                     fetchData();
+                    showKakaoModal(shareText, true);
                 })
                 .withFailureHandler(function(e){ showLoader(false); alert("\uCC98\uB9AC \uC2E4\uD328: "+e.message); })
                 .updateTradeInDB(id, action==="agree"
