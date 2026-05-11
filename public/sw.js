@@ -31,7 +31,10 @@ self.addEventListener('fetch', (e) => {
 
   // 나머지(이미지, 폰트 등)는 cache-first
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).catch(() => new Response('', { status: 408, statusText: 'Network Error' }));
+    })
   );
 });
 
