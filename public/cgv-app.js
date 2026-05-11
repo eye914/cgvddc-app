@@ -105,7 +105,8 @@
         function doSubscribe(name) {
             // 버튼과 완전히 독립. 권한이 있을 때 백그라운드에서 구독 등록만 처리.
             if (!name) return;
-            if (sessionStorage.getItem('cgv_push_subscribed') === 'true') return;
+            // 이름 단위로 체크 — 이름이 바뀌면 재구독 필요
+            if (sessionStorage.getItem('cgv_push_subscribed_name') === name) return;
             navigator.serviceWorker.ready.then(function(reg) {
                 return reg.pushManager.subscribe({
                     userVisibleOnly: true,
@@ -118,7 +119,7 @@
                     body: JSON.stringify({ name: name, subscription: sub.toJSON() })
                 });
             }).then(function(r) { return r.json(); }).then(function(d) {
-                if (d.ok) sessionStorage.setItem('cgv_push_subscribed', 'true');
+                if (d.ok) sessionStorage.setItem('cgv_push_subscribed_name', name);
             }).catch(function(e) { console.error('Push 구독 실패:', e); });
         }
 
