@@ -366,6 +366,38 @@
                     </div>
                 </div>
             </div>
+            <!-- ── 근로계약서 관리 (관리자) ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-4">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleContractPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-slate-800 text-base">📄 근로계약서 관리</span>
+                        </div>
+                        <span id="contract-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="contract-panel" class="hidden px-5 pb-5">
+                        <!-- 발송 영역 -->
+                        <div class="pt-4 pb-4 border-b border-slate-100 mb-4">
+                            <p class="text-xs font-black text-slate-700 mb-2">📨 계약서 발송</p>
+                            <select id="contract-week-select" onchange="onContractWeekChange(this.value)" class="w-full border-2 border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none focus:border-blue-400 mb-3">
+                                <option value="">불러오는 중...</option>
+                            </select>
+                            <div id="contract-emp-list"></div>
+                        </div>
+                        <!-- 완료 목록 -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-xs font-black text-slate-700">✅ 서명완료 계약서</p>
+                                <button onclick="refreshCompletedContracts()" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">↺ 새로고침</button>
+                            </div>
+                            <div id="contract-completed-list">
+                                <p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ── 유틸리티 버튼 (최하단) ── -->
             <div class="max-w-3xl mx-auto px-5 mt-2 mb-6 space-y-2">
                 <button onclick="cleanupOldTrades()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
@@ -379,6 +411,13 @@
         <button onclick="openMyFormsModal()" class="flex items-center gap-2 bg-red-600 text-white font-black text-sm px-4 py-3 rounded-2xl shadow-2xl active:scale-95 transition-all border-2 border-red-700">
             📋 <span>서류 제출</span>
             <span id="my-forms-badge" class="bg-white text-red-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center"></span>
+        </button>
+    </div>
+
+    <!-- ── 직원용: 받은 계약서 플로팅 버튼 ── -->
+    <div id="my-contracts-fab" class="hidden fixed bottom-24 right-4 z-[8000]">
+        <button onclick="openMyContracts()" class="flex items-center gap-2 bg-blue-600 text-white font-black text-sm px-4 py-3 rounded-2xl shadow-2xl active:scale-95 transition-all border-2 border-blue-700">
+            📄 <span>계약서</span>
         </button>
     </div>
 
@@ -525,6 +564,57 @@
             <div class="px-5 pb-8 pt-3 border-t border-slate-100 space-y-2">
                 <button onclick="printFormView()" class="w-full py-4 rounded-2xl font-black text-sm active:scale-95 transition-all" style="background:#0f172a;color:#fff">📄 PDF 저장 / 인쇄</button>
                 <p class="text-center text-[11px] text-slate-400 font-bold">버튼 클릭 → 인쇄 화면 → "PDF로 저장" 선택</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 미소지기 내 계약서 목록 모달 ── -->
+    <div id="my-contracts-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8200] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:90vh;overflow-y:auto;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-black text-slate-900 text-lg">📄 내 근로계약서</h3>
+                <button onclick="closeMyContractsModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div id="my-contracts-list" class="px-5 py-4 space-y-3">
+                <p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 계약서 서명 모달 (캔버스 2개) ── -->
+    <div id="contract-sign-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[8400] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-black text-slate-900 text-base" id="contract-sign-title">계약서 서명</h3>
+                <button onclick="closeContractSignModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div class="px-4 py-3 space-y-3">
+                <!-- 계약서 미리보기 -->
+                <div class="border-2 border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
+                    <iframe id="contract-sign-preview" src="" style="width:100%;height:300px;border:0;"></iframe>
+                </div>
+                <!-- 이름 캔버스 -->
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-black text-blue-900">✏️ 이름 (터치/마우스로 작성)</p>
+                        <button onclick="clearPad('name')" class="text-[11px] font-black text-blue-600 underline">지우기</button>
+                    </div>
+                    <canvas id="pad-name" class="bg-white rounded-xl border border-blue-200" style="width:100%;height:80px;touch-action:none;display:block;"></canvas>
+                </div>
+                <!-- 서명 캔버스 -->
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-black text-amber-900">✍️ 서명</p>
+                        <button onclick="clearPad('sig')" class="text-[11px] font-black text-amber-700 underline">지우기</button>
+                    </div>
+                    <canvas id="pad-sig" class="bg-white rounded-xl border border-amber-200" style="width:100%;height:120px;touch-action:none;display:block;"></canvas>
+                </div>
+            </div>
+            <div class="px-5 pb-8 pt-3 border-t border-slate-100 space-y-2 sticky bottom-0 bg-white">
+                <button id="contract-sign-submit-btn" onclick="submitContractSign()" class="w-full btn-c2 btn-c2-primary py-5 rounded-[28px] font-black text-lg active:scale-95">✅ 서명 제출하기</button>
+                <button onclick="closeContractSignModal()" class="w-full py-3 text-slate-400 font-black text-sm">취소</button>
             </div>
         </div>
     </div>

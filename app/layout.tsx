@@ -34,6 +34,7 @@ function fileVer(filename: string): string {
 }
 const shimVer = fileVer('gas-shim.js');
 const appVer  = fileVer('cgv-app.js');
+const ctrVer  = fileVer('contract-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* GAS shim + 앱 메인 JS — defer: HTML 파싱과 병렬 다운로드, 파싱 완료 후 실행 */}
         <script src={`/gas-shim.js?v=${shimVer}`} defer />
         <script src={`/cgv-app.js?v=${appVer}`} defer />
+        <script src={`/contract-ui.js?v=${ctrVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}
