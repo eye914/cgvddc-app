@@ -121,17 +121,23 @@
     if (wk && _cache[wk]) renderSingleDate(_cache[wk], date);
   };
 
-  // 탭 진입: 오늘 날짜로 자동 조회
+  function fmtDate(dt) {
+    var y = dt.getFullYear();
+    var m = String(dt.getMonth()+1).padStart(2,'0');
+    var d = String(dt.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + d;
+  }
+
+  // 탭 진입: 오늘 날짜로 자동 조회 + 검색 범위 제한 (오늘 ~ 3주 후)
   window.initScheduleTab = function() {
     var input = document.getElementById('sched-date-input');
     if (!input) return;
-    if (!input.value) {
-      var today = new Date();
-      var y = today.getFullYear();
-      var m = String(today.getMonth()+1).padStart(2,'0');
-      var d = String(today.getDate()).padStart(2,'0');
-      input.value = y + '-' + m + '-' + d;
-    }
+    var today = new Date();
+    var maxDt = new Date(today);
+    maxDt.setDate(maxDt.getDate() + 21);
+    input.min = fmtDate(today);
+    input.max = fmtDate(maxDt);
+    if (!input.value) input.value = fmtDate(today);
     window.onScheduleDateChange();
   };
 })();
