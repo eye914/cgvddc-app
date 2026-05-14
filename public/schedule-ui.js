@@ -124,17 +124,52 @@
     if (wk) loadScheduleByWeek(wk, date);
   };
 
-  // 탭 진입 시 자동: 오늘 날짜로 초기화
+  // 주차 드롭다운에서 선택
+  window.onScheduleWeekSelect = function() {
+    var sel = document.getElementById('sched-week-select');
+    var weekKey = sel.value;
+    var statusEl = document.getElementById('sched-status');
+    var bodyEl   = document.getElementById('sched-body');
+    if (!weekKey) {
+      statusEl.textContent = '';
+      bodyEl.innerHTML = '';
+      return;
+    }
+    statusEl.textContent = '시트: ' + weekKey;
+    document.getElementById('sched-weekkey').value = weekKey;
+    loadScheduleByWeek(weekKey, document.getElementById('sched-date-input').value);
+  };
+
+  // 주차 목록 로드
+  function loadWeekList(autoSelectFirst) {
+    var sel = document.getElementById('sched-week-select');
+    fetch('/api/schedule?mode=weeks')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (d.error || !d.weeks) return;
+        sel.innerHTML = '<option value="">-- 주차 선택 --</option>';
+        d.weeks.forEach(function(w) {
+          var opt = document.createElement('option');
+          opt.value = w; opt.textContent = w;
+          sel.appendChild(opt);
+        });
+        if (autoSelectFirst && d.weeks.length > 0) {
+          sel.value = d.weeks[0];
+          window.onScheduleWeekSelect();
+        }
+      });
+  }
+
+  // 탭 진입 시: 주차 목록 로드 + 가장 최신 주차 자동 표시
   window.initScheduleTab = function() {
     var input = document.getElementById('sched-date-input');
-    if (!input) return;
-    if (!input.value) {
+    if (input && !input.value) {
       var today = new Date();
       var y = today.getFullYear();
       var m = String(today.getMonth()+1).padStart(2,'0');
       var d = String(today.getDate()).padStart(2,'0');
       input.value = y + '-' + m + '-' + d;
     }
-    window.onScheduleDateChange();
+    loadWeekList(true);
   };
 })();

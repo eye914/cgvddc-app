@@ -237,12 +237,19 @@
                     </div>
                 </div>
 
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-                    <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
-                        style="flex:1;min-width:160px;padding:12px;border:2px solid #e2e8f0;border-radius:12px;font-weight:900;font-size:14px;color:#0f172a">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+                    <select id="sched-week-select" onchange="onScheduleWeekSelect()"
+                        style="flex:1;min-width:160px;padding:12px;border:2px solid #e2e8f0;border-radius:12px;font-weight:900;font-size:14px;color:#0f172a;background:white">
+                        <option value="">-- 주차 선택 --</option>
+                    </select>
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#475569;background:#f1f5f9;padding:8px 12px;border-radius:12px;cursor:pointer">
                         <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:16px;height:16px;accent-color:#e71a0f"> 본인만
                     </label>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                    <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
+                        style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:10px;font-weight:700;font-size:13px;color:#475569">
+                    <span style="font-size:10px;color:#94a3b8;font-weight:700">날짜로 검색</span>
                 </div>
                 <input type="hidden" id="sched-weekkey" value="">
                 <div id="sched-status" style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px;padding:0 4px"></div>
