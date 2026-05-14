@@ -35,6 +35,12 @@ export async function GET(req: NextRequest) {
       const schedule = await callGAS('getScheduleByWeek', [weekKey]);
       return NextResponse.json({ schedule });
     }
+    if (mode === 'today') {
+      const date = searchParams.get('date');
+      if (!date) return NextResponse.json({ error: 'date 필수' }, { status: 400 });
+      const res = await callGAS('getScheduleForDate', [date]);
+      return NextResponse.json(res);
+    }
     if (mode === 'debug') {
       const weekKey = searchParams.get('weekKey');
       if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
