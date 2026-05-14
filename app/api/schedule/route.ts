@@ -38,8 +38,19 @@ export async function GET(req: NextRequest) {
     if (mode === 'today') {
       const date = searchParams.get('date');
       if (!date) return NextResponse.json({ error: 'date 필수' }, { status: 400 });
-      const res = await callGAS('getScheduleForDate', [date]);
-      return NextResponse.json(res);
+      try {
+        const res = await callGAS('getScheduleForDate', [date]);
+        return NextResponse.json(res);
+      } catch (e: any) {
+        // 폴백: getScheduleForDate 미배포 시 2단계 호출
+        if (e.message && e.message.indexOf('알 수 없는 action') > -1) {
+          const weekKey = await callGAS('findWeekByDate', [date]);
+          if (!weekKey) return NextResponse.json({ weekKey: null, schedule: [] });
+          const schedule = await callGAS('getScheduleByWeek', [weekKey]);
+          return NextResponse.json({ weekKey, schedule });
+        }
+        throw e;
+      }
     }
     if (mode === 'debug') {
       const weekKey = searchParams.get('weekKey');
