@@ -243,6 +243,7 @@
                     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#475569;background:#f1f5f9;padding:8px 12px;border-radius:12px;cursor:pointer">
                         <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:16px;height:16px;accent-color:#e71a0f"> 본인만
                     </label>
+                    <button onclick="onScheduleRefresh()" title="시트 최신 데이터 가져오기" style="font-size:12px;font-weight:900;padding:8px 12px;border-radius:12px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer">🔄</button>
                 </div>
                 <input type="hidden" id="sched-weekkey" value="">
                 <div id="sched-status" style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px;padding:0 4px"></div>

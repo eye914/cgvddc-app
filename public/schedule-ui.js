@@ -17,14 +17,15 @@
   }
   function todayStr() { return fmtDate(new Date()); }
 
-  // localStorage 캐시 (TTL 30분)
+  // localStorage 캐시 (TTL 5분으로 단축)
+  var LS_TTL_MS = 5 * 60 * 1000;
   var LS_KEY_PREFIX = 'cgv_sched_';
   function lsGet(weekKey) {
     try {
       var raw = localStorage.getItem(LS_KEY_PREFIX + weekKey);
       if (!raw) return null;
       var obj = JSON.parse(raw);
-      if (Date.now() - obj.ts > 30 * 60 * 1000) return null;
+      if (Date.now() - obj.ts > LS_TTL_MS) return null;
       return obj.data;
     } catch(e) { return null; }
   }
@@ -170,6 +171,45 @@
     html += '</div>';
     bodyEl.innerHTML = html;
   }
+
+  // 강제 새로고침: 모든 캐시 비우고 GAS에서 fresh 가져오기
+  window.onScheduleRefresh = function() {
+    var input = document.getElementById('sched-date-input');
+    var date = input.value;
+    if (!date) return;
+    // 메모리 캐시 클리어
+    _cache = {};
+    _dateToWeek = {};
+    // localStorage 클리어
+    try {
+      Object.keys(localStorage).forEach(function(k) {
+        if (k.indexOf(LS_KEY_PREFIX) === 0) localStorage.removeItem(k);
+      });
+    } catch(e) {}
+
+    var statusEl = document.getElementById('sched-status');
+    var bodyEl   = document.getElementById('sched-body');
+    statusEl.textContent = '최신 데이터 가져오는 중...';
+    bodyEl.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b">불러오는 중...</div>';
+
+    fetch('/api/schedule?mode=today&fresh=1&date=' + encodeURIComponent(date))
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (d.error) { statusEl.textContent = '오류: ' + d.error; bodyEl.innerHTML=''; return; }
+        if (!d.weekKey) {
+          statusEl.innerHTML = '<span style="color:#dc2626">해당 주차가 공개되지 않았습니다.</span>';
+          bodyEl.innerHTML = '';
+          return;
+        }
+        _dateToWeek[date] = d.weekKey;
+        _cache[d.weekKey] = d.schedule || [];
+        lsSet(d.weekKey, d.schedule || []);
+        statusEl.textContent = '✅ 갱신됨: ' + d.weekKey;
+        document.getElementById('sched-weekkey').value = d.weekKey;
+        renderSingleDate(_cache[d.weekKey], date);
+      })
+      .catch(function(e){ statusEl.textContent = '오류: ' + e.message; bodyEl.innerHTML=''; });
+  };
 
   window.onScheduleFilterToggle = function() {
     var wk = document.getElementById('sched-weekkey').value;

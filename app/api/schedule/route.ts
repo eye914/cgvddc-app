@@ -37,16 +37,16 @@ export async function GET(req: NextRequest) {
     }
     if (mode === 'today') {
       const date = searchParams.get('date');
+      const fresh = searchParams.get('fresh') === '1';
       if (!date) return NextResponse.json({ error: 'date 필수' }, { status: 400 });
       try {
-        const res = await callGAS('getScheduleForDate', [date]);
+        const res = await callGAS('getScheduleForDate', [date, fresh]);
         return NextResponse.json(res);
       } catch (e: any) {
-        // 폴백: getScheduleForDate 미배포 시 2단계 호출
         if (e.message && e.message.indexOf('알 수 없는 action') > -1) {
           const weekKey = await callGAS('findWeekByDate', [date]);
           if (!weekKey) return NextResponse.json({ weekKey: null, schedule: [] });
-          const schedule = await callGAS('getScheduleByWeek', [weekKey]);
+          const schedule = await callGAS('getScheduleByWeek', [weekKey, fresh]);
           return NextResponse.json({ weekKey, schedule });
         }
         throw e;
