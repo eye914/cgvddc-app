@@ -142,28 +142,37 @@
     });
     var date = items[0] ? items[0].date : (focusMD + '(?)');
     var dayChar = (date.match(/\(([월화수목금토일])\)/) || [])[1] || '';
-    var dayColor = dayChar === '토' ? '#2563eb' : (dayChar === '일' ? '#dc2626' : '#0f172a');
+    var dayColor = dayChar === '토' ? '#2563eb' : (dayChar === '일' ? '#dc2626' : '#334155');
     var html = '';
-    html += '<div style="border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;background:white">';
-    html += '<div style="padding:12px 16px;background:#fef2f2;font-weight:900;color:' + dayColor + ';font-size:15px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #fecaca">';
-    html += '<span>' + date + '</span><span style="font-size:12px;color:#64748b;font-weight:700">' + items.length + '명</span>';
+    html += '<div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:white">';
+    html += '<div style="padding:10px 14px;background:#f8fafc;font-weight:800;color:' + dayColor + ';font-size:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0">';
+    html += '<span>' + date + '</span><span style="font-size:11px;color:#94a3b8;font-weight:700">' + items.length + '명</span>';
     html += '</div>';
     if (items.length === 0) {
-      html += '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:12px">본인 근무 없음</div>';
+      html += '<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12px;font-weight:600">본인 근무 없음</div>';
     } else {
-      html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
-      html += '<thead><tr style="background:#f1f5f9"><th style="padding:8px 6px;text-align:center;font-weight:900;color:#475569">시프트</th><th style="padding:8px 6px;text-align:left;font-weight:900;color:#475569">이름</th><th style="padding:8px 6px;text-align:center;font-weight:900;color:#475569">시간</th><th style="padding:8px 6px;text-align:center;font-weight:900;color:#475569">포지션</th></tr></thead><tbody>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
+      html += '<colgroup><col style="width:50px"><col><col style="width:90px"><col style="width:56px"></colgroup>';
+      html += '<thead><tr style="background:white"><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">SHIFT</th><th style="padding:7px 8px;text-align:left;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">NAME</th><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">TIME</th><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">POS</th></tr></thead><tbody>';
       items.forEach(function(it) {
         var isMine = myName && it.name === myName;
-        var rowBg = isMine ? '#fef9c3' : 'white';
-        var nameStyle = isMine ? 'font-weight:900;color:#b45309' : 'font-weight:700;color:#0f172a';
-        var noteHtml = it.note ? '<div style="font-size:10px;color:#64748b;font-weight:600">(' + it.note + ')</div>' : '';
-        var shiftBg = it.shiftCode.charAt(0) === 'D' ? '#fed7aa' : (it.shiftCode.charAt(0) === 'M' ? '#bae6fd' : '#c7d2fe');
-        html += '<tr style="background:' + rowBg + ';border-top:1px solid #f1f5f9">';
-        html += '<td style="padding:8px 6px;text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;background:' + shiftBg + ';font-weight:900;color:#0f172a">' + it.shiftCode + '</span></td>';
-        html += '<td style="padding:8px 6px;' + nameStyle + '">' + it.name + (isMine ? ' ⭐' : '') + '</td>';
-        html += '<td style="padding:8px 6px;text-align:center;color:#475569;font-weight:600">' + it.time + noteHtml + '</td>';
-        html += '<td style="padding:8px 6px;text-align:center;color:#475569;font-weight:700">' + it.position + '</td>';
+        var rowBg = isMine ? '#fffbeb' : 'white';
+        var nameStyle = isMine ? 'font-weight:800;color:#b45309' : 'font-weight:600;color:#0f172a';
+        var noteHtml = it.note ? '<div style="font-size:10px;color:#94a3b8;font-weight:500;margin-top:1px">' + it.note + '</div>' : '';
+        var shiftKind = it.shiftCode.charAt(0);
+        var shiftBg, shiftColor;
+        if (shiftKind === 'D') { shiftBg = '#fff7ed'; shiftColor = '#c2410c'; }
+        else if (shiftKind === 'M') { shiftBg = '#eff6ff'; shiftColor = '#1d4ed8'; }
+        else { shiftBg = '#eef2ff'; shiftColor = '#4338ca'; }
+        var posBg = '#f1f5f9', posColor = '#475569';
+        if (it.position === '매점') { posBg = '#fef2f2'; posColor = '#b91c1c'; }
+        else if (it.position === '플로어') { posBg = '#f0fdf4'; posColor = '#15803d'; }
+        else if (it.position === '통합') { posBg = '#f5f3ff'; posColor = '#6d28d9'; }
+        html += '<tr style="background:' + rowBg + ';border-top:1px solid #f8fafc">';
+        html += '<td style="padding:8px 6px;text-align:center"><span style="display:inline-block;padding:2px 7px;border-radius:6px;background:' + shiftBg + ';color:' + shiftColor + ';font-weight:800;font-size:11px;letter-spacing:0.02em">' + it.shiftCode + '</span></td>';
+        html += '<td style="padding:8px;' + nameStyle + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + it.name + (isMine ? ' <span style="color:#f59e0b">●</span>' : '') + '</td>';
+        html += '<td style="padding:8px 6px;text-align:center;color:#475569;font-weight:600;font-size:11px">' + it.time + noteHtml + '</td>';
+        html += '<td style="padding:8px 6px;text-align:center"><span style="display:inline-block;padding:2px 7px;border-radius:6px;background:' + posBg + ';color:' + posColor + ';font-weight:700;font-size:10px">' + it.position + '</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table>';

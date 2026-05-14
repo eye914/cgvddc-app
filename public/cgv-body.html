@@ -228,25 +228,25 @@
         </div>
 
         <div id="view-schedule" class="hidden max-w-3xl mx-auto pb-20 px-4">
-            <section class="bg-white rounded-[24px] p-5 card-shadow border-2 border-slate-100">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-10 h-10 bg-red-100 border border-red-200 rounded-xl flex items-center justify-center text-red-600 shadow-sm">📅</div>
-                    <div>
-                        <h2 class="text-xl font-black text-slate-900 tracking-tight">미소지기 근태</h2>
-                        <p class="text-[11px] text-slate-500 font-bold">맞교대 반영된 주차 스케줄</p>
+            <section class="bg-white rounded-[20px] p-4 card-shadow border border-slate-200">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span style="font-size:18px">📅</span>
+                        <h2 class="text-[15px] font-black text-slate-900 tracking-tight">미소지기 근태</h2>
                     </div>
+                    <button onclick="onScheduleRefresh()" title="새로고침"
+                        style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;font-size:14px;transition:background 0.15s">🔄</button>
                 </div>
 
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
                     <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
-                        style="flex:1;min-width:160px;padding:12px;border:2px solid #e2e8f0;border-radius:12px;font-weight:900;font-size:14px;color:#0f172a">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#475569;background:#f1f5f9;padding:8px 12px;border-radius:12px;cursor:pointer">
-                        <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:16px;height:16px;accent-color:#e71a0f"> 본인만
+                        style="flex:1;height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:10px;font-weight:700;font-size:13px;color:#0f172a;line-height:40px;box-sizing:border-box;background:white">
+                    <label style="display:inline-flex;align-items:center;gap:6px;height:40px;font-size:12px;font-weight:700;color:#475569;background:#f8fafc;padding:0 12px;border-radius:10px;cursor:pointer;border:1px solid #e2e8f0;box-sizing:border-box">
+                        <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:14px;height:14px;accent-color:#e71a0f;margin:0"> 본인만
                     </label>
-                    <button onclick="onScheduleRefresh()" title="시트 최신 데이터 가져오기" style="font-size:12px;font-weight:900;padding:8px 12px;border-radius:12px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer">🔄</button>
                 </div>
                 <input type="hidden" id="sched-weekkey" value="">
-                <div id="sched-status" style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px;padding:0 4px"></div>
+                <div id="sched-status" style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:10px;padding:0 2px;min-height:14px"></div>
                 <div id="sched-body"></div>
             </section>
         </div>
