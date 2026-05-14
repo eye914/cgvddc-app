@@ -35,6 +35,7 @@ function fileVer(filename: string): string {
 const shimVer = fileVer('gas-shim.js');
 const appVer  = fileVer('cgv-app.js');
 const ctrVer  = fileVer('contract-ui.js');
+const schVer  = fileVer('schedule-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src={`/gas-shim.js?v=${shimVer}`} defer />
         <script src={`/cgv-app.js?v=${appVer}`} defer />
         <script src={`/contract-ui.js?v=${ctrVer}`} defer />
+        <script src={`/schedule-ui.js?v=${schVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}

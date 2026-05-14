@@ -74,6 +74,7 @@
                     </div>
                     <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
                         <button onclick="switchTab('trade')" id="tab-trade-btn" class="tab-btn active text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all">신청현황</button>
+                        <button onclick="switchTab('schedule')" id="tab-schedule-btn" class="tab-btn text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all text-slate-500">📅 근태</button>
                         <button onclick="switchTab('manager')" id="tab-manager-btn" class="tab-btn text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all text-slate-500">관리자</button>
                     </div>
                 </div>
@@ -223,6 +224,29 @@
                 </div>
                 <div id="my-action-list" class="grid gap-6"></div>
                 <div id="main-list-board" class="w-full"></div>
+            </section>
+        </div>
+
+        <div id="view-schedule" class="hidden max-w-3xl mx-auto pb-20 px-4">
+            <section class="bg-white rounded-[24px] p-5 card-shadow border-2 border-slate-100">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 border border-red-200 rounded-xl flex items-center justify-center text-red-600 shadow-sm">📅</div>
+                    <div>
+                        <h2 class="text-xl font-black text-slate-900 tracking-tight">미소지기 근태</h2>
+                        <p class="text-[11px] text-slate-500 font-bold">맞교대 반영된 주차 스케줄</p>
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+                    <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
+                        style="flex:1;min-width:160px;padding:12px;border:2px solid #e2e8f0;border-radius:12px;font-weight:900;font-size:14px;color:#0f172a">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#475569;background:#f1f5f9;padding:8px 12px;border-radius:12px;cursor:pointer">
+                        <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:16px;height:16px;accent-color:#e71a0f"> 본인만
+                    </label>
+                </div>
+                <input type="hidden" id="sched-weekkey" value="">
+                <div id="sched-status" style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px;padding:0 4px"></div>
+                <div id="sched-body"></div>
             </section>
         </div>
 

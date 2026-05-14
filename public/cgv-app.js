@@ -1882,9 +1882,15 @@ function showKakaoModal(text, forced) {
                 }
             }
             document.getElementById("view-trade").classList.toggle("hidden", tab !== "trade");
+            document.getElementById("view-schedule").classList.toggle("hidden", tab !== "schedule");
             document.getElementById("view-manager").classList.toggle("hidden", tab !== "manager");
             document.getElementById("tab-trade-btn").classList.toggle("active", tab === "trade");
-            document.getElementById("tab-manager-btn").classList.toggle("active", tab !== "trade");
+            var schBtn = document.getElementById("tab-schedule-btn");
+            if (schBtn) schBtn.classList.toggle("active", tab === "schedule");
+            document.getElementById("tab-manager-btn").classList.toggle("active", tab === "manager");
+            if (tab === "schedule" && typeof window.initScheduleTab === "function") {
+                window.initScheduleTab();
+            }
             renderList();
         }
 
