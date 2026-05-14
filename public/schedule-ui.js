@@ -151,8 +151,7 @@
     if (items.length === 0) {
       html += '<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12px;font-weight:600">본인 근무 없음</div>';
     } else {
-      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">';
-      html += '<colgroup><col style="width:50px"><col><col style="width:90px"><col style="width:56px"></colgroup>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
       html += '<thead><tr style="background:white"><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">SHIFT</th><th style="padding:7px 8px;text-align:left;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">NAME</th><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">TIME</th><th style="padding:7px 6px;text-align:center;font-weight:700;color:#94a3b8;font-size:10px;letter-spacing:0.05em;border-bottom:1px solid #f1f5f9">POS</th></tr></thead><tbody>';
       items.forEach(function(it) {
         var isMine = myName && it.name === myName;
@@ -170,7 +169,7 @@
         else if (it.position === '통합') { posBg = '#f5f3ff'; posColor = '#6d28d9'; }
         html += '<tr style="background:' + rowBg + ';border-top:1px solid #f8fafc">';
         html += '<td style="padding:8px 6px;text-align:center"><span style="display:inline-block;padding:2px 7px;border-radius:6px;background:' + shiftBg + ';color:' + shiftColor + ';font-weight:800;font-size:11px;letter-spacing:0.02em">' + it.shiftCode + '</span></td>';
-        html += '<td style="padding:8px;' + nameStyle + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + it.name + (isMine ? ' <span style="color:#f59e0b">●</span>' : '') + '</td>';
+        html += '<td style="padding:8px;' + nameStyle + ';white-space:nowrap">' + it.name + (isMine ? ' <span style="color:#f59e0b">●</span>' : '') + '</td>';
         html += '<td style="padding:8px 6px;text-align:center;color:#475569;font-weight:600;font-size:11px">' + it.time + noteHtml + '</td>';
         html += '<td style="padding:8px 6px;text-align:center"><span style="display:inline-block;padding:2px 7px;border-radius:6px;background:' + posBg + ';color:' + posColor + ';font-weight:700;font-size:10px">' + it.position + '</span></td>';
         html += '</tr>';
