@@ -115,19 +115,30 @@ export async function PATCH(req: NextRequest) {
 
     // ✅ '승인완료' 는 GAS 시트 적용을 먼저 시도 → 성공 시에만 Supabase 업데이트 (트랜잭션 일관성)
     if (ns === '승인완료') {
+      const reqName = updateData.reqName ?? before?.req_name;
+      const subName = updateData.subName ?? before?.sub_name;
+      // ★ 5.5h/4.5h 구분을 위해 양쪽 hours 조회
+      const { data: misoRows } = await supabaseAdmin
+        .from('misojigi')
+        .select('name, hours')
+        .in('name', [reqName, subName].filter(Boolean));
+      const hoursMap: Record<string, string> = {};
+      (misoRows ?? []).forEach((r: any) => { hoursMap[r.name] = String(r.hours ?? '5.5'); });
       // 미리 row 를 구성 (현재 before 값 + 업데이트값 병합)
       const previewRow = {
         id,
-        reqName: updateData.reqName ?? before?.req_name,
+        reqName,
         shiftDate: updateData.shiftDate ?? before?.shift_date,
         reqPos: updateData.reqPos ?? before?.req_pos,
         desiredShift: updateData.desiredShift ?? before?.desired_shift,
         reason: updateData.reason ?? before?.reason,
         tradeType: updateData.tradeType ?? before?.trade_type,
-        subName: updateData.subName ?? before?.sub_name,
+        subName,
         subPos: updateData.subPos ?? before?.sub_pos,
         status: '승인완료',
         approvedBy: updateData.approvedBy ?? before?.approved_by,
+        reqHours: hoursMap[reqName] ?? '5.5',
+        subHours: hoursMap[subName] ?? '5.5',
       };
       const gasResult = await callGASWithCheck('applySwapFromData', [previewRow]);
       if (!gasResult.ok) {
