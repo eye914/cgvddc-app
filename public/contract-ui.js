@@ -124,7 +124,13 @@
     })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        if (res.ok) { alert('✅ ' + names.length + '명에게 발송 완료'); }
+        if (res.ok) {
+          // ★ 발송된 수신자들의 캐시 무효화 → 다음 조회 시 최신 반영
+          try {
+            names.forEach(function(nm){ localStorage.removeItem('cgv_mycontracts_' + nm); });
+          } catch(e) {}
+          alert('✅ ' + names.length + '명에게 발송 완료');
+        }
         else { alert('❌ 발송 실패: ' + (res.error || '알수없음')); }
       })
       .catch(function(e) { alert('❌ 네트워크 오류: ' + e.message); })
@@ -214,29 +220,52 @@
       list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">로그인 후 이용해주세요</p>';
       return;
     }
-    // ★ 발송된 계약서만 조회 (Supabase 기록 기준)
-    fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName))
+    // ★ 캐시(localStorage)에서 즉시 표시 후 백그라운드 갱신
+    var cacheKey = 'cgv_mycontracts_' + myName;
+    function renderList(arr) {
+      if (!Array.isArray(arr) || arr.length === 0) {
+        list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">받은 계약서가 없습니다</p>';
+        return;
+      }
+      _ctrMyList = arr;
+      var html = '';
+      arr.forEach(function(c, idx) {
+        html += '<div class="border-2 border-blue-200 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2">';
+        html += '<div class="min-w-0 flex-1">';
+        html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
+        html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출하면 PDF로 보관됩니다</p>';
+        html += '</div>';
+        html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    }
+    // 1) 캐시 즉시 표시
+    try {
+      var cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+      if (cached && Array.isArray(cached.data)) renderList(cached.data);
+    } catch(e) {}
+
+    // 2) 백그라운드 fetch (15초 타임아웃)
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function(){ controller.abort(); }, 15000);
+    fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName), { signal: controller.signal })
       .then(function(r) { return r.json(); })
       .then(function(arr) {
-        if (!Array.isArray(arr) || arr.length === 0) {
-          list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">받은 계약서가 없습니다</p>';
+        clearTimeout(timeoutId);
+        if (arr && arr.error) {
+          if (!localStorage.getItem(cacheKey)) list.innerHTML = '<p class="text-red-500 text-sm text-center py-6">오류: ' + arr.error + '</p>';
           return;
         }
-        _ctrMyList = arr;
-        var html = '';
-        arr.forEach(function(c, idx) {
-          html += '<div class="border-2 border-blue-200 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2">';
-          html += '<div class="min-w-0 flex-1">';
-          html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
-          html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출하면 PDF로 보관됩니다</p>';
-          html += '</div>';
-          html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
-          html += '</div>';
-        });
-        list.innerHTML = html;
+        if (!Array.isArray(arr)) return;
+        renderList(arr);
+        try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: arr })); } catch(e) {}
       })
       .catch(function(e) {
-        list.innerHTML = '<p class="text-red-500 text-sm text-center py-6">오류: ' + e.message + '</p>';
+        clearTimeout(timeoutId);
+        if (!localStorage.getItem(cacheKey)) {
+          list.innerHTML = '<p class="text-red-500 text-sm text-center py-6">오류: ' + (e.name === 'AbortError' ? '응답 지연(15초)' : e.message) + '</p>';
+        }
       });
   };
 
