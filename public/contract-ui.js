@@ -109,10 +109,13 @@
     renderEmployeeList();
   };
 
+  var _ctrSending = false;
   window.ctrSendSelected = function() {
+    if (_ctrSending) return; // ★ 더블클릭/중복 호출 방지
     var names = Object.keys(_ctrSelectedNames).filter(function(k) { return _ctrSelectedNames[k]; });
     if (names.length === 0) { alert('발송할 대상을 선택하세요'); return; }
     if (!confirm(_ctrSelectedWeek + ' 근로계약서를 ' + names.length + '명에게 발송합니다. 진행할까요?')) return;
+    _ctrSending = true;
     var requestedBy = sessionStorage.getItem('cgv_admin_name') || '관리자';
     fetch('/api/contracts', {
       method: 'POST',
@@ -123,7 +126,9 @@
       .then(function(res) {
         if (res.ok) { alert('✅ ' + names.length + '명에게 발송 완료'); }
         else { alert('❌ 발송 실패: ' + (res.error || '알수없음')); }
-      });
+      })
+      .catch(function(e) { alert('❌ 네트워크 오류: ' + e.message); })
+      .finally(function() { _ctrSending = false; });
   };
 
   // ════════════════════ 완료 목록 (월/주차 트리) ════════════════════
@@ -226,6 +231,14 @@
             });
         })).then(function(results) {
           var flat = [].concat.apply([], results);
+          // ★ docId 기준 중복 제거 (같은 계약서가 여러 주차에 노출되거나 시트 중복 시 1건만 표시)
+          var seen = {};
+          flat = flat.filter(function(c) {
+            var key = (c.weekKey || '') + '::' + (c.docId || '');
+            if (seen[key]) return false;
+            seen[key] = true;
+            return true;
+          });
           _ctrMyList = flat;
           if (flat.length === 0) {
             list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">받은 계약서가 없습니다</p>';
