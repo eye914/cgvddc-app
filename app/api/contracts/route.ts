@@ -39,7 +39,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data);
     }
     if (mode === 'completed') {
-      const data = await callGASJson('getCompletedContracts');
+      // 새 함수 우선, 미배포 시 구 함수 폴백
+      let data = await callGASJson('listCompletedContractsV2');
+      if (data && data.__gasError && String(data.__gasError).indexOf('알 수 없는 action') > -1) {
+        data = await callGASJson('getCompletedContracts');
+      }
       return NextResponse.json(data);
     }
     // ★ 관리자: 주차별 발송 상태 (누가/언제/서명여부)
