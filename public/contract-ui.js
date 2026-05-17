@@ -9,6 +9,7 @@
   var _ctrSelectedWeek = '';
   var _ctrEmployees = [];
   var _ctrSendStatus = {};   // name → { sentBy, sentAt, signedAt }
+  var _ctrStatusFilter = 'all'; // all | unsent | sent | signed
   var REPLY_DEADLINE_DAYS = 5;
   var _ctrSelectedNames = {};
   var _ctrCompletedTree = [];
@@ -87,46 +88,90 @@
       list.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">해당 주차에 계약서가 없습니다</p>';
       return;
     }
-    var html = '<div class="flex items-center justify-between mb-2">';
-    html += '<button onclick="ctrToggleAll(true)" class="text-[11px] font-black text-blue-600 underline">전체선택</button>';
-    html += '<button onclick="ctrToggleAll(false)" class="text-[11px] font-black text-slate-400 underline">전체해제</button>';
-    html += '</div>';
-    // 상태별 카드 리스트
-    html += '<div class="space-y-1.5 mb-3">';
+    // 1) 상태별 카운트
+    var counts = { all: _ctrEmployees.length, unsent: 0, sent: 0, signed: 0 };
     _ctrEmployees.forEach(function(e) {
       var st = _ctrSendStatus[e.name];
-      var selected = !!_ctrSelectedNames[e.name];
-      var badge = '', meta = '';
-      if (!st) {
-        badge = '<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">미발송</span>';
-      } else if (st.signedAt) {
-        badge = '<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">✅ 서명완료</span>';
-        meta = formatSignedMeta(st);
-      } else {
-        var info = computeDeadline(st.sentAt);
-        badge = info.expired
-          ? '<span style="background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">⚠ 기한초과</span>'
-          : '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">📨 발송됨</span>';
-        meta = formatPendingMeta(st, info);
-      }
-      var border = selected ? '#1d4ed8' : '#e2e8f0';
-      var bg = selected ? '#eff6ff' : 'white';
-      html += '<div onclick="ctrToggleName(\'' + e.name + '\')" style="cursor:pointer;border:2px solid ' + border + ';background:' + bg + ';border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px" class="active:scale-[0.99]">';
-      html += '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">';
-      html += '<input type="checkbox" ' + (selected ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#1d4ed8;pointer-events:none;flex-shrink:0">';
-      html += '<div style="min-width:0">';
-      html += '<div style="font-weight:900;font-size:13px;color:#0f172a">' + e.name + '</div>';
-      if (meta) html += '<div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px">' + meta + '</div>';
-      html += '</div></div>';
-      html += badge;
-      html += '</div>';
+      if (!st) counts.unsent++;
+      else if (st.signedAt) counts.signed++;
+      else counts.sent++;
+    });
+
+    // 2) 필터 칩
+    var html = '';
+    html += '<div style="display:flex;gap:4px;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px">';
+    [
+      { k:'all',    label:'전체',   c:counts.all,    color:'#0f172a' },
+      { k:'unsent', label:'미발송', c:counts.unsent, color:'#64748b' },
+      { k:'sent',   label:'발송됨', c:counts.sent,   color:'#1d4ed8' },
+      { k:'signed', label:'완료',   c:counts.signed, color:'#15803d' }
+    ].forEach(function(f) {
+      var active = _ctrStatusFilter === f.k;
+      var bg = active ? f.color : '#f1f5f9';
+      var fg = active ? 'white'  : f.color;
+      html += '<button onclick="ctrSetStatusFilter(\'' + f.k + '\')" style="flex-shrink:0;padding:6px 12px;border-radius:999px;border:none;background:' + bg + ';color:' + fg + ';font-weight:800;font-size:11px;cursor:pointer">' + f.label + ' ' + f.c + '</button>';
     });
     html += '</div>';
+
+    // 3) 전체선택/해제
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;padding:0 2px">';
+    html += '<button onclick="ctrToggleAll(true)" style="font-size:11px;font-weight:800;color:#1d4ed8;text-decoration:underline;background:none;border:none;padding:0;cursor:pointer">전체선택</button>';
+    html += '<button onclick="ctrToggleAll(false)" style="font-size:11px;font-weight:800;color:#94a3b8;text-decoration:underline;background:none;border:none;padding:0;cursor:pointer">전체해제</button>';
+    html += '</div>';
+
+    // 4) 필터된 명단 (컴팩트 리스트 한 줄 = 38px)
+    var filtered = _ctrEmployees.filter(function(e) {
+      if (_ctrStatusFilter === 'all') return true;
+      var st = _ctrSendStatus[e.name];
+      if (_ctrStatusFilter === 'unsent') return !st;
+      if (_ctrStatusFilter === 'signed') return st && st.signedAt;
+      if (_ctrStatusFilter === 'sent')   return st && !st.signedAt;
+      return true;
+    });
+
+    html += '<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:white;margin-bottom:10px">';
+    if (filtered.length === 0) {
+      html += '<div style="padding:18px;text-align:center;color:#94a3b8;font-size:12px;font-weight:700">해당 상태의 인원이 없습니다</div>';
+    } else {
+      filtered.forEach(function(e, i) {
+        var st = _ctrSendStatus[e.name];
+        var selected = !!_ctrSelectedNames[e.name];
+        var statusHtml = '', titleTip = '';
+        if (!st) {
+          statusHtml = '<span style="color:#94a3b8;font-size:10px;font-weight:700">미발송</span>';
+        } else if (st.signedAt) {
+          var sdt = fmtDateTime(st.signedAt);
+          statusHtml = '<span style="color:#15803d;font-size:11px;font-weight:800">✅</span><span style="color:#64748b;font-size:10px;font-weight:700;margin-left:4px">' + sdt + '</span>';
+          titleTip = '발송 ' + fmtDateTime(st.sentAt) + (st.sentBy ? ' · ' + st.sentBy : '') + ' → 서명 ' + sdt;
+        } else {
+          var info = computeDeadline(st.sentAt);
+          var color = info.expired ? '#dc2626' : '#1d4ed8';
+          var icon = info.expired ? '⚠' : '📨';
+          var remain = info.expired ? ('초과 ' + info.days + 'd') : ('D-' + info.days);
+          statusHtml = '<span style="color:' + color + ';font-size:11px;font-weight:800">' + icon + '</span><span style="color:' + color + ';font-size:10px;font-weight:800;margin-left:4px">' + remain + '</span>';
+          titleTip = '발송 ' + fmtDateTime(st.sentAt) + (st.sentBy ? ' · ' + st.sentBy : '');
+        }
+        var rowBg = selected ? '#eff6ff' : (i % 2 === 1 ? '#fafbfc' : 'white');
+        html += '<div onclick="ctrToggleName(\'' + e.name + '\')" title="' + titleTip + '" ';
+        html += 'style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:' + (i === 0 ? 'none' : '1px solid #f1f5f9') + ';background:' + rowBg + ';cursor:pointer">';
+        html += '<input type="checkbox" ' + (selected ? 'checked' : '') + ' style="width:15px;height:15px;accent-color:#1d4ed8;pointer-events:none;flex-shrink:0">';
+        html += '<span style="font-weight:800;font-size:13px;color:#0f172a;flex:1;min-width:0">' + e.name + '</span>';
+        html += '<span style="display:flex;align-items:center;gap:2px;flex-shrink:0">' + statusHtml + '</span>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
     var count = Object.keys(_ctrSelectedNames).filter(function(k) { return _ctrSelectedNames[k]; }).length;
-    html += '<button onclick="ctrSendSelected()" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">';
-    html += '📨 선택 발송 (' + count + '명)</button>';
+    var btnDisabled = count === 0;
+    html += '<button onclick="ctrSendSelected()" ' + (btnDisabled ? 'disabled' : '') + ' style="width:100%;padding:14px;border-radius:14px;border:none;font-weight:900;font-size:14px;cursor:' + (btnDisabled ? 'not-allowed' : 'pointer') + ';background:' + (btnDisabled ? '#cbd5e1' : '#e71a0f') + ';color:white;transition:all 0.15s">📨 선택 발송 (' + count + '명)</button>';
     list.innerHTML = html;
   }
+
+  window.ctrSetStatusFilter = function(k) {
+    _ctrStatusFilter = k;
+    renderEmployeeList();
+  };
 
   // ── 발송 상태 유틸 ──
   function fmtDateTime(iso) {
@@ -271,11 +316,21 @@
     ctrSequentialDownload(allFiles, 500);
   };
 
+  // 파일명에서 이름만 추출: "[서명완료] 김한솔 5월1주차.pdf" → "김한솔"
+  function extractPersonName(fileName) {
+    return String(fileName || '')
+      .replace(/\.[a-z]+$/i, '')
+      .replace(/^\[?서명완료\]?\s*/, '')
+      .replace(/\s*\d+주차.*$/, '')
+      .replace(/\s*\d+년\d+월.*$/, '')
+      .trim();
+  }
+
   function renderCompletedTree() {
     var el = document.getElementById('contract-completed-list');
     if (!el) return;
     if (_ctrCompletedTree.length === 0) {
-      el.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">완료된 계약서가 없습니다</p>';
+      el.innerHTML = '<p style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;font-weight:700">완료된 계약서가 없습니다</p>';
       return;
     }
     var html = '';
@@ -283,35 +338,43 @@
       var monthKey = 'm_' + monthNode.month;
       var mOpen = _ctrCollapsed[monthKey] !== false;
       var totalCount = monthNode.weeks.reduce(function(s, w) { return s + w.count; }, 0);
-      html += '<div class="border-2 border-slate-100 rounded-2xl overflow-hidden mb-2">';
-      html += '<div class="flex items-center justify-between bg-slate-50">';
-      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" class="flex-1 flex items-center justify-between px-4 py-2.5 active:bg-slate-100">';
-      html += '<span class="font-black text-slate-800 text-sm">📅 ' + monthNode.month + ' <span class="text-slate-400 text-[11px]">(' + totalCount + '건)</span></span>';
-      html += '<span class="text-slate-400 font-black ml-2">' + (mOpen ? '▲' : '▼') + '</span>';
+
+      // 월 헤더 - 한 줄
+      html += '<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:8px;background:white">';
+      html += '<div style="display:flex;align-items:center;background:#f8fafc;height:40px">';
+      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:100%;border:none;background:transparent;cursor:pointer">';
+      html += '<span style="font-weight:800;color:#0f172a;font-size:13px">' + monthNode.month + ' <span style="color:#94a3b8;font-size:11px;font-weight:700">(' + totalCount + ')</span></span>';
+      html += '<span style="color:#94a3b8;font-size:11px">' + (mOpen ? '▲' : '▼') + '</span>';
       html += '</button>';
-      html += '<button onclick="ctrDownloadMonth(\'' + monthNode.month + '\')" title="월별 전체저장" style="font-size:11px;font-weight:900;color:white;background:#0ea5e9;padding:6px 10px;border-radius:8px;border:none;margin-right:8px;cursor:pointer">⬇ 월 전체</button>';
+      html += '<button onclick="ctrDownloadMonth(\'' + monthNode.month + '\')" title="월 전체 저장" style="height:28px;padding:0 10px;margin-right:8px;font-size:11px;font-weight:800;color:white;background:#0ea5e9;border:none;border-radius:8px;cursor:pointer">⬇ 월</button>';
       html += '</div>';
+
       if (mOpen) {
-        html += '<div class="px-3 py-2 space-y-1.5">';
+        html += '<div style="padding:6px 8px">';
         monthNode.weeks.forEach(function(weekNode) {
           var wKey = 'w_' + weekNode.weekKey;
           var wOpen = _ctrCollapsed[wKey] !== false;
-          html += '<div class="border border-slate-100 rounded-xl overflow-hidden">';
-          html += '<div class="flex items-center justify-between bg-white">';
-          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" class="flex-1 flex items-center justify-between px-3 py-2 active:bg-slate-50">';
-          html += '<span class="font-black text-slate-700 text-xs">📂 ' + weekNode.weekKey + ' <span class="text-slate-400">(' + weekNode.count + ')</span></span>';
-          html += '<span class="text-slate-400 text-xs">' + (wOpen ? '▲' : '▼') + '</span>';
+
+          html += '<div style="border:1px solid #f1f5f9;border-radius:10px;overflow:hidden;margin-bottom:4px">';
+          // 주차 헤더 - 한 줄
+          html += '<div style="display:flex;align-items:center;background:white;height:34px">';
+          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:100%;border:none;background:transparent;cursor:pointer">';
+          html += '<span style="font-weight:700;color:#334155;font-size:12px">' + weekNode.weekKey + ' <span style="color:#94a3b8;font-weight:600">(' + weekNode.count + ')</span></span>';
+          html += '<span style="color:#cbd5e1;font-size:10px">' + (wOpen ? '▲' : '▼') + '</span>';
           html += '</button>';
-          html += '<button onclick="ctrDownloadWeek(\'' + weekNode.weekKey + '\')" title="주차별 전체저장" style="font-size:10px;font-weight:900;color:white;background:#22c55e;padding:5px 8px;border-radius:7px;border:none;margin-right:6px;cursor:pointer">⬇ 주차</button>';
+          html += '<button onclick="ctrDownloadWeek(\'' + weekNode.weekKey + '\')" title="주차 전체 저장" style="height:24px;padding:0 8px;margin-right:6px;font-size:10px;font-weight:800;color:white;background:#22c55e;border:none;border-radius:6px;cursor:pointer">⬇</button>';
           html += '</div>';
+
           if (wOpen) {
-            html += '<div class="px-3 py-2 space-y-1 bg-slate-50/50">';
-            (weekNode.files || []).forEach(function(f) {
-              html += '<div class="flex items-center gap-2 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg">';
-              html += '<a href="' + ctrDownloadUrl(f.fileId) + '" target="_blank" rel="noopener" class="flex-1 flex items-center gap-1.5 min-w-0 text-[11px] font-black text-slate-700 active:scale-95" title="보기">';
-              html += '<span>📄</span><span class="truncate">' + f.name + '</span>';
+            html += '<div style="background:#fafbfc;border-top:1px solid #f1f5f9">';
+            (weekNode.files || []).forEach(function(f, i) {
+              var personName = extractPersonName(f.name);
+              var safeFileName = (f.name || '').replace(/\\/g, '\\\\').replace(/\'/g, "\\'");
+              html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-top:' + (i === 0 ? 'none' : '1px solid #f1f5f9') + '">';
+              html += '<a href="' + ctrDownloadUrl(f.fileId) + '" target="_blank" rel="noopener" style="flex:1;min-width:0;font-size:12px;font-weight:700;color:#0f172a;text-decoration:none;display:flex;align-items:center;gap:6px" title="' + f.name + '">';
+              html += '<span style="color:#15803d">✅</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + personName + '</span>';
               html += '</a>';
-              html += '<button onclick="ctrDownloadOne(\'' + f.fileId + '\', \'' + (f.name || '').replace(/\'/g, '\\\'') + '\')" title="개별저장" style="font-size:10px;font-weight:900;color:white;background:#475569;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;flex-shrink:0">⬇</button>';
+              html += '<button onclick="ctrDownloadOne(\'' + f.fileId + '\', \'' + safeFileName + '\')" title="저장" style="height:24px;width:30px;font-size:11px;font-weight:800;color:#475569;background:white;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;flex-shrink:0">⬇</button>';
               html += '</div>';
             });
             html += '</div>';
