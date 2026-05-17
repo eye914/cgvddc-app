@@ -352,13 +352,12 @@
     if (!modal) return;
     modal.classList.remove('hidden');
     if (title) title.textContent = '📄 ' + c.weekKey + ' 근로계약서 서명';
-    // 미리보기: Google Docs 임베드 (원본 양식 유지)
-    var embedUrl = 'https://docs.google.com/document/d/' + c.docId + '/preview';
-    if (preview) preview.src = embedUrl;
-    // 전체화면(새 탭) 보기 링크 → 모바일 브라우저 핀치-줌 활용
-    var fullLink = document.getElementById('contract-sign-fullview');
-    if (fullLink) fullLink.href = embedUrl;
+    // ★ 우리 서버 PDF 프록시 사용 → Google 로그인 팝업 없음 + 모바일 PDF 뷰어 핀치-줌 가능
+    var pdfUrl = '/api/contracts/preview?docId=' + encodeURIComponent(c.docId);
+    if (preview) preview.src = pdfUrl;
     modal.setAttribute('data-docid', c.docId);
+    modal.setAttribute('data-pdfurl', pdfUrl);
+    modal.setAttribute('data-weektitle', c.weekKey);
     modal.setAttribute('data-name', c.name);
     modal.setAttribute('data-weekkey', c.weekKey);
     // 캔버스 초기화
@@ -440,19 +439,72 @@
     return cv.toDataURL('image/png');
   }
 
-  // ════════════════════ FAB 자동 표시 ════════════════════
+  // ════════════════════ FAB: 요청받은 계약서 있을 때만 + 카운트 배지 ════════════════════
   function updateContractFab() {
     var fab = document.getElementById('my-contracts-fab');
+    var badge = document.getElementById('my-contracts-fab-badge');
     if (!fab) return;
     var myName = sessionStorage.getItem('cgv_currentUser');
     var isAdmin = sessionStorage.getItem('cgv_admin') === 'true';
-    // 미소지기 로그인 상태(관리자 아닌)일 때만 표시
-    if (myName && !isAdmin) fab.classList.remove('hidden');
-    else fab.classList.add('hidden');
+    if (!myName || isAdmin) { fab.classList.add('hidden'); return; }
+
+    // 1) 캐시 즉시 사용 (체감속도)
+    try {
+      var cached = JSON.parse(localStorage.getItem('cgv_mycontracts_' + myName) || 'null');
+      if (cached && Array.isArray(cached.data)) {
+        applyCount(cached.data.length);
+      }
+    } catch(e) {}
+
+    // 2) 백그라운드 fetch
+    fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName))
+      .then(function(r){ return r.json(); })
+      .then(function(arr) {
+        if (!Array.isArray(arr)) return;
+        try { localStorage.setItem('cgv_mycontracts_' + myName, JSON.stringify({ ts: Date.now(), data: arr })); } catch(e) {}
+        applyCount(arr.length);
+      })
+      .catch(function(){});
+
+    function applyCount(n) {
+      if (n > 0) {
+        fab.classList.remove('hidden');
+        if (badge) {
+          badge.classList.remove('hidden');
+          badge.style.display = 'flex';
+          badge.textContent = n > 99 ? '99+' : String(n);
+        }
+      } else {
+        fab.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
+      }
+    }
   }
-  // 페이지 로드 후 + 주기 체크 (세션 변경 대응)
   setTimeout(updateContractFab, 800);
-  setInterval(updateContractFab, 3000);
+  setInterval(updateContractFab, 60000); // 1분마다 갱신 (덜 자주)
+
+  // 전체화면 PDF 뷰어
+  window.openContractPdfFullscreen = function() {
+    var modal = document.getElementById('contract-sign-modal');
+    var fs = document.getElementById('contract-pdf-fullscreen');
+    var ifr = document.getElementById('contract-pdf-iframe');
+    var title = document.getElementById('contract-pdf-title');
+    if (!modal || !fs || !ifr) return;
+    var pdfUrl = modal.getAttribute('data-pdfurl') || '';
+    var wk = modal.getAttribute('data-weektitle') || '계약서';
+    if (title) title.textContent = '📄 ' + wk + ' 근로계약서';
+    ifr.src = pdfUrl;
+    fs.classList.remove('hidden');
+    fs.style.display = 'block';
+  };
+  window.closeContractPdfFullscreen = function() {
+    var fs = document.getElementById('contract-pdf-fullscreen');
+    var ifr = document.getElementById('contract-pdf-iframe');
+    if (!fs) return;
+    fs.classList.add('hidden');
+    fs.style.display = 'none';
+    if (ifr) ifr.src = '';
+  };
 
   window.submitContractSign = function() {
     var modal = document.getElementById('contract-sign-modal');
@@ -484,8 +536,11 @@
         if (btn) { btn.disabled = false; btn.textContent = '✅ 서명 제출하기'; }
         if (res && res.ok) {
           alert('✅ 서명 완료! PDF가 저장되었습니다.');
+          // 캐시 무효화 + FAB 즉시 갱신
+          try { localStorage.removeItem('cgv_mycontracts_' + name); } catch(e) {}
           closeContractSignModal();
           closeMyContractsModal();
+          updateContractFab();
         } else {
           alert('❌ 서명 실패: ' + (res && res.error ? res.error : '알수없음'));
         }
