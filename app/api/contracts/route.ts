@@ -32,7 +32,11 @@ export async function GET(req: NextRequest) {
     }
     if (mode === 'list') {
       if (!weekKey) return NextResponse.json({ error: 'weekKey 필요' }, { status: 400 });
-      const data = await callGASJson('getContractsByWeek', [weekKey]);
+      // 새 함수 우선 호출, 미배포 시 기존 함수 폴백
+      let data = await callGASJson('listContractsInWeek', [weekKey]);
+      if (data && data.__gasError && String(data.__gasError).indexOf('알 수 없는 action') > -1) {
+        data = await callGASJson('getContractsByWeek', [weekKey]);
+      }
       return NextResponse.json(data);
     }
     if (mode === 'completed') {
