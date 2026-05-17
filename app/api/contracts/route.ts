@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         .order('sent_at', { ascending: false });
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       // 프론트 호환 형태로 변환
-      const out = (data ?? []).map(r => ({
+      const out = (data ?? []).map((r: any) => ({
         id: r.id,
         weekKey: r.week_key,
         docId: r.doc_id,
