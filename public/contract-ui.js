@@ -9,7 +9,7 @@
   var _ctrSelectedWeek = '';
   var _ctrEmployees = [];
   var _ctrSendStatus = {};   // name → { sentBy, sentAt, signedAt }
-  var REPLY_DEADLINE_DAYS = 7;
+  var REPLY_DEADLINE_DAYS = 5;
   var _ctrSelectedNames = {};
   var _ctrCompletedTree = [];
   var _ctrCollapsed = {};
