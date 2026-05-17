@@ -126,6 +126,12 @@ export async function POST(req: NextRequest) {
         .upsert(rows, { onConflict: 'week_key,recipient_name', ignoreDuplicates: false });
       if (upErr) return NextResponse.json({ error: 'DB 기록 실패: ' + upErr.message }, { status: 500 });
 
+      // ★ 발송 대상자의 doc만 일괄 공유권한 부여 (논블로킹)
+      const docIds = names.map((nm: string) => docMap[nm]?.docId).filter(Boolean);
+      if (docIds.length > 0) {
+        callGASJson('shareContractDocs', [docIds]).catch(() => {});
+      }
+
       // 3) 푸시 알림
       await sendPushToNames(
         names,

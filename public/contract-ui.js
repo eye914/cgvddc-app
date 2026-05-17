@@ -60,21 +60,55 @@
   }
 
   // ════════════════════ 주차 선택 시 ════════════════════
+  // 주차별 명단 캐시 (localStorage 10분)
+  var WK_LIST_TTL_MS = 10 * 60 * 1000;
+  function wkListCacheGet(weekKey) {
+    try {
+      var raw = localStorage.getItem('cgv_wklist_' + weekKey);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (Date.now() - obj.ts > WK_LIST_TTL_MS) return null;
+      return obj.data;
+    } catch(e) { return null; }
+  }
+  function wkListCacheSet(weekKey, data) {
+    try { localStorage.setItem('cgv_wklist_' + weekKey, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+  }
+
   window.onContractWeekChange = function(weekKey) {
     _ctrSelectedWeek = weekKey;
     _ctrSelectedNames = {};
     var list = document.getElementById('contract-emp-list');
     if (!list) return;
-    if (!weekKey) {
-      list.innerHTML = '';
+    if (!weekKey) { list.innerHTML = ''; return; }
+
+    // 1) 캐시 즉시 표시 (있으면)
+    var cachedList = wkListCacheGet(weekKey);
+    if (cachedList) {
+      _ctrEmployees = cachedList;
+      // 상태는 항상 최신으로 (Supabase는 빠름)
+      fetch('/api/contracts?mode=status&weekKey=' + encodeURIComponent(weekKey))
+        .then(function(r){return r.json();}).catch(function(){return [];})
+        .then(function(statusArr) {
+          _ctrSendStatus = {};
+          (Array.isArray(statusArr) ? statusArr : []).forEach(function(s) { _ctrSendStatus[s.name] = s; });
+          renderEmployeeList();
+        });
+      // 백그라운드에서 명단도 갱신
+      fetch('/api/contracts?mode=list&weekKey=' + encodeURIComponent(weekKey))
+        .then(function(r){return r.json();})
+        .then(function(d) { if (Array.isArray(d)) { _ctrEmployees = d; wkListCacheSet(weekKey, d); renderEmployeeList(); } });
       return;
     }
-    list.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>';
+
+    // 2) 캐시 없으면 정상 로드
+    list.innerHTML = '<p style="text-align:center;padding:14px;color:#94a3b8;font-size:12px;font-weight:700">불러오는 중...</p>';
     Promise.all([
       fetch('/api/contracts?mode=list&weekKey=' + encodeURIComponent(weekKey)).then(function(r){return r.json();}),
       fetch('/api/contracts?mode=status&weekKey=' + encodeURIComponent(weekKey)).then(function(r){return r.json();}).catch(function(){return [];})
     ]).then(function(arr) {
       _ctrEmployees = Array.isArray(arr[0]) ? arr[0] : [];
+      if (Array.isArray(arr[0])) wkListCacheSet(weekKey, arr[0]);
       _ctrSendStatus = {};
       (Array.isArray(arr[1]) ? arr[1] : []).forEach(function(s) { _ctrSendStatus[s.name] = s; });
       renderEmployeeList();
