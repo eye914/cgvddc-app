@@ -255,9 +255,12 @@
     if (!modal) return;
     modal.classList.remove('hidden');
     if (title) title.textContent = '📄 ' + c.weekKey + ' 근로계약서 서명';
-    // 미리보기: Google Docs 임베드
+    // 미리보기: Google Docs 임베드 (원본 양식 유지)
     var embedUrl = 'https://docs.google.com/document/d/' + c.docId + '/preview';
     if (preview) preview.src = embedUrl;
+    // 전체화면(새 탭) 보기 링크 → 모바일 브라우저 핀치-줌 활용
+    var fullLink = document.getElementById('contract-sign-fullview');
+    if (fullLink) fullLink.href = embedUrl;
     modal.setAttribute('data-docid', c.docId);
     modal.setAttribute('data-name', c.name);
     modal.setAttribute('data-weekkey', c.weekKey);
