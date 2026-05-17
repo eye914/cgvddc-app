@@ -220,6 +220,57 @@
 
   window.refreshCompletedContracts = loadCompletedContracts;
 
+  // Drive 직접 다운로드 URL (link 공유된 파일은 인증 없이 다운로드)
+  function ctrDownloadUrl(fileId) {
+    return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(fileId);
+  }
+
+  // 순차 다운로드 (브라우저 팝업 차단 회피)
+  function ctrSequentialDownload(files, delayMs) {
+    delayMs = delayMs || 400;
+    files.forEach(function(f, i) {
+      setTimeout(function() {
+        var a = document.createElement('a');
+        a.href = ctrDownloadUrl(f.fileId);
+        a.download = f.name || ('contract_' + (i+1) + '.pdf');
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){ a.remove(); }, 500);
+      }, i * delayMs);
+    });
+  }
+
+  window.ctrDownloadOne = function(fileId, fileName) {
+    var a = document.createElement('a');
+    a.href = ctrDownloadUrl(fileId);
+    a.download = fileName || 'contract.pdf';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ a.remove(); }, 500);
+  };
+
+  window.ctrDownloadWeek = function(weekKey) {
+    var found = null;
+    _ctrCompletedTree.forEach(function(m) {
+      m.weeks.forEach(function(w) { if (w.weekKey === weekKey) found = w; });
+    });
+    if (!found || !found.files || found.files.length === 0) { alert('다운로드할 계약서가 없습니다'); return; }
+    if (!confirm(weekKey + ' 의 계약서 ' + found.files.length + '개를 모두 저장합니다. 진행할까요?')) return;
+    ctrSequentialDownload(found.files);
+  };
+
+  window.ctrDownloadMonth = function(month) {
+    var monthNode = _ctrCompletedTree.find(function(m){ return m.month === month; });
+    if (!monthNode) return;
+    var allFiles = [];
+    monthNode.weeks.forEach(function(w){ (w.files || []).forEach(function(f){ allFiles.push(f); }); });
+    if (allFiles.length === 0) { alert('다운로드할 계약서가 없습니다'); return; }
+    if (!confirm(month + ' 의 계약서 ' + allFiles.length + '개를 모두 저장합니다. 진행할까요?')) return;
+    ctrSequentialDownload(allFiles, 500);
+  };
+
   function renderCompletedTree() {
     var el = document.getElementById('contract-completed-list');
     if (!el) return;
@@ -230,29 +281,38 @@
     var html = '';
     _ctrCompletedTree.forEach(function(monthNode) {
       var monthKey = 'm_' + monthNode.month;
-      var mOpen = _ctrCollapsed[monthKey] !== false; // 기본 펼침
+      var mOpen = _ctrCollapsed[monthKey] !== false;
       var totalCount = monthNode.weeks.reduce(function(s, w) { return s + w.count; }, 0);
       html += '<div class="border-2 border-slate-100 rounded-2xl overflow-hidden mb-2">';
-      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 active:bg-slate-100">';
+      html += '<div class="flex items-center justify-between bg-slate-50">';
+      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" class="flex-1 flex items-center justify-between px-4 py-2.5 active:bg-slate-100">';
       html += '<span class="font-black text-slate-800 text-sm">📅 ' + monthNode.month + ' <span class="text-slate-400 text-[11px]">(' + totalCount + '건)</span></span>';
-      html += '<span class="text-slate-400 font-black">' + (mOpen ? '▲' : '▼') + '</span>';
+      html += '<span class="text-slate-400 font-black ml-2">' + (mOpen ? '▲' : '▼') + '</span>';
       html += '</button>';
+      html += '<button onclick="ctrDownloadMonth(\'' + monthNode.month + '\')" title="월별 전체저장" style="font-size:11px;font-weight:900;color:white;background:#0ea5e9;padding:6px 10px;border-radius:8px;border:none;margin-right:8px;cursor:pointer">⬇ 월 전체</button>';
+      html += '</div>';
       if (mOpen) {
         html += '<div class="px-3 py-2 space-y-1.5">';
         monthNode.weeks.forEach(function(weekNode) {
           var wKey = 'w_' + weekNode.weekKey;
           var wOpen = _ctrCollapsed[wKey] !== false;
           html += '<div class="border border-slate-100 rounded-xl overflow-hidden">';
-          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" class="w-full flex items-center justify-between px-3 py-2 bg-white active:bg-slate-50">';
+          html += '<div class="flex items-center justify-between bg-white">';
+          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" class="flex-1 flex items-center justify-between px-3 py-2 active:bg-slate-50">';
           html += '<span class="font-black text-slate-700 text-xs">📂 ' + weekNode.weekKey + ' <span class="text-slate-400">(' + weekNode.count + ')</span></span>';
           html += '<span class="text-slate-400 text-xs">' + (wOpen ? '▲' : '▼') + '</span>';
           html += '</button>';
+          html += '<button onclick="ctrDownloadWeek(\'' + weekNode.weekKey + '\')" title="주차별 전체저장" style="font-size:10px;font-weight:900;color:white;background:#22c55e;padding:5px 8px;border-radius:7px;border:none;margin-right:6px;cursor:pointer">⬇ 주차</button>';
+          html += '</div>';
           if (wOpen) {
-            html += '<div class="px-3 py-2 grid grid-cols-2 gap-1.5 bg-slate-50/50">';
-            weekNode.files.forEach(function(f) {
-              html += '<a href="' + f.url + '" target="_blank" class="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg text-[11px] font-black text-slate-700 active:scale-95">';
+            html += '<div class="px-3 py-2 space-y-1 bg-slate-50/50">';
+            (weekNode.files || []).forEach(function(f) {
+              html += '<div class="flex items-center gap-2 bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg">';
+              html += '<a href="' + ctrDownloadUrl(f.fileId) + '" target="_blank" rel="noopener" class="flex-1 flex items-center gap-1.5 min-w-0 text-[11px] font-black text-slate-700 active:scale-95" title="보기">';
               html += '<span>📄</span><span class="truncate">' + f.name + '</span>';
               html += '</a>';
+              html += '<button onclick="ctrDownloadOne(\'' + f.fileId + '\', \'' + (f.name || '').replace(/\'/g, '\\\'') + '\')" title="개별저장" style="font-size:10px;font-weight:900;color:white;background:#475569;padding:4px 8px;border-radius:6px;border:none;cursor:pointer;flex-shrink:0">⬇</button>';
+              html += '</div>';
             });
             html += '</div>';
           }
