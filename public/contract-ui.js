@@ -251,15 +251,41 @@
   };
 
   // ════════════════════ 완료 목록 (월/주차 트리) ════════════════════
+  var COMPLETED_CACHE_KEY = 'cgv_completed_tree';
+  var COMPLETED_CACHE_TTL_MS = 5 * 60 * 1000;
   function loadCompletedContracts() {
     var el = document.getElementById('contract-completed-list');
     if (!el) return;
-    el.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>';
-    fetch('/api/contracts?mode=completed')
+    // 1) 캐시 즉시 표시 (있으면)
+    var cached = null;
+    try {
+      var raw = localStorage.getItem(COMPLETED_CACHE_KEY);
+      if (raw) {
+        var obj = JSON.parse(raw);
+        if (Date.now() - obj.ts < COMPLETED_CACHE_TTL_MS) cached = obj.data;
+      }
+    } catch(e) {}
+    if (cached) {
+      _ctrCompletedTree = cached;
+      renderCompletedTree();
+    } else {
+      el.innerHTML = '<p style="text-align:center;padding:14px;color:#94a3b8;font-size:12px;font-weight:700">불러오는 중...</p>';
+    }
+    // 2) 백그라운드 fetch (15초 타임아웃)
+    var ctrl = new AbortController();
+    var to = setTimeout(function(){ ctrl.abort(); }, 15000);
+    fetch('/api/contracts?mode=completed', { signal: ctrl.signal })
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        _ctrCompletedTree = Array.isArray(data) ? data : [];
+        clearTimeout(to);
+        if (!Array.isArray(data)) return;
+        _ctrCompletedTree = data;
+        try { localStorage.setItem(COMPLETED_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
         renderCompletedTree();
+      })
+      .catch(function(e) {
+        clearTimeout(to);
+        if (!cached) el.innerHTML = '<p style="text-align:center;padding:14px;color:#dc2626;font-size:12px;font-weight:700">조회 실패: ' + (e.name === 'AbortError' ? '응답 지연' : e.message) + '</p>';
       });
   }
 
@@ -319,10 +345,9 @@
   // 파일명에서 이름만 추출: "[서명완료] 김한솔 5월1주차.pdf" → "김한솔"
   function extractPersonName(fileName) {
     return String(fileName || '')
-      .replace(/\.[a-z]+$/i, '')
-      .replace(/^\[?서명완료\]?\s*/, '')
-      .replace(/\s*\d+주차.*$/, '')
-      .replace(/\s*\d+년\d+월.*$/, '')
+      .replace(/\.[a-z]+$/i, '')              // 확장자 제거
+      .replace(/^\[?서명완료\]?\s*/, '')       // [서명완료] 제거
+      .replace(/\s+\d.*$/, '')                 // ★ 첫 숫자 이후 전부 제거 (5월1주차/26년5월2주차 등)
       .trim();
   }
 
@@ -339,15 +364,12 @@
       var mOpen = _ctrCollapsed[monthKey] !== false;
       var totalCount = monthNode.weeks.reduce(function(s, w) { return s + w.count; }, 0);
 
-      // 월 헤더 - 한 줄
+      // 월 헤더 - 한 줄 (토글만)
       html += '<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:8px;background:white">';
-      html += '<div style="display:flex;align-items:center;background:#f8fafc;height:40px">';
-      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:100%;border:none;background:transparent;cursor:pointer">';
+      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:40px;border:none;background:#f8fafc;cursor:pointer">';
       html += '<span style="font-weight:800;color:#0f172a;font-size:13px">' + monthNode.month + ' <span style="color:#94a3b8;font-size:11px;font-weight:700">(' + totalCount + ')</span></span>';
       html += '<span style="color:#94a3b8;font-size:11px">' + (mOpen ? '▲' : '▼') + '</span>';
       html += '</button>';
-      html += '<button onclick="ctrDownloadMonth(\'' + monthNode.month + '\')" title="월 전체 저장" style="height:28px;padding:0 10px;margin-right:8px;font-size:11px;font-weight:800;color:white;background:#0ea5e9;border:none;border-radius:8px;cursor:pointer">⬇ 월</button>';
-      html += '</div>';
 
       if (mOpen) {
         html += '<div style="padding:6px 8px">';
@@ -356,14 +378,11 @@
           var wOpen = _ctrCollapsed[wKey] !== false;
 
           html += '<div style="border:1px solid #f1f5f9;border-radius:10px;overflow:hidden;margin-bottom:4px">';
-          // 주차 헤더 - 한 줄
-          html += '<div style="display:flex;align-items:center;background:white;height:34px">';
-          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:100%;border:none;background:transparent;cursor:pointer">';
+          // 주차 헤더 - 한 줄 (토글만)
+          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:34px;border:none;background:white;cursor:pointer">';
           html += '<span style="font-weight:700;color:#334155;font-size:12px">' + weekNode.weekKey + ' <span style="color:#94a3b8;font-weight:600">(' + weekNode.count + ')</span></span>';
           html += '<span style="color:#cbd5e1;font-size:10px">' + (wOpen ? '▲' : '▼') + '</span>';
           html += '</button>';
-          html += '<button onclick="ctrDownloadWeek(\'' + weekNode.weekKey + '\')" title="주차 전체 저장" style="height:24px;padding:0 8px;margin-right:6px;font-size:10px;font-weight:800;color:white;background:#22c55e;border:none;border-radius:6px;cursor:pointer">⬇</button>';
-          html += '</div>';
 
           if (wOpen) {
             html += '<div style="background:#fafbfc;border-top:1px solid #f1f5f9">';
