@@ -12,6 +12,25 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const all = searchParams.get('all') === '1'; // 관리자: 비활성 포함
+    const mode = searchParams.get('mode');
+
+    // ★ 전화번호 맵 조회 (GAS 직원정보 시트)
+    if (mode === 'phones') {
+      const GAS_URL = process.env.GAS_URL;
+      if (!GAS_URL) return NextResponse.json({});
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getEmployeePhones', params: [] }),
+      });
+      const txt = await res.text();
+      try {
+        const json = JSON.parse(txt);
+        if (json?.success) return NextResponse.json(json.result || {});
+        return NextResponse.json({ error: json?.error || 'GAS 오류' }, { status: 500 });
+      } catch {
+        return NextResponse.json({ error: '응답 파싱 실패' }, { status: 500 });
+      }
+    }
 
     const query = supabaseAdmin.from('misojigi').select('*').order('name');
     if (!all) query.eq('active', true);

@@ -2046,18 +2046,26 @@ function showKakaoModal(text, forced) {
             if (isHidden && _misoAdminData.length === 0) loadMisojigiAdmin();
         }
 
+        var _misoPhones = {}; // { name: { display, tel } }
         function loadMisojigiAdmin() {
             var el = document.getElementById('miso-admin-list');
             if (el) el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">불러오는 중...</p>';
-            google.script.run
-                .withSuccessHandler(function(list) {
-                    _misoAdminData = list || [];
-                    renderMisojigiAdmin(_misoAdminData);
-                })
-                .withFailureHandler(function(e) {
-                    if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + (e && e.message ? e.message : e) + '</p>';
-                })
-                .getAllMisojigiForAdmin();
+            // 전화번호도 병렬 fetch (실패해도 명단은 표시)
+            fetch('/api/misojigi?mode=phones')
+                .then(function(r){ return r.json(); })
+                .then(function(d){ if (d && typeof d === 'object' && !d.error) _misoPhones = d; })
+                .catch(function(){})
+                .finally(function() {
+                    google.script.run
+                        .withSuccessHandler(function(list) {
+                            _misoAdminData = list || [];
+                            renderMisojigiAdmin(_misoAdminData);
+                        })
+                        .withFailureHandler(function(e) {
+                            if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + (e && e.message ? e.message : e) + '</p>';
+                        })
+                        .getAllMisojigiForAdmin();
+                });
         }
 
         function renderMisojigiAdmin(list) {
@@ -2099,8 +2107,20 @@ function showKakaoModal(text, forced) {
                         '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
                     '<div id="ma-b-' + sid + '" style="' + (isExp ? '' : 'display:none') + '" class="px-3 pb-3 border-t border-slate-100 bg-slate-50">' +
-                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-2">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
+                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-1">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
+                        (function() {
+                            var ph = _misoPhones[m.name];
+                            return ph && ph.display
+                                ? '<div class="text-xs text-slate-500 font-bold mb-2">전화: <a href="tel:' + ph.tel + '" class="text-blue-600 font-black underline">' + ph.display + '</a></div>'
+                                : '<div class="text-xs text-slate-400 font-bold mb-2">전화: 미등록</div>';
+                        })() +
                         '<div class="flex gap-1.5 flex-wrap">' +
+                            (function() {
+                                var ph = _misoPhones[m.name];
+                                return ph && ph.tel
+                                    ? '<a href="tel:' + ph.tel + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all inline-flex items-center gap-1">📞 전화걸기</a>'
+                                    : '';
+                            })() +
                             '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 포지션</button>' +
                             '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
