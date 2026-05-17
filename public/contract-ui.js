@@ -296,16 +296,38 @@
         return;
       }
       _ctrMyList = arr;
+      // 미서명 먼저, 서명완료 뒤
+      var pending = arr.filter(function(c){ return !c.signedAt; });
+      var signed  = arr.filter(function(c){ return !!c.signedAt; });
       var html = '';
-      arr.forEach(function(c, idx) {
-        html += '<div class="border-2 border-blue-200 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2">';
-        html += '<div class="min-w-0 flex-1">';
-        html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
-        html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출하면 PDF로 보관됩니다</p>';
-        html += '</div>';
-        html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
-        html += '</div>';
-      });
+      if (pending.length) {
+        html += '<p class="text-[11px] font-black text-slate-500 px-1 mb-2">📨 서명 대기 (' + pending.length + ')</p>';
+        pending.forEach(function(c) {
+          var idx = arr.indexOf(c);
+          html += '<div class="border-2 border-blue-300 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 mb-2">';
+          html += '<div class="min-w-0 flex-1">';
+          html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
+          html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출 → PDF 자동 저장</p>';
+          html += '</div>';
+          html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
+          html += '</div>';
+        });
+      }
+      if (signed.length) {
+        html += '<p class="text-[11px] font-black text-slate-500 px-1 mt-3 mb-2">✅ 서명 완료 (' + signed.length + ')</p>';
+        signed.forEach(function(c) {
+          var idx = arr.indexOf(c);
+          var sd = new Date(c.signedAt);
+          var sdStr = isNaN(sd) ? '' : ((sd.getMonth()+1)+'/'+sd.getDate()+' '+String(sd.getHours()).padStart(2,'0')+':'+String(sd.getMinutes()).padStart(2,'0'));
+          html += '<div class="border-2 border-emerald-200 bg-emerald-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2 mb-2">';
+          html += '<div class="min-w-0 flex-1">';
+          html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
+          html += '<p class="text-[11px] font-bold text-emerald-700">✅ 서명완료 · ' + sdStr + '</p>';
+          html += '</div>';
+          html += '<button onclick="openSignedPdf(' + idx + ')" class="bg-white text-emerald-700 border-2 border-emerald-300 px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">PDF 보기</button>';
+          html += '</div>';
+        });
+      }
       list.innerHTML = html;
     }
     // 1) 캐시 즉시 표시
@@ -452,17 +474,19 @@
     try {
       var cached = JSON.parse(localStorage.getItem('cgv_mycontracts_' + myName) || 'null');
       if (cached && Array.isArray(cached.data)) {
-        applyCount(cached.data.length);
+        var pc = cached.data.filter(function(c){ return !c.signedAt; }).length;
+        applyCount(pc);
       }
     } catch(e) {}
 
-    // 2) 백그라운드 fetch
+    // 2) 백그라운드 fetch (FAB는 미서명 개수만 카운트)
     fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName))
       .then(function(r){ return r.json(); })
       .then(function(arr) {
         if (!Array.isArray(arr)) return;
         try { localStorage.setItem('cgv_mycontracts_' + myName, JSON.stringify({ ts: Date.now(), data: arr })); } catch(e) {}
-        applyCount(arr.length);
+        var pendingCount = arr.filter(function(c){ return !c.signedAt; }).length;
+        applyCount(pendingCount);
       })
       .catch(function(){});
 
@@ -483,20 +507,47 @@
   setTimeout(updateContractFab, 800);
   setInterval(updateContractFab, 60000); // 1분마다 갱신 (덜 자주)
 
-  // 전체화면 PDF 뷰어
+  // 전체화면 PDF 뷰어 (툴바 숨김 + 워터마크)
   window.openContractPdfFullscreen = function() {
     var modal = document.getElementById('contract-sign-modal');
     var fs = document.getElementById('contract-pdf-fullscreen');
     var ifr = document.getElementById('contract-pdf-iframe');
     var title = document.getElementById('contract-pdf-title');
+    var wmEl = document.getElementById('contract-pdf-watermark');
     if (!modal || !fs || !ifr) return;
     var pdfUrl = modal.getAttribute('data-pdfurl') || '';
     var wk = modal.getAttribute('data-weektitle') || '계약서';
     if (title) title.textContent = '📄 ' + wk + ' 근로계약서';
-    ifr.src = pdfUrl;
+    // ★ PDF 뷰어 툴바/네비/스크롤바 숨김 (저장·인쇄 버튼 노출 억제)
+    var hashedUrl = pdfUrl + '#toolbar=0&navpanes=0&statusbar=0&messages=0&scrollbar=1';
+    ifr.src = hashedUrl;
+    // 워터마크 (스크린샷 억제 + 식별)
+    if (wmEl) {
+      var who = sessionStorage.getItem('cgv_currentUser') || '';
+      var now = new Date();
+      var stamp = (now.getMonth()+1) + '/' + now.getDate() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      var html = '';
+      for (var i = 0; i < 18; i++) {
+        html += '<div style="transform:rotate(-25deg);font-size:20px;font-weight:900;color:#000;white-space:nowrap;padding:30px">' + who + ' · ' + stamp + ' · CGV동두천</div>';
+      }
+      wmEl.innerHTML = html;
+    }
     fs.classList.remove('hidden');
     fs.style.display = 'block';
   };
+  // 서명완료 PDF 보기 (전체화면 모달 재사용)
+  window.openSignedPdf = function(idx) {
+    var c = _ctrMyList[idx];
+    if (!c) return;
+    var signModal = document.getElementById('contract-sign-modal');
+    // sign 모달 속성에 임시로 데이터 세팅 (전체화면 모달이 거기서 읽음)
+    if (signModal) {
+      signModal.setAttribute('data-pdfurl', '/api/contracts/preview?docId=' + encodeURIComponent(c.docId));
+      signModal.setAttribute('data-weektitle', c.weekKey + ' [서명완료]');
+    }
+    window.openContractPdfFullscreen();
+  };
+
   window.closeContractPdfFullscreen = function() {
     var fs = document.getElementById('contract-pdf-fullscreen');
     var ifr = document.getElementById('contract-pdf-iframe');
@@ -521,7 +572,21 @@
       return;
     }
     var btn = document.getElementById('contract-sign-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '서명 처리 중...'; }
+    if (btn) { btn.disabled = true; }
+    // 진행 단계 메시지 회전 (체감 대기시간 단축)
+    var steps = [
+      '🔐 서명 이미지 업로드 중... (1/4)',
+      '📄 계약서에 서명 삽입 중... (2/4)',
+      '📥 PDF 생성 중... (3/4)',
+      '💾 저장 중... (4/4)'
+    ];
+    var stepIdx = 0;
+    if (btn) btn.textContent = steps[0];
+    var stepTimer = setInterval(function(){
+      stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+      if (btn) btn.textContent = steps[stepIdx];
+    }, 2200);
+    function stopSteps(){ clearInterval(stepTimer); }
     fetch('/api/contracts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -533,7 +598,7 @@
     })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ 서명 제출하기'; }
+        stopSteps(); if (btn) { btn.disabled = false; btn.textContent = '✅ 서명 제출하기'; }
         if (res && res.ok) {
           alert('✅ 서명 완료! PDF가 저장되었습니다.');
           // 캐시 무효화 + FAB 즉시 갱신
@@ -546,7 +611,7 @@
         }
       })
       .catch(function(e) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ 서명 제출하기'; }
+        stopSteps(); if (btn) { btn.disabled = false; btn.textContent = '✅ 서명 제출하기'; }
         alert('❌ 통신 실패: ' + e.message);
       });
   };

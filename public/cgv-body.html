@@ -448,12 +448,21 @@
     </div>
 
     <!-- ── 계약서 전체화면 PDF 뷰어 모달 (핀치-줌 가능) ── -->
-    <div id="contract-pdf-fullscreen" class="hidden fixed inset-0 bg-slate-900 z-[8600]" style="display:none">
-        <div class="flex items-center justify-between px-4 py-3 bg-slate-800 text-white">
-            <span class="font-black text-sm" id="contract-pdf-title">계약서 보기</span>
-            <button onclick="closeContractPdfFullscreen()" class="text-white text-2xl font-light px-2">&times;</button>
+    <div id="contract-pdf-fullscreen" class="hidden fixed inset-0 bg-slate-900 z-[8600]" style="display:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-800 text-white" style="height:54px">
+            <span class="font-black text-sm truncate" id="contract-pdf-title">계약서 보기</span>
+            <button onclick="closeContractPdfFullscreen()" aria-label="닫기"
+                style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:#dc2626;color:white;font-size:24px;font-weight:900;border:none;cursor:pointer;line-height:1">✕</button>
         </div>
-        <iframe id="contract-pdf-iframe" src="" style="width:100%;height:calc(100% - 50px);border:0;display:block;background:white"></iframe>
+        <div style="position:relative;height:calc(100% - 54px);background:#525659">
+            <iframe id="contract-pdf-iframe" src="" style="width:100%;height:100%;border:0;display:block;background:white"></iframe>
+            <!-- 워터마크 (스크린샷 억제용) -->
+            <div id="contract-pdf-watermark" style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;align-content:space-around;justify-content:space-around;opacity:0.08;overflow:hidden">
+            </div>
+            <!-- 하단 닫기 바 (스크롤 후에도 바로 닫기 가능) -->
+            <button onclick="closeContractPdfFullscreen()"
+                style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:white;font-weight:900;font-size:13px;padding:12px 28px;border-radius:999px;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:10">✕ 닫기</button>
+        </div>
     </div>
 
     <!-- 지원 모달 -->
@@ -618,7 +627,7 @@
     </div>
 
     <!-- ── 계약서 서명 모달 (캔버스 2개) ── -->
-    <div id="contract-sign-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[8400] flex items-end justify-center">
+    <div id="contract-sign-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[8400] flex items-end justify-center" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
         <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px;overscroll-behavior:contain">
             <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
             <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">

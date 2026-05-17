@@ -59,18 +59,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(out);
     }
 
-    // ★ 내 계약서: Supabase 기록 기준 (발송된 것만, 미서명만)
+    // ★ 내 계약서: 발송된 것 모두 (미서명+서명완료). 프론트에서 상태 구분
     if (mode === 'my') {
       const name = searchParams.get('name');
       if (!name) return NextResponse.json({ error: 'name 필요' }, { status: 400 });
       const { data, error } = await supabaseAdmin
         .from('contract_requests')
-        .select('id, week_key, doc_id, recipient_name, file_name, sent_at')
+        .select('id, week_key, doc_id, recipient_name, file_name, sent_at, signed_at')
         .eq('recipient_name', name)
-        .is('signed_at', null)
         .order('sent_at', { ascending: false });
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      // 프론트 호환 형태로 변환
       const out = (data ?? []).map((r: any) => ({
         id: r.id,
         weekKey: r.week_key,
@@ -78,6 +76,7 @@ export async function GET(req: NextRequest) {
         name: r.recipient_name,
         fileName: r.file_name,
         sentAt: r.sent_at,
+        signedAt: r.signed_at,
       }));
       return NextResponse.json(out);
     }
