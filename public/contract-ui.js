@@ -8,6 +8,8 @@
   var _ctrWeeks = [];
   var _ctrSelectedWeek = '';
   var _ctrEmployees = [];
+  var _ctrSendStatus = {};   // name → { sentBy, sentAt, signedAt }
+  var REPLY_DEADLINE_DAYS = 7;
   var _ctrSelectedNames = {};
   var _ctrCompletedTree = [];
   var _ctrCollapsed = {};
@@ -67,12 +69,15 @@
       return;
     }
     list.innerHTML = '<p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>';
-    fetch('/api/contracts?mode=list&weekKey=' + encodeURIComponent(weekKey))
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        _ctrEmployees = Array.isArray(data) ? data : [];
-        renderEmployeeList();
-      });
+    Promise.all([
+      fetch('/api/contracts?mode=list&weekKey=' + encodeURIComponent(weekKey)).then(function(r){return r.json();}),
+      fetch('/api/contracts?mode=status&weekKey=' + encodeURIComponent(weekKey)).then(function(r){return r.json();}).catch(function(){return [];})
+    ]).then(function(arr) {
+      _ctrEmployees = Array.isArray(arr[0]) ? arr[0] : [];
+      _ctrSendStatus = {};
+      (Array.isArray(arr[1]) ? arr[1] : []).forEach(function(s) { _ctrSendStatus[s.name] = s; });
+      renderEmployeeList();
+    });
   };
 
   function renderEmployeeList() {
@@ -86,16 +91,77 @@
     html += '<button onclick="ctrToggleAll(true)" class="text-[11px] font-black text-blue-600 underline">전체선택</button>';
     html += '<button onclick="ctrToggleAll(false)" class="text-[11px] font-black text-slate-400 underline">전체해제</button>';
     html += '</div>';
-    html += '<div class="grid grid-cols-3 gap-1.5 mb-3">';
+    // 상태별 카드 리스트
+    html += '<div class="space-y-1.5 mb-3">';
     _ctrEmployees.forEach(function(e) {
-      var checked = _ctrSelectedNames[e.name] ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-slate-700 border-slate-200';
-      html += '<button onclick="ctrToggleName(\'' + e.name + '\')" class="px-2 py-2 rounded-xl border-2 text-xs font-black active:scale-95 transition-all ' + checked + '">' + e.name + '</button>';
+      var st = _ctrSendStatus[e.name];
+      var selected = !!_ctrSelectedNames[e.name];
+      var badge = '', meta = '';
+      if (!st) {
+        badge = '<span style="background:#f1f5f9;color:#64748b;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">미발송</span>';
+      } else if (st.signedAt) {
+        badge = '<span style="background:#dcfce7;color:#15803d;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">✅ 서명완료</span>';
+        meta = formatSignedMeta(st);
+      } else {
+        var info = computeDeadline(st.sentAt);
+        badge = info.expired
+          ? '<span style="background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">⚠ 기한초과</span>'
+          : '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px">📨 발송됨</span>';
+        meta = formatPendingMeta(st, info);
+      }
+      var border = selected ? '#1d4ed8' : '#e2e8f0';
+      var bg = selected ? '#eff6ff' : 'white';
+      html += '<div onclick="ctrToggleName(\'' + e.name + '\')" style="cursor:pointer;border:2px solid ' + border + ';background:' + bg + ';border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px" class="active:scale-[0.99]">';
+      html += '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">';
+      html += '<input type="checkbox" ' + (selected ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:#1d4ed8;pointer-events:none;flex-shrink:0">';
+      html += '<div style="min-width:0">';
+      html += '<div style="font-weight:900;font-size:13px;color:#0f172a">' + e.name + '</div>';
+      if (meta) html += '<div style="font-size:10px;color:#64748b;font-weight:600;margin-top:2px">' + meta + '</div>';
+      html += '</div></div>';
+      html += badge;
+      html += '</div>';
     });
     html += '</div>';
     var count = Object.keys(_ctrSelectedNames).filter(function(k) { return _ctrSelectedNames[k]; }).length;
     html += '<button onclick="ctrSendSelected()" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">';
     html += '📨 선택 발송 (' + count + '명)</button>';
     list.innerHTML = html;
+  }
+
+  // ── 발송 상태 유틸 ──
+  function fmtDateTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var m = String(d.getMonth()+1).padStart(2,'0');
+    var dd = String(d.getDate()).padStart(2,'0');
+    var hh = String(d.getHours()).padStart(2,'0');
+    var mi = String(d.getMinutes()).padStart(2,'0');
+    return m + '/' + dd + ' ' + hh + ':' + mi;
+  }
+  function computeDeadline(sentAtIso) {
+    var sent = new Date(sentAtIso);
+    var deadline = new Date(sent.getTime() + REPLY_DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+    var nowMs = Date.now();
+    var diffMs = deadline.getTime() - nowMs;
+    var expired = diffMs <= 0;
+    var days = Math.floor(Math.abs(diffMs) / (24*60*60*1000));
+    var hours = Math.floor((Math.abs(diffMs) % (24*60*60*1000)) / (60*60*1000));
+    return { expired: expired, days: days, hours: hours, deadline: deadline };
+  }
+  function formatPendingMeta(st, info) {
+    var s = '발송: ' + fmtDateTime(st.sentAt);
+    if (st.sentBy) s += ' · ' + st.sentBy;
+    s += ' · ';
+    if (info.expired) {
+      s += '<span style="color:#dc2626;font-weight:800">기한 ' + info.days + '일 ' + info.hours + '시간 초과</span>';
+    } else {
+      s += '<span style="color:#15803d;font-weight:800">기한 ' + info.days + '일 ' + info.hours + '시간 남음</span>';
+    }
+    return s;
+  }
+  function formatSignedMeta(st) {
+    return '발송 ' + fmtDateTime(st.sentAt) + (st.sentBy ? ' · ' + st.sentBy : '') + ' → 서명 ' + fmtDateTime(st.signedAt);
   }
 
   window.ctrToggleName = function(name) {
@@ -130,6 +196,8 @@
             names.forEach(function(nm){ localStorage.removeItem('cgv_mycontracts_' + nm); });
           } catch(e) {}
           alert('✅ ' + names.length + '명에게 발송 완료');
+          // 발송 상태 즉시 새로고침
+          if (_ctrSelectedWeek) window.onContractWeekChange(_ctrSelectedWeek);
         }
         else { alert('❌ 발송 실패: ' + (res.error || '알수없음')); }
       })

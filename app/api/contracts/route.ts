@@ -42,6 +42,23 @@ export async function GET(req: NextRequest) {
       const data = await callGASJson('getCompletedContracts');
       return NextResponse.json(data);
     }
+    // ★ 관리자: 주차별 발송 상태 (누가/언제/서명여부)
+    if (mode === 'status') {
+      if (!weekKey) return NextResponse.json({ error: 'weekKey 필요' }, { status: 400 });
+      const { data, error } = await supabaseAdmin
+        .from('contract_requests')
+        .select('recipient_name, sent_by, sent_at, signed_at')
+        .eq('week_key', weekKey);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      const out = (data ?? []).map((r: any) => ({
+        name: r.recipient_name,
+        sentBy: r.sent_by,
+        sentAt: r.sent_at,
+        signedAt: r.signed_at,
+      }));
+      return NextResponse.json(out);
+    }
+
     // ★ 내 계약서: Supabase 기록 기준 (발송된 것만, 미서명만)
     if (mode === 'my') {
       const name = searchParams.get('name');
