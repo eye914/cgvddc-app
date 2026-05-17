@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendPushToNames } from '@/lib/push';
+import { supabaseAdmin } from '@/lib/supabase';
 
-// GAS 호출 (응답 수신) - 기존 doPost 패턴: { action, params: [...] }, 응답 { success, result }
 async function callGASJson(action: string, params: any[] = []) {
   const GAS_URL = process.env.GAS_URL;
   if (!GAS_URL) throw new Error('GAS_URL 미설정');
@@ -19,7 +19,7 @@ async function callGASJson(action: string, params: any[] = []) {
   }
 }
 
-// GET: 주차 목록, 주차별 계약서, 완료 트리
+// GET: weeks | list | completed | my
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
     }
     if (mode === 'list') {
       if (!weekKey) return NextResponse.json({ error: 'weekKey 필요' }, { status: 400 });
-      // 새 함수 우선 호출, 미배포 시 기존 함수 폴백
       let data = await callGASJson('listContractsInWeek', [weekKey]);
       if (data && data.__gasError && String(data.__gasError).indexOf('알 수 없는 action') > -1) {
         data = await callGASJson('getContractsByWeek', [weekKey]);
@@ -43,28 +42,75 @@ export async function GET(req: NextRequest) {
       const data = await callGASJson('getCompletedContracts');
       return NextResponse.json(data);
     }
-    return NextResponse.json({ error: 'mode 필요 (weeks|list|completed)' }, { status: 400 });
+    // ★ 내 계약서: Supabase 기록 기준 (발송된 것만, 미서명만)
+    if (mode === 'my') {
+      const name = searchParams.get('name');
+      if (!name) return NextResponse.json({ error: 'name 필요' }, { status: 400 });
+      const { data, error } = await supabaseAdmin
+        .from('contract_requests')
+        .select('id, week_key, doc_id, recipient_name, file_name, sent_at')
+        .eq('recipient_name', name)
+        .is('signed_at', null)
+        .order('sent_at', { ascending: false });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      // 프론트 호환 형태로 변환
+      const out = (data ?? []).map(r => ({
+        id: r.id,
+        weekKey: r.week_key,
+        docId: r.doc_id,
+        name: r.recipient_name,
+        fileName: r.file_name,
+        sentAt: r.sent_at,
+      }));
+      return NextResponse.json(out);
+    }
+    return NextResponse.json({ error: 'mode 필요 (weeks|list|completed|my)' }, { status: 400 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
 
-// POST: 발송 알림 또는 서명 제출
+// POST: send (발송 기록 + 알림) | sign (서명 + 기록 업데이트)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action } = body;
 
-    // 관리자: 계약서 발송 알림 (일괄/개별)
+    // 관리자: 계약서 발송
     if (action === 'send') {
       const { weekKey, names, requestedBy } = body;
       if (!weekKey || !Array.isArray(names) || names.length === 0) {
         return NextResponse.json({ error: 'weekKey, names[] 필요' }, { status: 400 });
       }
+      // 1) 해당 주차의 docs 조회 (이름 → docId 매핑)
+      let docList = await callGASJson('listContractsInWeek', [weekKey]);
+      if (docList && docList.__gasError) {
+        docList = await callGASJson('getContractsByWeek', [weekKey]);
+      }
+      const docMap: Record<string, { docId: string; fileName: string }> = {};
+      if (Array.isArray(docList)) {
+        docList.forEach((d: any) => { if (d?.name) docMap[d.name] = { docId: d.docId, fileName: d.fileName }; });
+      }
+      // 2) Supabase 에 발송 기록 (upsert로 중복 방지)
+      const rows = names.map((nm: string) => ({
+        week_key: weekKey,
+        recipient_name: nm,
+        doc_id: docMap[nm]?.docId ?? null,
+        file_name: docMap[nm]?.fileName ?? null,
+        sent_by: requestedBy ?? '관리자',
+        sent_at: new Date().toISOString(),
+        signed_at: null,
+      }));
+      const { error: upErr } = await supabaseAdmin
+        .from('contract_requests')
+        .upsert(rows, { onConflict: 'week_key,recipient_name', ignoreDuplicates: false });
+      if (upErr) return NextResponse.json({ error: 'DB 기록 실패: ' + upErr.message }, { status: 500 });
+
+      // 3) 푸시 알림
       await sendPushToNames(
         names,
         `📄 ${weekKey} 근로계약서`,
-        `관리자(${requestedBy || '관리자'})가 근로계약서 서명을 요청했습니다. 앱에서 확인 후 서명해주세요.`
+        `관리자(${requestedBy || '관리자'})가 근로계약서 서명을 요청했습니다.`
       );
       return NextResponse.json({ ok: true, sentTo: names });
     }
@@ -79,6 +125,13 @@ export async function POST(req: NextRequest) {
         docId, name, weekKey, nameImage, sigImage,
       }]);
       if (result && result.ok) {
+        // ★ 서명 완료 기록
+        await supabaseAdmin
+          .from('contract_requests')
+          .update({ signed_at: new Date().toISOString() })
+          .eq('week_key', weekKey)
+          .eq('recipient_name', name);
+
         await sendPushToNames(
           ['이상순'],
           `✍️ 계약서 서명 완료`,

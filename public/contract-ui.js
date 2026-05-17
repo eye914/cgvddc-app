@@ -214,48 +214,29 @@
       list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">로그인 후 이용해주세요</p>';
       return;
     }
-    // 모든 주차에서 내 이름의 계약서 찾기
-    fetch('/api/contracts?mode=weeks')
+    // ★ 발송된 계약서만 조회 (Supabase 기록 기준)
+    fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName))
       .then(function(r) { return r.json(); })
-      .then(function(weeks) {
-        if (!Array.isArray(weeks) || weeks.length === 0) {
-          list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">계약서가 없습니다</p>';
+      .then(function(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) {
+          list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">받은 계약서가 없습니다</p>';
           return;
         }
-        return Promise.all(weeks.map(function(w) {
-          return fetch('/api/contracts?mode=list&weekKey=' + encodeURIComponent(w.weekKey))
-            .then(function(r) { return r.json(); })
-            .then(function(arr) {
-              return (Array.isArray(arr) ? arr : []).filter(function(e) { return e.name === myName; })
-                .map(function(e) { return Object.assign({}, e, { weekKey: w.weekKey }); });
-            });
-        })).then(function(results) {
-          var flat = [].concat.apply([], results);
-          // ★ docId 기준 중복 제거 (같은 계약서가 여러 주차에 노출되거나 시트 중복 시 1건만 표시)
-          var seen = {};
-          flat = flat.filter(function(c) {
-            var key = (c.weekKey || '') + '::' + (c.docId || '');
-            if (seen[key]) return false;
-            seen[key] = true;
-            return true;
-          });
-          _ctrMyList = flat;
-          if (flat.length === 0) {
-            list.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">받은 계약서가 없습니다</p>';
-            return;
-          }
-          var html = '';
-          flat.forEach(function(c, idx) {
-            html += '<div class="border-2 border-blue-200 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2">';
-            html += '<div class="min-w-0 flex-1">';
-            html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
-            html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출하면 PDF로 보관됩니다</p>';
-            html += '</div>';
-            html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
-            html += '</div>';
-          });
-          list.innerHTML = html;
+        _ctrMyList = arr;
+        var html = '';
+        arr.forEach(function(c, idx) {
+          html += '<div class="border-2 border-blue-200 bg-blue-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-2">';
+          html += '<div class="min-w-0 flex-1">';
+          html += '<p class="font-black text-slate-900 text-sm truncate">📄 ' + c.weekKey + ' 근로계약서</p>';
+          html += '<p class="text-[11px] font-bold text-slate-500">서명 후 제출하면 PDF로 보관됩니다</p>';
+          html += '</div>';
+          html += '<button onclick="openContractSign(' + idx + ')" class="btn-c2 btn-c2-primary px-4 py-2.5 rounded-xl font-black text-xs active:scale-95 flex-shrink-0">서명하기</button>';
+          html += '</div>';
         });
+        list.innerHTML = html;
+      })
+      .catch(function(e) {
+        list.innerHTML = '<p class="text-red-500 text-sm text-center py-6">오류: ' + e.message + '</p>';
       });
   };
 
