@@ -2356,19 +2356,42 @@ function showKakaoModal(text, forced) {
                     + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + rPL + "</span>"
                     + "<span class='text-[9px] font-black px-1.5 py-0.5 rounded-full " + _hoursCls + "'>" + _hoursLbl + "</span>"
                     + "</div>";
-                var _inParts = (safe && safe !== "\uB300\uD0C0 \uC694\uCCAD") ? safe.split(" / ") : [];
-                var _inDate = _inParts[0] || '';
-                var _inCode = _inParts.length > 1 ? _inParts.slice(1).join(' / ').trim() : '';
-                var _inCodeMatch = _inCode.match(/^([A-Z]\d+)/);
-                var _inPureCode = _inCodeMatch ? _inCodeMatch[1] : (_inCode.split(' ')[0] || '');
-                var _inTime = _inPureCode ? getActualTimeByCode(_inPureCode, _reqHoursCard) : '';
-                var inHtml = safe === "\uB300\uD0C0 \uC694\uCCAD" ? "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>"
-                    : "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
-                        + "<span class='text-slate-700'>" + _inDate + "</span>"
-                        + (_inPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _inPureCode + "</span>" : "")
-                        + (_inTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _inTime + "</span>" : "")
-                        + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + (t.subPos || t.reqPos || '\uBB34\uAD00') + "</span>"
-                        + "</div>";
+                // \u2605 \uD76C\uB9DD\uADFC\uBB34(IN) \uBA40\uD2F0\uB77C\uC778 \uD30C\uC2F1 \u2014 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC815\uD655 \uCD94\uCD9C
+                var inHtml;
+                if (safe === "\uB300\uD0C0 \uC694\uCCAD") {
+                    inHtml = "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>";
+                } else {
+                    var _inLines = safe.split("\n").filter(function(l){ return l.trim(); });
+                    if (!_inLines.length) {
+                        inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
+                    } else {
+                        var _inBuf = "<div class='space-y-1'>";
+                        _inLines.forEach(function(line, li) {
+                            var _lParts = line.split(" / ");
+                            var _lDate = _lParts[0] || '';
+                            var _lCode = _lParts.length > 1 ? _lParts.slice(1).join(' / ').trim() : '';
+                            var _lCodeMatch = _lCode.match(/^([A-Z]\d+)/);
+                            var _lPureCode = _lCodeMatch ? _lCodeMatch[1] : '';
+                            var _lTime = _lPureCode ? getActualTimeByCode(_lPureCode, _reqHoursCard) : '';
+                            // \u2605 \uD3EC\uC9C0\uC158 \uD0DC\uADF8 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uCD94\uCD9C (\uC5C6\uC73C\uBA74 subPos\u2192reqPos \uD3F4\uBC31)
+                            var _lPosMatch = _lCode.match(/\[([^\]]+)\]/);
+                            var _lPos = _lPosMatch ? _lPosMatch[1].replace(/\//g, ' / ')
+                                                   : (t.subPos || t.reqPos || '\uBB34\uAD00');
+                            // timeText \uB808\uC774\uBE14 (\uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC81C\uAC70 \uD6C4 \uCF54\uB4DC\uAC00 \uC5C6\uC744 \uB54C \uD45C\uC2DC)
+                            if (!_lPureCode) {
+                                var _lTimeText = _lCode.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
+                                if (_lTimeText) _lPureCode = _lTimeText.split(' ')[0];
+                            }
+                            _inBuf += "<div class='font-bold " + (li > 0 ? "mt-2 pt-2 border-t border-slate-100" : "mt-1") + " flex flex-wrap items-center gap-1.5'>"
+                                + "<span class='text-slate-700'>" + _lDate + "</span>"
+                                + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
+                                + (_lTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _lTime + "</span>" : "")
+                                + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>"
+                                + "</div>";
+                        });
+                        inHtml = _inBuf + "</div>";
+                    }
+                }
 
                 var isExp = isExpired(safeDate);
                 var shiftTs = (function(){ var c=safeDate.split("(")[0].split("/")[0].trim(); var dt=new Date(c); return isNaN(dt.getTime())?999999:dt.getTime(); })();
