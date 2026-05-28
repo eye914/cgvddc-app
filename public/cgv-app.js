@@ -713,7 +713,7 @@ function showKakaoModal(text, forced) {
                 if (dist > 80 && window.scrollY === 0 && !ptrActive) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
-                    sessionStorage.removeItem("cgv_sched_pos_map");
+                    sessionStorage.removeItem("cgv_sched_pos_map_v3");
                     fetchData();
                     setTimeout(function(){ ptrActive = false; }, 2000);
                 }
@@ -1704,10 +1704,10 @@ function showKakaoModal(text, forced) {
         function loadSchedPosMap(callback) {
             // 세션 캐시 확인 (5분 TTL)
             try {
-                var cached = sessionStorage.getItem('cgv_sched_pos_map');
+                var cached = sessionStorage.getItem('cgv_sched_pos_map_v3');
                 if (cached) {
                     var parsed = JSON.parse(cached);
-                    if (parsed && parsed.data && parsed.ts && (Date.now() - parsed.ts) < 5 * 60 * 1000) {
+                    if (parsed && parsed.data && parsed.ts && (Date.now() - parsed.ts) < 1 * 60 * 1000) {
                         SCHED_POS_MAP = parsed.data;
                         window._SCHED_POS_MAP = SCHED_POS_MAP; // 디버그용
                         if (callback) callback();
@@ -1721,7 +1721,7 @@ function showKakaoModal(text, forced) {
                     if (d && typeof d === 'object' && !d.error) {
                         SCHED_POS_MAP = d;
                         window._SCHED_POS_MAP = d; // 디버그용: 콘솔에서 _SCHED_POS_MAP 확인 가능
-                        try { sessionStorage.setItem('cgv_sched_pos_map', JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
+                        try { sessionStorage.setItem('cgv_sched_pos_map_v3', JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
                     }
                 })
                 .catch(function(){})
@@ -2347,7 +2347,7 @@ function showKakaoModal(text, forced) {
                 if (d.map && typeof d.map === 'object') {
                     SCHED_POS_MAP = d.map;
                     window._SCHED_POS_MAP = d.map; // 디버그용
-                    try { sessionStorage.setItem('cgv_sched_pos_map', JSON.stringify({ data: d.map, ts: Date.now() })); } catch(e) {}
+                    try { sessionStorage.setItem('cgv_sched_pos_map_v3', JSON.stringify({ data: d.map, ts: Date.now() })); } catch(e) {}
                 }
                 sessionStorage.removeItem('cgv_miso');
                 // 날짜별 샘플 표시
@@ -2358,6 +2358,7 @@ function showKakaoModal(text, forced) {
                     return dk + ': ' + names.slice(0, 3).join(', ') + (names.length > 3 ? '...' : '');
                 }).join('\n');
                 alert('✅ 동기화 완료!\n📅 ' + dateCount + '일치 포지션 인식\n미소지기 ' + d.updated + '명 업데이트\n\n' + (sampleLines || '(데이터 없음)'));
+                renderList(); // 동기화 직후 카드 재렌더링
                 loadMisojigiAdmin();
             })
             .catch(function(e) { alert('오류: ' + e); })
@@ -2550,6 +2551,8 @@ function showKakaoModal(text, forced) {
                         // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
                         //   \uC6B0\uC120\uC21C\uC704: 1) SCHED_POS_MAP[\uB0A0\uC9DC][\uC218\uB77D\uC790] 2) base_pos 3) pos
                         var _inFallbackPos = (function() {
+                            // 0) subPos: 수락 시 직접 저장된 포지션 (가장 신뢰도 높음)
+                            if (t.subPos) return t.subPos;
                             if (t.subName && t.desiredShift) {
                                 // desiredShift\uC5D0\uC11C \uB0A0\uC9DC \uCD94\uCD9C: "2026-06-03(\uC218) / M6" \u2192 "6/3"
                                 var _dsMatch = String(t.desiredShift).match(/(\d{4})-(\d{2})-(\d{2})/);
