@@ -10,6 +10,7 @@
         var pendingAdminTab = false;
         var MISO_DATA = []; // 앱 로드 시 미소지기DB에서 동적으로 채움
         var FULL_HOUR_NAMES = []; // 5.5h 미소지기 이름 목록
+        var SCHED_POS_MAP = {}; // 날짜별 포지션 맵 { 'M/D': { name: '매점'|'플로어'|'통합' } }
         var MALE_NAMES = ["\uae40\ud55c\uc194","\uc2e0\uc7ac\uc6a9","\uc870\ub3d9\uc6b0","\uc815\ud0dc\ubbfc","\uc190\uc815\ud604"];
         var currentFilter = "all"; // all / mine / open / nego / wait
 
@@ -712,6 +713,7 @@ function showKakaoModal(text, forced) {
                 if (dist > 80 && window.scrollY === 0 && !ptrActive) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
+                    sessionStorage.removeItem("cgv_sched_pos_map");
                     fetchData();
                     setTimeout(function(){ ptrActive = false; }, 2000);
                 }
@@ -1698,8 +1700,35 @@ function showKakaoModal(text, forced) {
 
         function closeModal(){ document.getElementById("support-modal").style.display = "none"; }
 
+        // 날짜별 포지션 맵 로드 (비차단 — 맞교대 카드 IN 포지션 표시용)
+        function loadSchedPosMap() {
+            // 세션 캐시 확인 (5분 TTL)
+            try {
+                var cached = sessionStorage.getItem('cgv_sched_pos_map');
+                if (cached) {
+                    var parsed = JSON.parse(cached);
+                    if (parsed && parsed.data && parsed.ts && (Date.now() - parsed.ts) < 5 * 60 * 1000) {
+                        SCHED_POS_MAP = parsed.data;
+                        window._SCHED_POS_MAP = SCHED_POS_MAP; // 디버그용
+                        return;
+                    }
+                }
+            } catch(e) {}
+            fetch('/api/misojigi?mode=posMap')
+                .then(function(r){ return r.json(); })
+                .then(function(d){
+                    if (d && typeof d === 'object' && !d.error) {
+                        SCHED_POS_MAP = d;
+                        window._SCHED_POS_MAP = d; // 디버그용: 콘솔에서 _SCHED_POS_MAP 확인 가능
+                        try { sessionStorage.setItem('cgv_sched_pos_map', JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
+                    }
+                })
+                .catch(function(){});
+        }
+
         function fetchData() {
             showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
+            loadSchedPosMap(); // \uB0A0\uC9DC\uBCC4 \uD3EC\uC9C0\uC158 \uB9F5 \uBE44\uCC28\uB2E8 \uB85C\uB4DC
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
                 var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
@@ -2311,21 +2340,21 @@ function showKakaoModal(text, forced) {
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.error) { alert('오류: ' + d.error); return; }
-                // MISO_DATA 즉시 업데이트
-                if (d.map) {
-                    for (var nm in d.map) {
-                        for (var i = 0; i < MISO_DATA.length; i++) {
-                            if (MISO_DATA[i].name === nm) {
-                                MISO_DATA[i].base_pos = d.map[nm].replace(/,/g, ' / ') || null;
-                                break;
-                            }
-                        }
-                    }
+                // SCHED_POS_MAP 즉시 업데이트 (날짜별 맵)
+                if (d.map && typeof d.map === 'object') {
+                    SCHED_POS_MAP = d.map;
+                    window._SCHED_POS_MAP = d.map; // 디버그용
+                    try { sessionStorage.setItem('cgv_sched_pos_map', JSON.stringify({ data: d.map, ts: Date.now() })); } catch(e) {}
                 }
                 sessionStorage.removeItem('cgv_miso');
-                var syncedStr = (d.synced || []).join(', ');
-                var summary   = Object.keys(d.map || {}).map(function(n){ return n + ' → ' + d.map[n]; }).join('\n');
-                alert('✅ 동기화 완료!\n동기화 주차: ' + syncedStr + '\n업데이트: ' + d.updated + '명\n\n' + summary);
+                // 날짜별 샘플 표시
+                var dateKeys = Object.keys(d.map || {}).sort();
+                var dateCount = dateKeys.length;
+                var sampleLines = dateKeys.slice(0, 5).map(function(dk) {
+                    var names = Object.keys(d.map[dk]);
+                    return dk + ': ' + names.slice(0, 3).join(', ') + (names.length > 3 ? '...' : '');
+                }).join('\n');
+                alert('✅ 동기화 완료!\n📅 ' + dateCount + '일치 포지션 인식\n미소지기 ' + d.updated + '명 업데이트\n\n' + (sampleLines || '(데이터 없음)'));
                 loadMisojigiAdmin();
             })
             .catch(function(e) { alert('오류: ' + e); })
@@ -2515,9 +2544,19 @@ function showKakaoModal(text, forced) {
                         inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
                     } else {
                         var _inBuf = "<div class='space-y-1'>";
-                        // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790 base_pos(\uC2A4\uCF00\uC904 \uD3EC\uC9C0\uC158) \uC6B0\uC120, \uC5C6\uC73C\uBA74 pos
-                        //   (shift code\uC5D0 [\uD3EC\uC9C0\uC158] \uD0DC\uADF8\uAC00 \uC5C6\uC744 \uB54C \uC218\uB77D\uC790 \uC2A4\uCF00\uC904 \uD3EC\uC9C0\uC158 \uD45C\uC2DC)
+                        // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
+                        //   \uC6B0\uC120\uC21C\uC704: 1) SCHED_POS_MAP[\uB0A0\uC9DC][\uC218\uB77D\uC790] 2) base_pos 3) pos
                         var _inFallbackPos = (function() {
+                            if (t.subName && t.desiredShift) {
+                                // desiredShift\uC5D0\uC11C \uB0A0\uC9DC \uCD94\uCD9C: "2026-06-03(\uC218) / M6" \u2192 "6/3"
+                                var _dsMatch = String(t.desiredShift).match(/(\d{4})-(\d{2})-(\d{2})/);
+                                if (_dsMatch) {
+                                    var _dsLabel = parseInt(_dsMatch[2], 10) + '/' + parseInt(_dsMatch[3], 10);
+                                    if (SCHED_POS_MAP[_dsLabel] && SCHED_POS_MAP[_dsLabel][t.subName]) {
+                                        return SCHED_POS_MAP[_dsLabel][t.subName];
+                                    }
+                                }
+                            }
                             if (t.subName) {
                                 for (var _smi = 0; _smi < MISO_DATA.length; _smi++) {
                                     if (MISO_DATA[_smi].name === t.subName) {

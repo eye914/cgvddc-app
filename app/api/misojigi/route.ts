@@ -32,6 +32,17 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // ★ 날짜별 포지션 맵 조회 (맞교대 카드 IN 포지션 표시용)
+    if (mode === 'posMap') {
+      const { data, error } = await supabaseAdmin
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'schedule_pos_map')
+        .single();
+      if (error) return NextResponse.json({});
+      return NextResponse.json(data?.value ?? {});
+    }
+
     const query = supabaseAdmin.from('misojigi').select('*').order('name');
     if (!all) query.eq('active', true);
 
@@ -86,37 +97,51 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { action } = body as { action?: string };
 
-    // ── 스케줄 시트에서 포지션 자동 동기화 ────────────────────────
+    // ── 스케줄 시트에서 날짜별 포지션 동기화 ────────────────────────
     if (action === 'syncSchedulePos') {
       const { startDate, endDate } = body as { startDate: string; endDate: string };
       if (!startDate || !endDate) return NextResponse.json({ error: 'startDate, endDate 필요 (YYYY-MM-DD)' }, { status: 400 });
       const GAS_URL = process.env.GAS_URL;
       if (!GAS_URL) return NextResponse.json({ error: 'GAS_URL 미설정' }, { status: 500 });
 
-      // GAS에서 범위 포지션 맵 조회
-      const gasRes  = await fetch(GAS_URL, {
+      // GAS에서 날짜별 포지션 맵 조회 { 'M/D': { name: pos } }
+      const gasRes = await fetch(GAS_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'getSchedulePositionMapRange', params: [startDate, endDate] }),
+        body: JSON.stringify({ action: 'getSchedulePositionMapByDates', params: [startDate, endDate] }),
       });
-      const gasJson = await gasRes.json() as {
-        success: boolean;
-        result: { map?: Record<string, string>; synced?: string[]; error?: string };
-        error?: string;
-      };
+      const gasJson = await gasRes.json() as { success: boolean; result: any; error?: string };
       if (!gasJson.success) return NextResponse.json({ error: gasJson.error ?? 'GAS 오류' }, { status: 500 });
 
-      const { map: posMap, synced, error: gasErr } = gasJson.result;
-      if (gasErr) return NextResponse.json({ error: gasErr }, { status: 500 });
-      if (!posMap) return NextResponse.json({ error: '포지션 데이터 없음' }, { status: 500 });
+      const dateMap = gasJson.result as Record<string, Record<string, string>>;
+      if (!dateMap || (dateMap as any).error) {
+        return NextResponse.json({ error: (dateMap as any)?.error ?? '포지션 데이터 없음' }, { status: 500 });
+      }
 
-      // Supabase misojigi.base_pos 일괄 업데이트
+      // ── app_settings.schedule_pos_map 저장 (날짜별 맵 전체) ──
+      const { error: settingsError } = await supabaseAdmin
+        .from('app_settings')
+        .upsert({ key: 'schedule_pos_map', value: dateMap as any }, { onConflict: 'key' });
+      if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
+
+      // ── misojigi.base_pos 업데이트 (이 기간에 등장한 고유 포지션 집계) ──
+      const personPos: Record<string, Set<string>> = {};
+      for (const dayMap of Object.values(dateMap)) {
+        for (const [name, pos] of Object.entries(dayMap)) {
+          if (!personPos[name]) personPos[name] = new Set();
+          personPos[name].add(pos);
+        }
+      }
+
       let updated = 0;
-      for (const [name, base_pos] of Object.entries(posMap)) {
+      for (const [name, posSet] of Object.entries(personPos)) {
+        const base_pos = [...posSet].join(',');
         const { error } = await supabaseAdmin
           .from('misojigi').update({ base_pos }).eq('name', name);
         if (!error) updated++;
       }
-      return NextResponse.json({ ok: true, updated, synced, map: posMap });
+
+      const dateCount = Object.keys(dateMap).length;
+      return NextResponse.json({ ok: true, updated, dateCount, map: dateMap });
     }
 
     // ── 일반 PATCH ────────────────────────────────────────────────
