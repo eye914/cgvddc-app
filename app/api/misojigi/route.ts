@@ -84,7 +84,38 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, ...updates } = body;
+    const { action } = body as { action?: string };
+
+    // ── 스케줄 시트에서 포지션 자동 동기화 ────────────────────────
+    if (action === 'syncSchedulePos') {
+      const { weekDate } = body as { weekDate: string };
+      if (!weekDate) return NextResponse.json({ error: 'weekDate 필요 (YYYY-MM-DD)' }, { status: 400 });
+      const GAS_URL = process.env.GAS_URL;
+      if (!GAS_URL) return NextResponse.json({ error: 'GAS_URL 미설정' }, { status: 500 });
+
+      // GAS에서 포지션 맵 조회
+      const gasRes  = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getSchedulePositionMap', params: [weekDate] }),
+      });
+      const gasJson = await gasRes.json() as { success: boolean; result: Record<string, string>; error?: string };
+      if (!gasJson.success) return NextResponse.json({ error: gasJson.error ?? 'GAS 오류' }, { status: 500 });
+
+      const posMap = gasJson.result; // { 이름: '매점,플로어' }
+      if (posMap.error) return NextResponse.json({ error: posMap.error }, { status: 500 });
+
+      // Supabase misojigi.base_pos 일괄 업데이트
+      let updated = 0;
+      for (const [name, base_pos] of Object.entries(posMap)) {
+        const { error } = await supabaseAdmin
+          .from('misojigi').update({ base_pos }).eq('name', name);
+        if (!error) updated++;
+      }
+      return NextResponse.json({ ok: true, updated, map: posMap });
+    }
+
+    // ── 일반 PATCH ────────────────────────────────────────────────
+    const { name, ...updates } = body as { name: string; [key: string]: any };
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });
 
     // PIN 유효성 검사

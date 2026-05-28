@@ -2066,7 +2066,18 @@ function showKakaoModal(text, forced) {
             var isHidden = panel.classList.contains('hidden');
             panel.classList.toggle('hidden', !isHidden);
             if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
-            if (isHidden && _misoAdminData.length === 0) loadMisojigiAdmin();
+            if (isHidden) {
+                // 동기화 날짜 input 이번 주 월요일로 초기화
+                var syncDate = document.getElementById('sync-schedule-date');
+                if (syncDate && !syncDate.value) {
+                    var today = new Date();
+                    var day = today.getDay();
+                    var diff = day === 0 ? -6 : 1 - day;
+                    var mon = new Date(today); mon.setDate(today.getDate() + diff);
+                    syncDate.value = mon.toISOString().slice(0, 10);
+                }
+                if (_misoAdminData.length === 0) loadMisojigiAdmin();
+            }
         }
 
         var _misoPhones = {}; // { name: { display, tel } }
@@ -2253,6 +2264,44 @@ function showKakaoModal(text, forced) {
                 })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .updateMisojigi(name, { pos: newPos });
+        }
+
+        function syncSchedulePositions() {
+            var dateInput = document.getElementById('sync-schedule-date');
+            var dateVal = dateInput ? dateInput.value : '';
+            if (!dateVal) { alert('동기화할 주차의 날짜를 선택해주세요.\n(해당 주 아무 날짜나 선택하면 됩니다)'); return; }
+            if (!confirm('📅 [' + dateVal + '] 주차 맞교대 시트에서\n스케줄 포지션을 자동으로 읽어와 업데이트합니다.\n\n계속하시겠습니까?')) return;
+            var btn = document.querySelector('[onclick="syncSchedulePositions()"]');
+            if (btn) { btn.disabled = true; btn.textContent = '동기화 중...'; }
+            fetch('/api/misojigi', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'syncSchedulePos', weekDate: dateVal })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.error) { alert('오류: ' + d.error); return; }
+                // MISO_DATA 즉시 업데이트
+                if (d.map) {
+                    for (var nm in d.map) {
+                        for (var i = 0; i < MISO_DATA.length; i++) {
+                            if (MISO_DATA[i].name === nm) {
+                                // 콤마구분 → ' / ' 표시
+                                MISO_DATA[i].base_pos = d.map[nm].split(',').join(' / ') || null;
+                                break;
+                            }
+                        }
+                    }
+                }
+                sessionStorage.removeItem('cgv_miso');
+                var summary = Object.keys(d.map || {}).map(function(n){ return n + '→' + d.map[n]; }).join('\n');
+                alert('✅ 동기화 완료! ' + d.updated + '명 업데이트됨\n\n' + summary);
+                loadMisojigiAdmin();
+            })
+            .catch(function(e) { alert('오류: ' + e); })
+            .finally(function() {
+                if (btn) { btn.disabled = false; btn.textContent = '🔄 동기화'; }
+            });
         }
 
         function editMisojigiBasePos(name, currentBasePos) {
