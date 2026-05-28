@@ -2549,10 +2549,10 @@ function showKakaoModal(text, forced) {
                         + '</div>';
                     var _btnRow = isD ? '' :
                         '<div style="display:flex;gap:8px;margin-top:4px">'
-                        + '<button onclick="adminApprove('' + t.id + '')" style="flex:1;padding:11px 0;background:#0f172a;color:white;border:none;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">✅ 최종 승인</button>'
-                        + '<button onclick="adminReject('' + t.id + '')" style="flex:1;padding:11px 0;background:#fef2f2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">↩ 반려</button>'
+                        + '<button onclick="adminApprove(\'' + t.id + '\')" style="flex:1;padding:11px 0;background:#0f172a;color:white;border:none;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">✅ 최종 승인</button>'
+                        + '<button onclick="adminReject(\'' + t.id + '\')" style="flex:1;padding:11px 0;background:#fef2f2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">↩ 반려</button>'
                         + '</div>'
-                        + '<button onclick="adminCancelTrade('' + t.id + '','' + t.reqName + '')" style="width:100%;margin-top:5px;padding:6px 0;background:transparent;color:#94a3b8;border:none;font-size:10px;font-weight:900;cursor:pointer">공고 취소</button>';
+                        + '<button onclick="adminCancelTrade(\'' + t.id + '\',\'' + t.reqName + '\')" style="width:100%;margin-top:5px;padding:6px 0;background:transparent;color:#94a3b8;border:none;font-size:10px;font-weight:900;cursor:pointer">공고 취소</button>';
 
                     var aCardHtml =
                         '<div style="background:white;border-radius:18px;padding:14px 16px;border:2px solid ' + (isD ? '#bbf7d0' : '#bfdbfe') + ';box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:12px">'
