@@ -2523,36 +2523,63 @@ function showKakaoModal(text, forced) {
                         ? _subMiso.pos.join(' / ')
                         : (_subMiso && typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''));
                     var _subHours = _subMiso ? (parseFloat(_subMiso.hours) || 5.5) : null;
-                    var _subHoursBadge = _subHours ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1d4ed8;margin-left:4px'>"+_subHours+"h</span>" : "";
-                    var _subPosBadge   = _subOwnPos ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#f3e8ff;color:#7c3aed;margin-left:4px'>["+_subOwnPos+"]</span>" : "";
 
-                    // reqName hours\uB3C4 \uD568\uAED8
-                    var _reqMiso = MISO_DATA.find(function(m){ return m.name === t.reqName; });
-                    var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
-                    var _reqHoursBadge = _reqHoursVal ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;margin-left:4px'>"+_reqHoursVal+"h</span>" : "";
+                    // ── 신청자·수락자 본인 포지션 ──
+                    var _reqOwnPos = _reqMiso && Array.isArray(_reqMiso.pos) && _reqMiso.pos.length
+                        ? _reqMiso.pos.join(' / ')
+                        : (_reqMiso && typeof _reqMiso.pos === 'string' ? _reqMiso.pos : (t.reqPos || ''));
 
-                    var adminMsg = "\uD83C\uDFAC \u2705 \uAD50\uB300 \uCD5C\uC885 \uD655\uC815!\n"
-                        +"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-                        +getGenderEmoji(t.reqName)+" \uC2E0\uCCAD\uC790  "+t.reqName+"\n"
-                        +getGenderEmoji(t.subName)+" \uC218\uB77D\uC790  "+t.subName+(_subOwnPos?" ["+_subOwnPos+"]":"")+"\n"
-                        +"\uD83D\uDCE4 OUT  "+safeDate+" ["+rPL+"]\n"
-                        +"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-                        +"\uD83D\uDCE2 \uCD5C\uC885 \uC2B9\uC778 \uC644\uB8CC!\n\u2705 \uC2A4\uCF00\uC904 \uD655\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.";
-                    var encAdmin = encodeURIComponent(adminMsg).replace(/'/g,"%27");
-                    var aCardHtml = "<div class='bg-white rounded-3xl p-4 border-2 "+(isD?"border-green-200 bg-green-50/10":"border-blue-100")+" shadow-md space-y-2'>"
-                        + "<div class='flex items-center justify-between gap-2 pb-1 border-b border-slate-100'>"
-                        + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>"
-                        + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>\uC2B9\uC778: <b class='text-slate-600'>" + t.approvedBy + "</b></span>" : "")
-                        + "</div>"
-                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-red-500 mb-1'>OUT \u00B7 \uC2E0\uCCAD: "+t.reqName+_reqHoursBadge+"</p><div class='text-slate-800 font-bold text-sm'>"+outHtml+"</div></div>"
-                        + "<div class='flex items-center gap-1.5'><div class='flex-1 h-px bg-slate-200'></div><span class='text-[10px] text-slate-300'>&#8645;</span><div class='flex-1 h-px bg-slate-200'></div></div>"
-                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-blue-500 mb-1'>IN \u00B7 \uC218\uB77D: "+t.subName+_subHoursBadge+_subPosBadge+"</p><div class='text-slate-800 font-bold text-sm'>"+inHtml+"</div></div>"
-                        + (isD ? ""
-                               : "<div class='flex gap-2'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-dark py-3 rounded-xl font-black text-sm'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-primary py-3 rounded-xl font-black text-sm'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-1.5 btn-c2 btn-c2-ghost py-2 rounded-xl font-black text-xs'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
-                        + "</div>";
+                    // ── 관리자 카드 (재설계) ──────────────────────────────
+                    var _approvedRow = (t.approvedBy && isD)
+                        ? '<span style="font-size:10px;font-weight:700;color:#94a3b8">승인&nbsp;<b style="color:#475569">' + t.approvedBy + '</b></span>'
+                        : '';
+                    var _outNameRow =
+                        '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'
+                        + '<span style="font-size:9px;font-weight:900;color:#ef4444;background:#fef2f2;padding:2px 7px;border-radius:5px;flex-shrink:0">OUT</span>'
+                        + '<span style="font-size:14px;font-weight:900;color:#0f172a">' + t.reqName + '</span>'
+                        + (_reqHoursVal ? '<span style="font-size:9px;font-weight:900;padding:2px 6px;border-radius:5px;background:#fee2e2;color:#b91c1c">' + _reqHoursVal + 'h</span>' : '')
+                        + (_reqOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#fef3c7;color:#92400e;white-space:nowrap">' + _reqOwnPos + '</span>' : '')
+                        + '</div>';
+                    var _inNameRow =
+                        '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'
+                        + '<span style="font-size:9px;font-weight:900;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:5px;flex-shrink:0">IN</span>'
+                        + '<span style="font-size:14px;font-weight:900;color:#0f172a">' + t.subName + '</span>'
+                        + (_subHours ? '<span style="font-size:9px;font-weight:900;padding:2px 6px;border-radius:5px;background:#dbeafe;color:#1d4ed8">' + _subHours + 'h</span>' : '')
+                        + (_subOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#f3e8ff;color:#7c3aed;white-space:nowrap">' + _subOwnPos + '</span>' : '')
+                        + '</div>';
+                    var _btnRow = isD ? '' :
+                        '<div style="display:flex;gap:8px;margin-top:4px">'
+                        + '<button onclick="adminApprove('' + t.id + '')" style="flex:1;padding:11px 0;background:#0f172a;color:white;border:none;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">✅ 최종 승인</button>'
+                        + '<button onclick="adminReject('' + t.id + '')" style="flex:1;padding:11px 0;background:#fef2f2;color:#dc2626;border:1.5px solid #fca5a5;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer">↩ 반려</button>'
+                        + '</div>'
+                        + '<button onclick="adminCancelTrade('' + t.id + '','' + t.reqName + '')" style="width:100%;margin-top:5px;padding:6px 0;background:transparent;color:#94a3b8;border:none;font-size:10px;font-weight:900;cursor:pointer">공고 취소</button>';
+
+                    var aCardHtml =
+                        '<div style="background:white;border-radius:18px;padding:14px 16px;border:2px solid ' + (isD ? '#bbf7d0' : '#bfdbfe') + ';box-shadow:0 2px 10px rgba(0,0,0,.07);margin-bottom:12px">'
+                        // 헤더
+                        + '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid #f1f5f9">'
+                        + '<span style="font-size:10px;font-weight:900;padding:3px 9px;border-radius:6px;background:' + (isD ? '#dcfce7;color:#16a34a' : '#dbeafe;color:#2563eb') + '">' + (isD ? '✅ 확정완료' : '⏳ 승인대기') + '</span>'
+                        + _approvedRow
+                        + '</div>'
+                        // OUT
+                        + '<div style="margin-bottom:8px">'
+                        + _outNameRow
+                        + '<div style="background:#fef2f2;border-radius:10px;padding:7px 12px;font-size:12px;color:#374151">' + outHtml + '</div>'
+                        + '</div>'
+                        // 구분선
+                        + '<div style="display:flex;align-items:center;gap:8px;margin:6px 0"><div style="flex:1;height:1px;background:#e2e8f0"></div><span style="font-size:12px;color:#cbd5e1">⇅</span><div style="flex:1;height:1px;background:#e2e8f0"></div></div>'
+                        // IN
+                        + '<div style="margin-bottom:10px">'
+                        + _inNameRow
+                        + '<div style="background:#eff6ff;border-radius:10px;padding:7px 12px;font-size:12px;color:#374151">' + inHtml + '</div>'
+                        + '</div>'
+                        // 버튼
+                        + _btnRow
+                        + '</div>';
                     var wkA = getWeekKey(safeDate);
                     if (!adminGrouped[wkA]) adminGrouped[wkA] = [];
                     adminGrouped[wkA].push({ html:aCardHtml, date:safeDate, isDone:isD });
+
                 }
             }
 
