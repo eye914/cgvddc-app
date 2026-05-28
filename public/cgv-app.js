@@ -2524,6 +2524,10 @@ function showKakaoModal(text, forced) {
                         : (_subMiso && typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''));
                     var _subHours = _subMiso ? (parseFloat(_subMiso.hours) || 5.5) : null;
 
+                    // 신청자 정보 (MISO_DATA)
+                    var _reqMiso     = MISO_DATA.find(function(m){ return m.name === t.reqName; });
+                    var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
+
                     // ── 신청자·수락자 본인 포지션 ──
                     var _reqOwnPos = _reqMiso && Array.isArray(_reqMiso.pos) && _reqMiso.pos.length
                         ? _reqMiso.pos.join(' / ')
