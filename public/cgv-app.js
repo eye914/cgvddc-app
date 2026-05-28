@@ -2551,8 +2551,8 @@ function showKakaoModal(text, forced) {
                         // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
                         //   \uC6B0\uC120\uC21C\uC704: 1) SCHED_POS_MAP[\uB0A0\uC9DC][\uC218\uB77D\uC790] 2) base_pos 3) pos
                         var _inFallbackPos = (function() {
-                            // 0) subPos: 수락 시 직접 저장된 포지션 (가장 신뢰도 높음)
-                            if (t.subPos) return t.subPos;
+                            // 최종 폴백 (라인별 SCHED_POS_MAP 조회 실패 시 사용)
+                            // ※ t.subPos 는 swap 후 포지션이므로 의도적으로 사용하지 않음
                             if (t.subName && t.desiredShift) {
                                 // desiredShift\uC5D0\uC11C \uB0A0\uC9DC \uCD94\uCD9C: "2026-06-03(\uC218) / M6" \u2192 "6/3"
                                 var _dsMatch = String(t.desiredShift).match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -2584,10 +2584,21 @@ function showKakaoModal(text, forced) {
                             var _lCodeMatch = _lCode.match(/^([A-Z]\d+)/);
                             var _lPureCode = _lCodeMatch ? _lCodeMatch[1] : '';
                             var _lTime = _lPureCode ? getActualTimeByCode(_lPureCode, _reqHoursCard) : '';
-                            // \u2605 \uD3EC\uC9C0\uC158 \uD0DC\uADF8 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uCD94\uCD9C \u2192 \uC5C6\uC73C\uBA74 \uC218\uB77D\uC790 \uBCF8\uC778 MISO \uD3EC\uC9C0\uC158\uC73C\uB85C \uD3F4\uBC31
-                            var _lPosMatch = _lCode.match(/\[([^\]]+)\]/);
-                            var _lPos = _lPosMatch ? _lPosMatch[1].replace(/\//g, ' / ')
-                                                   : _inFallbackPos;
+                            // \u2605 \uB9DE\uAD50\uB300 \uC774\uC804 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 \uADF8 \uB0A0\uC9DC\uC5D0 \uC6D0\uB798 \uC2A4\uCF00\uC904\uB41C \uD3EC\uC9C0\uC158
+                            //   \uB77C\uC778\uBCC4 \uB0A0\uC9DC\uB85C SCHED_POS_MAP[M/D][\uC218\uB77D\uC790] \uC870\uD68C (\uC815\uD655)
+                            //   [pos] \uD0DC\uADF8(=swap \uD6C4)\uB294 \uC758\uB3C4\uC801\uC73C\uB85C \uBB34\uC2DC
+                            var _lPos = (function() {
+                                if (t.subName && _lDate) {
+                                    var _ldM = _lDate.match(/(\d{4})-(\d{2})-(\d{2})/);
+                                    if (_ldM) {
+                                        var _ldLbl = parseInt(_ldM[2], 10) + '/' + parseInt(_ldM[3], 10);
+                                        if (SCHED_POS_MAP[_ldLbl] && SCHED_POS_MAP[_ldLbl][t.subName]) {
+                                            return SCHED_POS_MAP[_ldLbl][t.subName];
+                                        }
+                                    }
+                                }
+                                return _inFallbackPos;
+                            })();
                             // timeText \uB808\uC774\uBE14 (\uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC81C\uAC70 \uD6C4 \uCF54\uB4DC\uAC00 \uC5C6\uC744 \uB54C \uD45C\uC2DC)
                             if (!_lPureCode) {
                                 var _lTimeText = _lCode.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
