@@ -2256,31 +2256,39 @@ function showKakaoModal(text, forced) {
         }
 
         function editMisojigiBasePos(name, currentBasePos) {
+            // currentBasePos는 API에서 이미 ' / ' 조인된 문자열로 옴 → 입력용으로 ', '로 변환
+            var currentDisplay = (currentBasePos || '').replace(/ \/ /g, ', ');
             var input = prompt(
                 name + ' 스케줄 포지션 설정\n\n' +
                 '스케줄에 실제 배정된 포지션을 입력하세요.\n' +
-                '현재: ' + (currentBasePos || '미설정') + '\n\n' +
-                '입력 (매점 / 플로어 / 통합 / 비워두면 초기화):',
-                currentBasePos || ''
+                '여러 포지션은 콤마로 구분 (예: 매점, 플로어)\n' +
+                '현재: ' + (currentDisplay || '미설정') + '\n\n' +
+                '입력 (비워두면 초기화):',
+                currentDisplay || ''
             );
             if (input === null) return;
-            var trimmed = input.trim();
             var valid = ['매점', '플로어', '통합'];
-            if (trimmed && valid.indexOf(trimmed) < 0) {
-                alert('유효하지 않은 포지션입니다.\n매점, 플로어, 통합 중 하나로 입력하세요.');
+            var parts = input.split(',').map(function(p) { return p.trim(); }).filter(function(p) { return p; });
+            var invalid = parts.filter(function(p) { return valid.indexOf(p) < 0; });
+            if (invalid.length > 0) {
+                alert('유효하지 않은 포지션: ' + invalid.join(', ') + '\n매점, 플로어, 통합만 사용 가능합니다.');
                 return;
             }
+            // DB 저장: 콤마 구분 문자열 (예: "매점,플로어")
+            var saveVal = parts.length > 0 ? parts.join(',') : null;
+            // 화면 표시: ' / ' 구분 (예: "매점 / 플로어")
+            var displayVal = parts.length > 0 ? parts.join(' / ') : null;
             fetch('/api/misojigi', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, base_pos: trimmed || null })
+                body: JSON.stringify({ name: name, base_pos: saveVal })
             })
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.error) { alert('저장 오류: ' + d.error); return; }
-                alert(name + ' 스케줄 포지션 → [' + (trimmed || '없음') + '] 저장됨');
+                alert(name + ' 스케줄 포지션 → [' + (displayVal || '없음') + '] 저장됨');
                 for (var i = 0; i < MISO_DATA.length; i++) {
-                    if (MISO_DATA[i].name === name) { MISO_DATA[i].base_pos = trimmed || null; break; }
+                    if (MISO_DATA[i].name === name) { MISO_DATA[i].base_pos = displayVal; break; }
                 }
                 sessionStorage.removeItem('cgv_miso');
                 loadMisojigiAdmin();
