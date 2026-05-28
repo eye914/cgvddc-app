@@ -2608,7 +2608,8 @@ function showKakaoModal(text, forced) {
                                 + "<span class='text-slate-700'>" + _lDate + "</span>"
                                 + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
                                 + (_lTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _lTime + "</span>" : "")
-                                + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>"
+                                // ③ admin/협의중/확정 카드는 헤더에 _subOwnPos 가 이미 표시되므로 바디 포지션 뱃지 생략(중복 방지)
+                                + ((isP2||isD) ? "" : "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>")
                                 + "</div>";
                         });
                         inHtml = _inBuf + "</div>";
@@ -2716,26 +2717,33 @@ function showKakaoModal(text, forced) {
                 }
 
                 if (isP2||isD) {
-                    // \u2605 \uC218\uB77D\uC790 \uBCF8\uC778 \uD3EC\uC9C0\uC158\u00B7hours \u2192 MISO_DATA\uC5D0\uC11C \uC9C1\uC811 \uC870\uD68C
                     var _subMiso = MISO_DATA.find(function(m){ return m.name === t.subName; });
-                    // base_pos(스케줄 포지션) 우선, 없으면 pos(근무가능 포지션) 폴백
-                    var _subOwnPos = _subMiso
-                        ? (_subMiso.base_pos || (Array.isArray(_subMiso.pos) && _subMiso.pos.length
-                            ? _subMiso.pos.join(' / ')
-                            : (typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''))))
-                        : (t.subPos || '');
                     var _subHours = _subMiso ? (parseFloat(_subMiso.hours) || 5.5) : null;
-
-                    // 신청자 정보 (MISO_DATA)
-                    var _reqMiso     = MISO_DATA.find(function(m){ return m.name === t.reqName; });
+                    var _reqMiso = MISO_DATA.find(function(m){ return m.name === t.reqName; });
                     var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
 
-                    // ── 신청자·수락자 본인 포지션 (base_pos 우선) ──
-                    var _reqOwnPos = _reqMiso
-                        ? (_reqMiso.base_pos || (Array.isArray(_reqMiso.pos) && _reqMiso.pos.length
-                            ? _reqMiso.pos.join(' / ')
-                            : (typeof _reqMiso.pos === 'string' ? _reqMiso.pos : (t.reqPos || ''))))
-                        : (t.reqPos || '');
+                    // ── 날짜별 SCHED_POS_MAP 조회 helper (맞교대 이전 = 그 날 실제 스케줄 포지션) ──
+                    function _posForDate(shiftStr, personName, miso, posFallback) {
+                        if (shiftStr && personName) {
+                            var _m = String(shiftStr).match(/(\d{4})-(\d{2})-(\d{2})/);
+                            if (_m) {
+                                var _lbl = parseInt(_m[2], 10) + '/' + parseInt(_m[3], 10);
+                                if (SCHED_POS_MAP[_lbl] && SCHED_POS_MAP[_lbl][personName]) {
+                                    return SCHED_POS_MAP[_lbl][personName];
+                                }
+                            }
+                        }
+                        if (miso) {
+                            if (miso.base_pos) return miso.base_pos;
+                            if (Array.isArray(miso.pos) && miso.pos.length) return miso.pos.join(' / ');
+                            if (typeof miso.pos === 'string') return miso.pos;
+                        }
+                        return posFallback || '';
+                    }
+                    // ① OUT 헤더: 신청자의 OUT 날짜 스케줄 포지션
+                    var _reqOwnPos = _posForDate(t.shiftDate, t.reqName, _reqMiso, t.reqPos);
+                    // ② IN 헤더: 수락자의 IN 날짜 스케줄 포지션
+                    var _subOwnPos = _posForDate(t.desiredShift, t.subName, _subMiso, t.subPos);
 
                     // ── 관리자 카드 (재설계) ──────────────────────────────
                     var _approvedRow = (t.approvedBy && isD)
