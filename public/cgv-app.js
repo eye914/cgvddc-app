@@ -785,6 +785,29 @@ function showKakaoModal(text, forced) {
             });
         }
 
+        // "2026년 5/26(월) ~ 6/1(일) 주간" → "2026년 5월"  (월요일 기준)
+        function getMonthKeyFromWeekKey(wkKey) {
+            var m = wkKey.match(/(\d{4})년\s+(\d+)\/\d+/);
+            if (!m) return '기타';
+            return m[1] + '년 ' + parseInt(m[2]) + '월';
+        }
+        function sortMonthKeys(keys) {
+            var now = new Date();
+            var currNum = now.getFullYear() * 100 + (now.getMonth() + 1);
+            return keys.slice().sort(function(a, b) {
+                var ma = a.match(/(\d{4})년\s+(\d+)월/);
+                var mb = b.match(/(\d{4})년\s+(\d+)월/);
+                var na = ma ? parseInt(ma[1]) * 100 + parseInt(ma[2]) : 0;
+                var nb = mb ? parseInt(mb[1]) * 100 + parseInt(mb[2]) : 0;
+                var aC = na === currNum, bC = nb === currNum;
+                if (aC && !bC) return -1; if (!aC && bC) return 1;
+                var aF = na > currNum, bF = nb > currNum;
+                if (aF && !bF) return -1; if (!aF && bF) return 1;
+                if (aF && bF) return na - nb;
+                return nb - na;
+            });
+        }
+
         function buildUserGrid() {
             var container = document.getElementById("user-grid-container");
             if (!container) return;
@@ -2494,19 +2517,36 @@ function showKakaoModal(text, forced) {
                 }
 
                 if (isP2||isD) {
+                    // \u2605 \uC218\uB77D\uC790 \uBCF8\uC778 \uD3EC\uC9C0\uC158\u00B7hours \u2192 MISO_DATA\uC5D0\uC11C \uC9C1\uC811 \uC870\uD68C
+                    var _subMiso = MISO_DATA.find(function(m){ return m.name === t.subName; });
+                    var _subOwnPos = _subMiso && Array.isArray(_subMiso.pos) && _subMiso.pos.length
+                        ? _subMiso.pos.join(' / ')
+                        : (_subMiso && typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''));
+                    var _subHours = _subMiso ? (parseFloat(_subMiso.hours) || 5.5) : null;
+                    var _subHoursBadge = _subHours ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#dbeafe;color:#1d4ed8;margin-left:4px'>"+_subHours+"h</span>" : "";
+                    var _subPosBadge   = _subOwnPos ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#f3e8ff;color:#7c3aed;margin-left:4px'>["+_subOwnPos+"]</span>" : "";
+
+                    // reqName hours\uB3C4 \uD568\uAED8
+                    var _reqMiso = MISO_DATA.find(function(m){ return m.name === t.reqName; });
+                    var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
+                    var _reqHoursBadge = _reqHoursVal ? "<span style='font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;background:#fee2e2;color:#b91c1c;margin-left:4px'>"+_reqHoursVal+"h</span>" : "";
+
                     var adminMsg = "\uD83C\uDFAC \u2705 \uAD50\uB300 \uCD5C\uC885 \uD655\uC815!\n"
                         +"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
                         +getGenderEmoji(t.reqName)+" \uC2E0\uCCAD\uC790  "+t.reqName+"\n"
-                        +getGenderEmoji(t.subName)+" \uC218\uB77D\uC790  "+t.subName+(t.subPos?" ["+t.subPos+"]":"")+"\n"
+                        +getGenderEmoji(t.subName)+" \uC218\uB77D\uC790  "+t.subName+(_subOwnPos?" ["+_subOwnPos+"]":"")+"\n"
                         +"\uD83D\uDCE4 OUT  "+safeDate+" ["+rPL+"]\n"
                         +"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
                         +"\uD83D\uDCE2 \uCD5C\uC885 \uC2B9\uC778 \uC644\uB8CC!\n\u2705 \uC2A4\uCF00\uC904 \uD655\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.";
                     var encAdmin = encodeURIComponent(adminMsg).replace(/'/g,"%27");
                     var aCardHtml = "<div class='bg-white rounded-3xl p-4 border-2 "+(isD?"border-green-200 bg-green-50/10":"border-blue-100")+" shadow-md space-y-2'>"
-                        + "<div class='flex items-center justify-between gap-2 pb-1 border-b border-slate-100'>" + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>" + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>\uC2B9\uC778: " + t.approvedBy + "</span>" : "") + "</div>"
-                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-red-500 mb-1'>OUT \u00B7 \uC2E0\uCCAD: "+t.reqName+"</p><div class='text-slate-800 font-bold text-sm'>"+outHtml+"</div></div>"
+                        + "<div class='flex items-center justify-between gap-2 pb-1 border-b border-slate-100'>"
+                        + "<span class='text-[10px] font-black "+(isD?"text-green-600":"text-blue-600")+"'>"+(isD?"\uD655\uC815\uC644\uB8CC":"\uC2B9\uC778\uB300\uAE30")+"</span>"
+                        + (isD && t.approvedBy ? "<span class='text-[10px] text-slate-400 font-bold'>\uC2B9\uC778: <b class='text-slate-600'>" + t.approvedBy + "</b></span>" : "")
+                        + "</div>"
+                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-red-500 mb-1'>OUT \u00B7 \uC2E0\uCCAD: "+t.reqName+_reqHoursBadge+"</p><div class='text-slate-800 font-bold text-sm'>"+outHtml+"</div></div>"
                         + "<div class='flex items-center gap-1.5'><div class='flex-1 h-px bg-slate-200'></div><span class='text-[10px] text-slate-300'>&#8645;</span><div class='flex-1 h-px bg-slate-200'></div></div>"
-                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-blue-500 mb-1'>IN \u00B7 \uC218\uB77D: "+t.subName+" "+(t.subPos?"["+t.subPos+"]":"")+"</p><div class='text-slate-800 font-bold text-sm'>"+inHtml+"</div></div>"
+                        + "<div class='bg-slate-50 px-3 py-2 rounded-xl border border-slate-100'><p class='text-[10px] font-black text-blue-500 mb-1'>IN \u00B7 \uC218\uB77D: "+t.subName+_subHoursBadge+_subPosBadge+"</p><div class='text-slate-800 font-bold text-sm'>"+inHtml+"</div></div>"
                         + (isD ? ""
                                : "<div class='flex gap-2'><button onclick=\"adminApprove('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-dark py-3 rounded-xl font-black text-sm'>\uCD5C\uC885 \uC2B9\uC778</button><button onclick=\"adminReject('"+t.id+"')\" class='flex-1 btn-c2 btn-c2-primary py-3 rounded-xl font-black text-sm'>\uBC18\uB824</button></div><button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='w-full mt-1.5 btn-c2 btn-c2-ghost py-2 rounded-xl font-black text-xs'>\uACF5\uACE0 \uCDE8\uC18C (\uAD00\uB9AC\uC790)</button>")
                         + "</div>";
@@ -2532,23 +2572,51 @@ function showKakaoModal(text, forced) {
                 mainBoard.innerHTML += sec;
             });
 
-            // 관리자 현황 — 주차별 그룹 접기
-            sortWeekKeys(Object.keys(adminGrouped)).forEach(function(key){
-                var isThisWkA = key === currWk;
-                var doneCount = adminGrouped[key].filter(function(x){ return x.isDone; }).length;
-                var waitCount = adminGrouped[key].length - doneCount;
-                var secA = "<details class='mb-6' "+(isThisWkA?"open":"")+">"
+            // 관리자 현황 — 월 → 주차 이중 접기
+            var adminMonthGrouped = {};
+            Object.keys(adminGrouped).forEach(function(wkKey) {
+                var mKey = getMonthKeyFromWeekKey(wkKey);
+                if (!adminMonthGrouped[mKey]) adminMonthGrouped[mKey] = {};
+                adminMonthGrouped[mKey][wkKey] = adminGrouped[wkKey];
+            });
+            var now2 = new Date();
+            var currMonthNum = now2.getFullYear() * 100 + (now2.getMonth() + 1);
+            sortMonthKeys(Object.keys(adminMonthGrouped)).forEach(function(monthKey) {
+                var mMatch = monthKey.match(/(\d{4})년\s+(\d+)월/);
+                var mNum = mMatch ? parseInt(mMatch[1]) * 100 + parseInt(mMatch[2]) : 0;
+                var isThisMonth = mNum === currMonthNum;
+                var weeks = adminMonthGrouped[monthKey];
+                var mTotalWait = 0, mTotalDone = 0;
+                Object.keys(weeks).forEach(function(wk) {
+                    weeks[wk].forEach(function(x) { if (x.isDone) mTotalDone++; else mTotalWait++; });
+                });
+                var secMonth = "<details class='mb-4' "+(isThisMonth?"open":"")+">"
                     + "<summary class='flex justify-between items-center bg-slate-900 text-white px-5 py-4 rounded-[20px] cursor-pointer select-none font-black'>"
-                    + "<span class='text-[13px]'>"+key+(isThisWkA?" <span class='text-red-400 text-[10px]'>\uC774\uBC88\uC8FC</span>":"")+"</span>"
-                    + "<div class='flex items-center gap-2'>"
-                    + "<span class='fold-hint-dark'></span>"
-                    + (waitCount>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>\uC2B9\uC778\uB300\uAE30 "+waitCount+"</span>":"")
-                    + (doneCount>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>\uD655\uC815 "+doneCount+"</span>":"")
+                    + "<span class='text-[14px]'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
+                    + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
+                    + (mTotalWait>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>승인대기 "+mTotalWait+"</span>":"")
+                    + (mTotalDone>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>확정 "+mTotalDone+"</span>":"")
                     + "</div></summary>"
-                    + "<div class='mt-4 space-y-6 px-1'>";
-                adminGrouped[key].sort(function(a,b){ return Number(a.isDone)-Number(b.isDone) || a.date.localeCompare(b.date); }).forEach(function(item){ secA += item.html; });
-                secA += "</div></details>";
-                mgrBoard.innerHTML += secA;
+                    + "<div class='pl-2 mt-2 space-y-2'>";
+                sortWeekKeys(Object.keys(weeks)).forEach(function(wkKey) {
+                    var isThisWkA = wkKey === currWk;
+                    var items = weeks[wkKey];
+                    var doneCount = items.filter(function(x){ return x.isDone; }).length;
+                    var waitCount = items.length - doneCount;
+                    var secA = "<details class='mb-2' "+(isThisWkA?"open":"")+">"
+                        + "<summary class='flex justify-between items-center bg-slate-700 text-white px-4 py-3 rounded-[16px] cursor-pointer select-none font-black'>"
+                        + "<span class='text-[12px]'>"+wkKey.replace(' 주간','')+(isThisWkA?" <span class='text-red-300 text-[10px]'>이번주</span>":"")+"</span>"
+                        + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
+                        + (waitCount>0?"<span class='bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>대기 "+waitCount+"</span>":"")
+                        + (doneCount>0?"<span class='bg-green-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>확정 "+doneCount+"</span>":"")
+                        + "</div></summary>"
+                        + "<div class='mt-2 space-y-3 px-1'>";
+                    items.sort(function(a,b){ return Number(a.isDone)-Number(b.isDone) || a.date.localeCompare(b.date); }).forEach(function(item){ secA += item.html; });
+                    secA += "</div></details>";
+                    secMonth += secA;
+                });
+                secMonth += "</div></details>";
+                mgrBoard.innerHTML += secMonth;
             });
 
             renderStaffStats();
