@@ -1701,7 +1701,7 @@ function showKakaoModal(text, forced) {
         function closeModal(){ document.getElementById("support-modal").style.display = "none"; }
 
         // 날짜별 포지션 맵 로드 (비차단 — 맞교대 카드 IN 포지션 표시용)
-        function loadSchedPosMap() {
+        function loadSchedPosMap(callback) {
             // 세션 캐시 확인 (5분 TTL)
             try {
                 var cached = sessionStorage.getItem('cgv_sched_pos_map');
@@ -1710,6 +1710,7 @@ function showKakaoModal(text, forced) {
                     if (parsed && parsed.data && parsed.ts && (Date.now() - parsed.ts) < 5 * 60 * 1000) {
                         SCHED_POS_MAP = parsed.data;
                         window._SCHED_POS_MAP = SCHED_POS_MAP; // 디버그용
+                        if (callback) callback();
                         return;
                     }
                 }
@@ -1723,15 +1724,15 @@ function showKakaoModal(text, forced) {
                         try { sessionStorage.setItem('cgv_sched_pos_map', JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
                     }
                 })
-                .catch(function(){});
+                .catch(function(){})
+                .finally(function(){ if (callback) callback(); });
         }
 
         function fetchData() {
             showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
-            loadSchedPosMap(); // \uB0A0\uC9DC\uBCC4 \uD3EC\uC9C0\uC158 \uB9F5 \uBE44\uCC28\uB2E8 \uB85C\uB4DC
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
-                var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
+                var total = 4; // 미소지기DB + 교대DB + 출결DB + posMap 병렬
                 var _fetchDone = false;
                 function onAllLoaded() {
                     loaded++;
@@ -1747,6 +1748,8 @@ function showKakaoModal(text, forced) {
                 setTimeout(function() {
                     if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); }
                 }, 12000);
+
+                loadSchedPosMap(onAllLoaded); // posMap 로드 (fetchData total에 포함)
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
                 var MISO_CACHE_TTL = 60 * 60 * 1000;
