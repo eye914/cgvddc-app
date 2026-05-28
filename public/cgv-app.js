@@ -2536,7 +2536,7 @@ function showKakaoModal(text, forced) {
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
                     + (_cardTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _cardTime + "</span>" : "")
                     + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + rPL + "</span>"
-                    + "<span class='text-[9px] font-black px-1.5 py-0.5 rounded-full " + _hoursCls + "'>" + _hoursLbl + "</span>"
+
                     + "</div>";
                 // \u2605 \uD76C\uB9DD\uADFC\uBB34(IN) \uBA40\uD2F0\uB77C\uC778 \uD30C\uC2F1 \u2014 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC815\uD655 \uCD94\uCD9C
                 var inHtml;
@@ -2608,8 +2608,8 @@ function showKakaoModal(text, forced) {
                                 + "<span class='text-slate-700'>" + _lDate + "</span>"
                                 + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
                                 + (_lTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _lTime + "</span>" : "")
-                                // ③ admin/협의중/확정 카드는 헤더에 _subOwnPos 가 이미 표시되므로 바디 포지션 뱃지 생략(중복 방지)
-                                + ((isP2||isD) ? "" : "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>")
+                                // IN body: _lPos 포지션 뱃지 (수락자 그 날짜 포지션)
+                                + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>"
                                 + "</div>";
                         });
                         inHtml = _inBuf + "</div>";
@@ -2723,7 +2723,7 @@ function showKakaoModal(text, forced) {
                     var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
 
                     // ── 날짜별 SCHED_POS_MAP 조회 helper (맞교대 이전 = 그 날 실제 스케줄 포지션) ──
-                    function _posForDate(shiftStr, personName, miso, posFallback) {
+                    var _posForDate = function(shiftStr, personName, miso, posFallback) {
                         if (shiftStr && personName) {
                             var _m = String(shiftStr).match(/(\d{4})-(\d{2})-(\d{2})/);
                             if (_m) {
@@ -2739,7 +2739,7 @@ function showKakaoModal(text, forced) {
                             if (typeof miso.pos === 'string') return miso.pos;
                         }
                         return posFallback || '';
-                    }
+                    };
                     // ① OUT 헤더: 신청자의 OUT 날짜 스케줄 포지션
                     var _reqOwnPos = _posForDate(t.shiftDate, t.reqName, _reqMiso, t.reqPos);
                     // ② IN 헤더: 수락자의 IN 날짜 스케줄 포지션
