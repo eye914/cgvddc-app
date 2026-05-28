@@ -4057,6 +4057,145 @@ function showKakaoModal(text, forced) {
         // fetchData 완료 후 직원 폼 알림 체크
         var _origOnAllLoaded = null;
 
+        // ── 스케줄 신청 관리 (관리자용) ──────────────────────────────────
+        function loadAvailOpenStatus() {
+            var el = document.getElementById('avail-open-status');
+            if (!el) return;
+            el.textContent = '확인 중...';
+            el.style.background = '#f8fafc';
+            el.style.color = '#94a3b8';
+
+            // 주차 목록도 같이 로드
+            fetch('/api/schedule?mode=weeks')
+                .then(function(r){ return r.json(); })
+                .then(function(json){
+                    var sel = document.getElementById('avail-week-picker');
+                    if (sel && Array.isArray(json.weeks)) {
+                        sel.innerHTML = '<option value="">주차를 선택하세요...</option>';
+                        json.weeks.forEach(function(wk){
+                            var opt = document.createElement('option');
+                            opt.value = wk;
+                            // 레이블: YYYY-MM-DD → M/D(월) ~ M/D(일)
+                            try {
+                                var mon = new Date(wk + 'T00:00:00');
+                                var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+                                opt.textContent = wk + ' (' + (mon.getMonth()+1)+'/'+mon.getDate()+'~'+(sun.getMonth()+1)+'/'+sun.getDate()+')';
+                            } catch(e){ opt.textContent = wk; }
+                            sel.appendChild(opt);
+                        });
+                    }
+                }).catch(function(){});
+
+            fetch('/api/availability?mode=active')
+                .then(function(r){ return r.json(); })
+                .then(function(info){
+                    if (!el) return;
+                    if (info.weekKey) {
+                        var mon = new Date(info.weekKey + 'T00:00:00');
+                        var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+                        var lbl = (mon.getMonth()+1)+'/'+mon.getDate()+'(월) ~ '+(sun.getMonth()+1)+'/'+sun.getDate()+'(일)';
+                        el.innerHTML = '🟢 <b style="color:#16a34a">신청 열림</b>&nbsp; ' + lbl +
+                            (info.openedBy ? '<br><span style="font-size:10px;color:#64748b">열기: ' + info.openedBy + '</span>' : '');
+                        el.style.background = '#f0fdf4';
+                        el.style.color = '#15803d';
+                        // picker 동기화
+                        var sel2 = document.getElementById('avail-week-picker');
+                        if (sel2) sel2.value = info.weekKey;
+                    } else {
+                        el.innerHTML = '🔴 <b style="color:#dc2626">신청 닫힘</b>';
+                        el.style.background = '#fef2f2';
+                        el.style.color = '#dc2626';
+                    }
+                })
+                .catch(function(){
+                    if (el) el.textContent = '상태 조회 실패';
+                });
+        }
+
+        function getSelectedAvailWeek() {
+            // picker 우선, 없으면 manual input
+            var picker = document.getElementById('avail-week-picker');
+            var manual = document.getElementById('avail-week-manual');
+            var wk = (picker && picker.value) ? picker.value : (manual && manual.value ? manual.value : '');
+            if (!wk) return null;
+            // 월요일 보정
+            var d = new Date(wk + 'T00:00:00');
+            var day = d.getDay();
+            if (day !== 1) { // 1=월
+                d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+            }
+            return d.getFullYear() + '-' +
+                String(d.getMonth()+1).padStart(2,'0') + '-' +
+                String(d.getDate()).padStart(2,'0');
+        }
+
+        function snapToMonday(input) {
+            if (!input.value) return;
+            var d = new Date(input.value + 'T00:00:00');
+            var day = d.getDay();
+            if (day !== 1) {
+                d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+                input.value = d.getFullYear() + '-' +
+                    String(d.getMonth()+1).padStart(2,'0') + '-' +
+                    String(d.getDate()).padStart(2,'0');
+            }
+        }
+
+        function openAvailWeek() {
+            var weekKey = getSelectedAvailWeek();
+            if (!weekKey) { alert('주차를 선택해주세요.'); return; }
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+
+            var mon = new Date(weekKey + 'T00:00:00');
+            var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+            var lbl = (mon.getMonth()+1)+'/'+mon.getDate()+'(월) ~ '+(sun.getMonth()+1)+'/'+sun.getDate()+'(일)';
+
+            if (!confirm(lbl + '\n\n신청을 열고 전체 미소지기에게 푸시 알림을 보낼까요?')) return;
+
+            fetch('/api/availability', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'open', weekKey: weekKey, openedBy: adminName })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(json){
+                if (json.ok) {
+                    alert('✅ 신청이 열렸습니다!\n알림이 발송됐습니다.');
+                    loadAvailOpenStatus();
+                } else {
+                    alert('오류: ' + (json.error || '다시 시도'));
+                }
+            })
+            .catch(function(){ alert('네트워크 오류'); });
+        }
+
+        function closeAvailWeek() {
+            if (!confirm('신청을 마감할까요?')) return;
+            fetch('/api/availability', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'close' })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(json){
+                if (json.ok) {
+                    alert('🔒 신청이 마감됐습니다.');
+                    loadAvailOpenStatus();
+                } else {
+                    alert('오류: ' + (json.error || '다시 시도'));
+                }
+            })
+            .catch(function(){ alert('네트워크 오류'); });
+        }
+
+        // 관리자 탭 진입 시 자동 로드
+        var _origShowManager = typeof showView === 'function' ? showView : null;
+        document.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest('#tab-manager-btn');
+            if (btn) { setTimeout(loadAvailOpenStatus, 300); }
+        });
+        // ── END 스케줄 신청 관리 ──────────────────────────────────────────
+
         // defer 스크립트: DOM 파싱 완료 후 실행 보장 → 바로 호출
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", __initApp__);

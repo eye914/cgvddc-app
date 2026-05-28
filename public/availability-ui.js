@@ -137,43 +137,70 @@
       return;
     }
 
-    curUser  = miso;
-    posRows  = buildPosRows(Array.isArray(miso.pos) ? miso.pos : (miso.pos || '').split(',').map(function(p){return p.trim();}));
+    curUser = miso;
+    posRows = buildPosRows(Array.isArray(miso.pos) ? miso.pos : (miso.pos || '').split(',').map(function(p){return p.trim();}));
 
-    /* 이번 주 월요일 계산 */
-    var monday  = getMondayOfWeek(new Date());
-    weekKey     = fmtDate(monday);
-    weekDates   = [];
-    for (var i = 0; i < 7; i++) {
-      var d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      weekDates.push(d);
-    }
-
-    /* 주차 레이블 */
-    var wlEl = document.getElementById('avail-week-label');
-    if (wlEl) {
-      var sun = weekDates[6];
-      wlEl.textContent = (monday.getMonth()+1) + '/' + monday.getDate() +
-        ' ~ ' + (sun.getMonth()+1) + '/' + sun.getDate();
-    }
-
-    /* 기존 신청 데이터 로드 */
+    /* ── 관리자가 열어둔 주차 조회 ── */
     document.getElementById('avail-body').innerHTML =
       '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">불러오는 중...</div>';
 
-    fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name))
-      .then(function (r) { return r.json(); })
-      .then(function (json) {
-        selected = {};
-        (json.data || []).forEach(function (row) {
-          selected[row.day_of_week] = new Set(row.shift_codes || []);
-        });
-        renderAvailUI();
+    fetch('/api/availability?mode=active')
+      .then(function(r) { return r.json(); })
+      .then(function(info) {
+        if (!info.weekKey) {
+          /* 닫혀 있음 */
+          document.getElementById('avail-body').innerHTML =
+            '<div style="text-align:center;padding:40px 20px">' +
+            '<div style="font-size:32px;margin-bottom:12px">📭</div>' +
+            '<p style="font-size:14px;font-weight:900;color:#0f172a;margin-bottom:6px">현재 신청 기간이 아닙니다</p>' +
+            '<p style="font-size:12px;font-weight:700;color:#94a3b8">관리자 공지를 기다려주세요.</p>' +
+            '</div>';
+          /* 하단 제출 바 숨기기 */
+          var footer = document.getElementById('avail-sticky-footer');
+          if (footer) footer.style.display = 'none';
+          return;
+        }
+
+        /* 주차 세팅 */
+        weekKey   = info.weekKey;
+        var monday = new Date(weekKey + 'T00:00:00');
+        weekDates  = [];
+        for (var i = 0; i < 7; i++) {
+          var d2 = new Date(monday);
+          d2.setDate(monday.getDate() + i);
+          weekDates.push(d2);
+        }
+
+        /* 주차 레이블 */
+        var wlEl = document.getElementById('avail-week-label');
+        if (wlEl) {
+          var sun = weekDates[6];
+          wlEl.textContent = (monday.getMonth()+1) + '/' + monday.getDate() +
+            ' ~ ' + (sun.getMonth()+1) + '/' + sun.getDate();
+        }
+
+        /* 하단 제출 바 표시 */
+        var footer = document.getElementById('avail-sticky-footer');
+        if (footer) footer.style.display = '';
+
+        /* 기존 신청 데이터 로드 */
+        fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name))
+          .then(function(r) { return r.json(); })
+          .then(function(json) {
+            selected = {};
+            (json.data || []).forEach(function(row) {
+              selected[row.day_of_week] = new Set(row.shift_codes || []);
+            });
+            renderAvailUI();
+          })
+          .catch(function() {
+            selected = {};
+            renderAvailUI();
+          });
       })
-      .catch(function () {
-        selected = {};
-        renderAvailUI();
+      .catch(function() {
+        document.getElementById('avail-body').innerHTML =
+          '<div style="text-align:center;padding:32px;color:#ef4444;font-size:13px;font-weight:700">네트워크 오류. 다시 시도해주세요.</div>';
       });
   }
 

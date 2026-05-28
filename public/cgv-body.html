@@ -277,7 +277,7 @@
                     <div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">로딩 중...</div>
                 </div>
                 <!-- 하단 고정 바 -->
-                <div style="position:sticky;bottom:0;left:0;right:0;padding:12px 0 4px;background:linear-gradient(to top,white 80%,transparent);margin-top:8px">
+                <div id="avail-sticky-footer" style="position:sticky;bottom:0;left:0;right:0;padding:12px 0 4px;background:linear-gradient(to top,white 80%,transparent);margin-top:8px">
                     <div style="display:flex;align-items:center;gap:10px;background:white;border-radius:16px;border:1px solid #e2e8f0;padding:10px 14px;box-shadow:0 -2px 12px rgba(0,0,0,.06)">
                         <div style="flex:1;font-size:11px;font-weight:700;color:#64748b">
                             선택 <b id="avail-footer-days" style="color:#0f172a">0</b>일
@@ -462,6 +462,48 @@
                             <div id="contract-completed-list">
                                 <p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 스케줄 신청 관리 ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-2">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <div class="px-5 py-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-black text-slate-800 text-sm">📅 스케줄 신청 관리</h3>
+                            <button onclick="loadAvailOpenStatus()" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">↺ 새로고침</button>
+                        </div>
+                        <!-- 현재 상태 표시 -->
+                        <div id="avail-open-status" class="rounded-xl p-3 mb-3 text-xs font-bold text-center bg-slate-50 text-slate-400">
+                            상태 확인 중...
+                        </div>
+                        <!-- 주차 선택 -->
+                        <div class="mb-3">
+                            <label class="text-[10px] font-black text-slate-500 mb-1.5 block">대상 주차</label>
+                            <select id="avail-week-picker"
+                                style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#0f172a;background:white;appearance:none;-webkit-appearance:none">
+                                <option value="">주차를 선택하세요...</option>
+                            </select>
+                        </div>
+                        <!-- 직접 입력 -->
+                        <div class="mb-3">
+                            <label class="text-[10px] font-black text-slate-500 mb-1.5 block">또는 직접 입력 (월요일 날짜)</label>
+                            <input type="date" id="avail-week-manual"
+                                style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#0f172a;background:white;box-sizing:border-box"
+                                oninput="snapToMonday(this)">
+                        </div>
+                        <!-- 버튼 -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <button onclick="openAvailWeek()"
+                                style="padding:13px 0;background:#e71a0f;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                                📬 신청 열기 + 알림
+                            </button>
+                            <button onclick="closeAvailWeek()"
+                                style="padding:13px 0;background:#f1f5f9;color:#64748b;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer">
+                                🔒 신청 마감
+                            </button>
                         </div>
                     </div>
                 </div>
