@@ -2389,6 +2389,21 @@ function showKakaoModal(text, forced) {
                         inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
                     } else {
                         var _inBuf = "<div class='space-y-1'>";
+                        // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790(t.subName)\uC758 MISO_DATA \uBCF8\uC778 \uD3EC\uC9C0\uC158
+                        //   (shift code\uC5D0 [\uD3EC\uC9C0\uC158] \uD0DC\uADF8\uAC00 \uC5C6\uC744 \uB54C \uC218\uB77D\uC790\uAC00 \uAC00\uC838\uC624\uB294 \uC2E4\uC81C \uD3EC\uC9C0\uC158 \uD45C\uC2DC)
+                        var _inFallbackPos = (function() {
+                            if (t.subName) {
+                                for (var _smi = 0; _smi < MISO_DATA.length; _smi++) {
+                                    if (MISO_DATA[_smi].name === t.subName) {
+                                        var _sp = MISO_DATA[_smi].pos;
+                                        return Array.isArray(_sp) && _sp.length
+                                            ? _sp.join(' / ')
+                                            : (typeof _sp === 'string' && _sp ? _sp : (t.reqPos || '\uBB34\uAD00'));
+                                    }
+                                }
+                            }
+                            return t.reqPos || '\uBB34\uAD00';
+                        })();
                         _inLines.forEach(function(line, li) {
                             var _lParts = line.split(" / ");
                             var _lDate = _lParts[0] || '';
@@ -2396,10 +2411,10 @@ function showKakaoModal(text, forced) {
                             var _lCodeMatch = _lCode.match(/^([A-Z]\d+)/);
                             var _lPureCode = _lCodeMatch ? _lCodeMatch[1] : '';
                             var _lTime = _lPureCode ? getActualTimeByCode(_lPureCode, _reqHoursCard) : '';
-                            // \u2605 \uD3EC\uC9C0\uC158 \uD0DC\uADF8 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uCD94\uCD9C (\uC5C6\uC73C\uBA74 subPos\u2192reqPos \uD3F4\uBC31)
+                            // \u2605 \uD3EC\uC9C0\uC158 \uD0DC\uADF8 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uCD94\uCD9C \u2192 \uC5C6\uC73C\uBA74 \uC218\uB77D\uC790 \uBCF8\uC778 MISO \uD3EC\uC9C0\uC158\uC73C\uB85C \uD3F4\uBC31
                             var _lPosMatch = _lCode.match(/\[([^\]]+)\]/);
                             var _lPos = _lPosMatch ? _lPosMatch[1].replace(/\//g, ' / ')
-                                                   : (t.subPos || t.reqPos || '\uBB34\uAD00');
+                                                   : _inFallbackPos;
                             // timeText \uB808\uC774\uBE14 (\uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC81C\uAC70 \uD6C4 \uCF54\uB4DC\uAC00 \uC5C6\uC744 \uB54C \uD45C\uC2DC)
                             if (!_lPureCode) {
                                 var _lTimeText = _lCode.replace(/\s*\[[^\]]*\]\s*$/, '').trim();
