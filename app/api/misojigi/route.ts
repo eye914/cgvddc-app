@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       hours: row.hours ?? '5.5',
       active: row.active,
       pin: row.pin ?? '00000',
+      contract_days: row.contract_days ?? 5,
     }));
 
     return NextResponse.json(result);

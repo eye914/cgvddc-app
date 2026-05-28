@@ -32,10 +32,11 @@ function fileVer(filename: string): string {
   const buf = fs.readFileSync(path.join(publicDir, filename));
   return crypto.createHash('md5').update(buf).digest('hex').slice(0, 8);
 }
-const shimVer = fileVer('gas-shim.js');
-const appVer  = fileVer('cgv-app.js');
-const ctrVer  = fileVer('contract-ui.js');
-const schVer  = fileVer('schedule-ui.js');
+const shimVer  = fileVer('gas-shim.js');
+const appVer   = fileVer('cgv-app.js');
+const ctrVer   = fileVer('contract-ui.js');
+const schVer   = fileVer('schedule-ui.js');
+const availVer = fileVer('availability-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src={`/cgv-app.js?v=${appVer}`} defer />
         <script src={`/contract-ui.js?v=${ctrVer}`} defer />
         <script src={`/schedule-ui.js?v=${schVer}`} defer />
+        <script src={`/availability-ui.js?v=${availVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}

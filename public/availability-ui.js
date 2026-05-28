@@ -1,0 +1,386 @@
+/* ─────────────────────────────────────────────────────────────
+   CGV 동두천 스케줄 신청 UI (Step 1 취합)
+   cgv-app.js / schedule-ui.js 보다 defer로 뒤에 로드됨
+───────────────────────────────────────────────────────────── */
+(function () {
+  'use strict';
+
+  /* ── 시간 그룹 정의 (미들은 범위가 넓어 대표값 표시) ── */
+  var GROUPS = [
+    { id: 'd', label: '오픈', icon: '☀',  range55: '09:00~16:00', range45: '09:00~15:00' },
+    { id: 'm', label: '미들', icon: '🌤', range55: '11:30~22:00', range45: '11:30~21:00' },
+    { id: 'n', label: '마감', icon: '🌙', range55: '18:00~24:30', range45: '19:00~24:30' }
+  ];
+
+  var DAY_KOR    = ['월', '화', '수', '목', '금', '토', '일'];
+  var HOLIDAYS   = [];        // 공휴일 dayIdx 목록 (추후 API로 로드 가능)
+  var ADMIN_INT  = [];        // 관리자 지정 통합 모집일 dayIdx
+
+  /* ── State ── */
+  var selected   = {};        // dayIdx(0~6) → Set<'d'|'m'|'n'>
+  var weekKey    = '';        // 'YYYY-MM-DD' (월요일)
+  var weekDates  = [];        // 7개 Date 객체
+  var curUser    = null;      // MISO_DATA 항목
+  var posRows    = [];        // 화면에 표시할 포지션 행 목록
+  var _activeSchedTab = 'view'; // 현재 서브탭
+
+  /* ── 포지션 행 정의 빌더 ── */
+  function buildPosRows(posArr) {
+    var rows = [];
+    var has = function (p) { return posArr.indexOf(p) > -1; };
+    var isTotal = has('통합');
+
+    // 매점: 오픈·미들 (통합도 가능)
+    if (isTotal || has('매점')) {
+      rows.push({ id: 'mart', label: '매점', cls: 'mart', kinds: ['d', 'm'] });
+    }
+    // 매감(매점마감): 마감 (통합·매점도 가능)
+    if (isTotal || has('매점') || has('매점마감')) {
+      rows.push({ id: 'mart-close', label: '매감', cls: 'mart-close', kinds: ['n'] });
+    }
+    // 플로어: 주중=미들·마감, 주말=오픈·미들·마감 (통합도 가능)
+    if (isTotal || has('플로어')) {
+      rows.push({ id: 'floor', label: '플로어', cls: 'floor', kinds: ['d', 'm', 'n'], weekdayNoOpen: true });
+    }
+    // 통합 포지션: 토·일·공휴일·관리자지정일만
+    if (isTotal) {
+      rows.push({ id: 'int', label: '통합', cls: 'int', kinds: ['d', 'm', 'n'], specialOnly: true });
+    }
+    return rows;
+  }
+
+  /* ── 날짜 유틸 ── */
+  function getMondayOfWeek(date) {
+    var d = new Date(date);
+    var day = d.getDay();
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  function fmtDate(dt) {
+    return dt.getFullYear() + '-' +
+      String(dt.getMonth() + 1).padStart(2, '0') + '-' +
+      String(dt.getDate()).padStart(2, '0');
+  }
+  function isWeekend(idx)     { return idx >= 5; }
+  function isSpecialDay(idx)  { return isWeekend(idx) || HOLIDAYS.indexOf(idx) > -1 || ADMIN_INT.indexOf(idx) > -1; }
+
+  /* ── 셀 활성 여부 ── */
+  function isCellActive(dayIdx, pos, groupId) {
+    if (pos.specialOnly    && !isSpecialDay(dayIdx)) return false;
+    if (pos.weekdayNoOpen  && groupId === 'd' && !isWeekend(dayIdx)) return false;
+    if (pos.kinds.indexOf(groupId) === -1) return false;
+    return true;
+  }
+
+  function getAllActiveKinds(dayIdx) {
+    var s = {};
+    posRows.forEach(function (pos) {
+      GROUPS.forEach(function (g) {
+        if (isCellActive(dayIdx, pos, g.id)) s[g.id] = true;
+      });
+    });
+    return Object.keys(s);
+  }
+
+  function getSelectedKinds(dayIdx) {
+    return selected[dayIdx] ? Array.from(selected[dayIdx]) : [];
+  }
+
+  function countSelectedDays() {
+    return Object.keys(selected).filter(function (i) {
+      return selected[i] && selected[i].size > 0;
+    }).length;
+  }
+
+  /* ── 서브탭 전환 (cgv-app.js가 호출) ── */
+  window.switchSchedTab = function (tab) {
+    _activeSchedTab = tab;
+    var viewEl  = document.getElementById('sched-sub-view');
+    var applyEl = document.getElementById('sched-sub-apply');
+    var btnView  = document.getElementById('sched-sub-btn-view');
+    var btnApply = document.getElementById('sched-sub-btn-apply');
+    if (!viewEl || !applyEl) return;
+
+    var activeStyle   = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#e71a0f;color:white;transition:all .15s';
+    var inactiveStyle = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s';
+
+    if (tab === 'view') {
+      viewEl.style.display  = '';
+      applyEl.style.display = 'none';
+      btnView.style.cssText  = activeStyle;
+      btnApply.style.cssText = inactiveStyle;
+    } else {
+      viewEl.style.display  = 'none';
+      applyEl.style.display = '';
+      btnView.style.cssText  = inactiveStyle;
+      btnApply.style.cssText = activeStyle;
+      initAvailabilityUI();
+    }
+  };
+
+  /* ── 초기화 ── */
+  function initAvailabilityUI() {
+    var name = sessionStorage.getItem('cgv_currentUser');
+    if (!name) {
+      document.getElementById('avail-body').innerHTML =
+        '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">로그인 후 이용 가능합니다.</div>';
+      return;
+    }
+
+    /* MISO_DATA는 cgv-app.js 전역변수 */
+    var misoList = window.MISO_DATA || [];
+    var miso = misoList.find(function (m) { return m.name === name; });
+    if (!miso) {
+      document.getElementById('avail-body').innerHTML =
+        '<div style="text-align:center;padding:32px;color:#ef4444;font-size:13px;font-weight:700">미소지기 정보를 찾을 수 없습니다.</div>';
+      return;
+    }
+
+    curUser  = miso;
+    posRows  = buildPosRows(Array.isArray(miso.pos) ? miso.pos : (miso.pos || '').split(',').map(function(p){return p.trim();}));
+
+    /* 이번 주 월요일 계산 */
+    var monday  = getMondayOfWeek(new Date());
+    weekKey     = fmtDate(monday);
+    weekDates   = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDates.push(d);
+    }
+
+    /* 주차 레이블 */
+    var wlEl = document.getElementById('avail-week-label');
+    if (wlEl) {
+      var sun = weekDates[6];
+      wlEl.textContent = (monday.getMonth()+1) + '/' + monday.getDate() +
+        ' ~ ' + (sun.getMonth()+1) + '/' + sun.getDate();
+    }
+
+    /* 기존 신청 데이터 로드 */
+    document.getElementById('avail-body').innerHTML =
+      '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">불러오는 중...</div>';
+
+    fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name))
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        selected = {};
+        (json.data || []).forEach(function (row) {
+          selected[row.day_of_week] = new Set(row.shift_codes || []);
+        });
+        renderAvailUI();
+      })
+      .catch(function () {
+        selected = {};
+        renderAvailUI();
+      });
+  }
+
+  /* ── 렌더 ── */
+  function renderAvailUI() {
+    var contractDays  = parseInt(curUser.contract_days, 10) || 5;
+    var selectedDays  = countSelectedDays();
+    var hours         = parseFloat(curUser.hours) || 5.5;
+    var hk            = hours >= 5.5 ? '5.5' : '4.5';
+    var overLimit     = selectedDays > contractDays;
+
+    /* 진행 상태 텍스트 */
+    var progressMsg;
+    if (overLimit) {
+      progressMsg = '<span style="color:#dc2626;font-weight:900;font-size:11px">⚠ +' + (selectedDays - contractDays) + '일 초과 (관리자 검토)</span>';
+    } else if (selectedDays === contractDays) {
+      progressMsg = '<span style="color:#16a34a;font-weight:900;font-size:11px">✓ 계약일수 일치</span>';
+    } else {
+      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">' + (contractDays - selectedDays) + '일 더 선택 필요</span>';
+    }
+    var pct = Math.min(selectedDays / contractDays * 100, 100);
+
+    var html = '';
+
+    /* ── 유저 프로필 카드 ── */
+    html += '<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;padding:14px 16px;margin-bottom:10px">';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    html += '<span style="font-size:16px;font-weight:900;color:#0f172a">' + curUser.name + '</span>';
+    html += '<span style="display:inline-block;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:10px;font-weight:900">' + hours + 'h</span>';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
+    html += '<span style="font-size:11px;font-weight:700;color:#64748b">근로일수 <b style="color:#0f172a">' + contractDays + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
+    html += progressMsg;
+    html += '</div>';
+    /* 진행 바 */
+    html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
+    html += '<div style="height:100%;border-radius:3px;background:' + (overLimit ? '#ef4444' : '#e71a0f') + ';width:' + pct + '%;transition:width .3s"></div>';
+    html += '</div>';
+    html += '<p style="font-size:10px;color:#94a3b8;font-weight:700">🔒 근로일수는 관리자가 「미소지기 관리」에서 변경합니다</p>';
+    html += '</div>';
+
+    /* ── 빠른 패턴 버튼 ── */
+    var patStyle = 'padding:7px 12px;border:1.5px solid #e2e8f0;background:white;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#334155';
+    var patStylePrimary = 'padding:7px 12px;border:1.5px solid #e71a0f;background:#fef2f2;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#e71a0f';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+    html += '<button style="' + patStylePrimary + '" onclick="availSelectAll()">매일 전부 가능</button>';
+    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'weekday\')">평일만(월~금)</button>';
+    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'weekend\')">주말만(토~일)</button>';
+    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'mid\')">미들만</button>';
+    html += '<button style="padding:7px 12px;border:1.5px solid #fca5a5;background:#fef2f2;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#dc2626" onclick="availReset()">초기화</button>';
+    html += '</div>';
+
+    /* ── 요일 카드 ── */
+    for (var dayIdx = 0; dayIdx < 7; dayIdx++) {
+      var d = weekDates[dayIdx];
+      var dateStr   = (d.getMonth() + 1) + '/' + d.getDate();
+      var isSat     = dayIdx === 5;
+      var isSun     = dayIdx === 6;
+      var isHoliday = HOLIDAYS.indexOf(dayIdx) > -1;
+      var isAdminInt= ADMIN_INT.indexOf(dayIdx) > -1;
+      var nameColor = isSat ? '#2563eb' : isSun || isHoliday ? '#dc2626' : '#0f172a';
+      var curKinds  = getSelectedKinds(dayIdx);
+      var allKinds  = getAllActiveKinds(dayIdx);
+      var allOn     = allKinds.length > 0 && allKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
+      var picks     = new Set(curKinds).size;
+
+      /* 카드 */
+      html += '<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;padding:12px 14px;margin-bottom:8px">';
+
+      /* 카드 헤더 */
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+      html += '<div style="display:flex;align-items:center;gap:6px">';
+      html += '<span style="font-size:15px;font-weight:900;color:' + nameColor + '">' + DAY_KOR[dayIdx] + '</span>';
+      html += '<span style="font-size:11px;font-weight:700;color:#94a3b8">' + dateStr + '</span>';
+      if (isHoliday)  html += '<span style="font-size:9px;font-weight:900;color:#dc2626;background:#fef2f2;padding:2px 6px;border-radius:4px">공휴일</span>';
+      if (isAdminInt) html += '<span style="font-size:9px;font-weight:900;color:#0e7490;background:#ecfeff;padding:2px 6px;border-radius:4px">⚑통합모집</span>';
+      if (picks > 0)  html += '<span style="font-size:9px;font-weight:900;color:#e71a0f;background:#fef2f2;padding:2px 6px;border-radius:4px">' + picks + '개 선택</span>';
+      html += '</div>';
+      /* 전부 가능 버튼 */
+      var allBtnStyle = allOn
+        ? 'padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:900;cursor:pointer;background:#e71a0f;color:white'
+        : 'padding:5px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:11px;font-weight:900;cursor:pointer;background:white;color:#64748b';
+      html += '<button style="' + allBtnStyle + '" onclick="availToggleAll(' + dayIdx + ')">' + (allOn ? '✓ ' : '○ ') + '전부 가능</button>';
+      html += '</div>';
+
+      /* 포지션별 칩 행 */
+      var hasAnyCell = false;
+      posRows.forEach(function (pos) {
+        var activeGroups = GROUPS.filter(function (g) { return isCellActive(dayIdx, pos, g.id); });
+        if (!activeGroups.length) return;
+        hasAnyCell = true;
+
+        var labelColor = pos.cls === 'mart' ? '#b91c1c'
+          : pos.cls === 'mart-close' ? '#a21caf'
+          : pos.cls === 'floor' ? '#15803d' : '#6d28d9';
+
+        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">';
+        html += '<span style="flex:0 0 40px;font-size:11px;font-weight:900;color:' + labelColor + ';padding-top:6px">' + pos.label + '</span>';
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">';
+
+        activeGroups.forEach(function (g) {
+          var on    = curKinds.indexOf(g.id) > -1;
+          var range = hk === '5.5' ? g.range55 : g.range45;
+          var chipStyle = on
+            ? 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:none;background:#e71a0f;color:white;box-shadow:0 2px 6px rgba(231,26,15,.25)'
+            : 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #e2e8f0;background:white;color:#334155';
+          html += '<button style="' + chipStyle + '" onclick="availToggleChip(' + dayIdx + ',\'' + g.id + '\')">';
+          html += g.icon + ' ' + g.label;
+          html += '<span style="font-size:9px;opacity:.7;margin-left:3px;font-weight:700">' + range + '</span>';
+          html += '</button>';
+        });
+
+        html += '</div></div>';
+      });
+
+      if (!hasAnyCell) {
+        html += '<p style="font-size:11px;color:#94a3b8;font-weight:700;padding:4px 2px">이 요일은 신청 가능한 포지션이 없습니다.</p>';
+      }
+
+      html += '</div>'; /* /카드 */
+    }
+
+    document.getElementById('avail-body').innerHTML = html;
+
+    /* 하단 바 업데이트 */
+    var fd = document.getElementById('avail-footer-days');
+    var fc = document.getElementById('avail-footer-contract');
+    if (fd) fd.textContent = selectedDays;
+    if (fc) fc.textContent = contractDays;
+  }
+
+  /* ── 전역 액션 함수들 ── */
+  window.availToggleChip = function (dayIdx, groupId) {
+    if (!selected[dayIdx]) selected[dayIdx] = new Set();
+    if (selected[dayIdx].has(groupId)) selected[dayIdx].delete(groupId);
+    else selected[dayIdx].add(groupId);
+    renderAvailUI();
+  };
+
+  window.availToggleAll = function (dayIdx) {
+    var allKinds = getAllActiveKinds(dayIdx);
+    var curKinds = getSelectedKinds(dayIdx);
+    var allOn = allKinds.length > 0 && allKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
+    selected[dayIdx] = allOn ? new Set() : new Set(allKinds);
+    renderAvailUI();
+  };
+
+  window.availSelectAll = function () {
+    for (var i = 0; i < 7; i++) selected[i] = new Set(getAllActiveKinds(i));
+    renderAvailUI();
+  };
+
+  window.availSelectPattern = function (pattern) {
+    for (var i = 0; i < 7; i++) {
+      selected[i] = new Set();
+      var activeKinds = getAllActiveKinds(i);
+      if (pattern === 'weekday' && i < 5)  selected[i] = new Set(activeKinds);
+      if (pattern === 'weekend' && i >= 5) selected[i] = new Set(activeKinds);
+      if (pattern === 'mid' && activeKinds.indexOf('m') > -1) selected[i].add('m');
+    }
+    renderAvailUI();
+  };
+
+  window.availReset = function () {
+    selected = {};
+    renderAvailUI();
+  };
+
+  /* ── 신청 제출 ── */
+  window.availSubmit = function () {
+    if (!curUser) return;
+    var btn = document.getElementById('avail-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+
+    var days = [];
+    for (var i = 0; i < 7; i++) {
+      days.push({ dayOfWeek: i, shiftCodes: getSelectedKinds(i) });
+    }
+
+    fetch('/api/availability', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: curUser.name, weekKey: weekKey, days: days })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        if (json.ok) {
+          showAvailToast('✅ 스케줄 신청이 완료됐습니다!', '#16a34a');
+        } else {
+          showAvailToast('오류: ' + (json.error || '다시 시도해주세요'), '#dc2626');
+        }
+      })
+      .catch(function () {
+        showAvailToast('네트워크 오류. 다시 시도해주세요.', '#dc2626');
+      })
+      .finally(function () {
+        if (btn) { btn.disabled = false; btn.textContent = '신청하기'; }
+      });
+  };
+
+  function showAvailToast(msg, bgColor) {
+    var t = document.getElementById('avail-toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.style.background = bgColor;
+    t.style.display = 'block';
+    setTimeout(function () { t.style.display = 'none'; }, 3500);
+  }
+
+})();
