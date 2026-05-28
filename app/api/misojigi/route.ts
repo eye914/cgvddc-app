@@ -88,21 +88,26 @@ export async function PATCH(req: NextRequest) {
 
     // ── 스케줄 시트에서 포지션 자동 동기화 ────────────────────────
     if (action === 'syncSchedulePos') {
-      const { weekDate } = body as { weekDate: string };
-      if (!weekDate) return NextResponse.json({ error: 'weekDate 필요 (YYYY-MM-DD)' }, { status: 400 });
+      const { startDate, endDate } = body as { startDate: string; endDate: string };
+      if (!startDate || !endDate) return NextResponse.json({ error: 'startDate, endDate 필요 (YYYY-MM-DD)' }, { status: 400 });
       const GAS_URL = process.env.GAS_URL;
       if (!GAS_URL) return NextResponse.json({ error: 'GAS_URL 미설정' }, { status: 500 });
 
-      // GAS에서 포지션 맵 조회
+      // GAS에서 범위 포지션 맵 조회
       const gasRes  = await fetch(GAS_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'getSchedulePositionMap', params: [weekDate] }),
+        body: JSON.stringify({ action: 'getSchedulePositionMapRange', params: [startDate, endDate] }),
       });
-      const gasJson = await gasRes.json() as { success: boolean; result: Record<string, string>; error?: string };
+      const gasJson = await gasRes.json() as {
+        success: boolean;
+        result: { map?: Record<string, string>; synced?: string[]; error?: string };
+        error?: string;
+      };
       if (!gasJson.success) return NextResponse.json({ error: gasJson.error ?? 'GAS 오류' }, { status: 500 });
 
-      const posMap = gasJson.result; // { 이름: '매점,플로어' }
-      if (posMap.error) return NextResponse.json({ error: posMap.error }, { status: 500 });
+      const { map: posMap, synced, error: gasErr } = gasJson.result;
+      if (gasErr) return NextResponse.json({ error: gasErr }, { status: 500 });
+      if (!posMap) return NextResponse.json({ error: '포지션 데이터 없음' }, { status: 500 });
 
       // Supabase misojigi.base_pos 일괄 업데이트
       let updated = 0;
@@ -111,7 +116,7 @@ export async function PATCH(req: NextRequest) {
           .from('misojigi').update({ base_pos }).eq('name', name);
         if (!error) updated++;
       }
-      return NextResponse.json({ ok: true, updated, map: posMap });
+      return NextResponse.json({ ok: true, updated, synced, map: posMap });
     }
 
     // ── 일반 PATCH ────────────────────────────────────────────────

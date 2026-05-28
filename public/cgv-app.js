@@ -2067,14 +2067,17 @@ function showKakaoModal(text, forced) {
             panel.classList.toggle('hidden', !isHidden);
             if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
             if (isHidden) {
-                // 동기화 날짜 input 이번 주 월요일로 초기화
-                var syncDate = document.getElementById('sync-schedule-date');
-                if (syncDate && !syncDate.value) {
+                // 동기화 날짜 range — 이번 주 월요일~다음 주 일요일 기본값
+                var sInput = document.getElementById('sync-start-date');
+                var eInput = document.getElementById('sync-end-date');
+                if (sInput && !sInput.value) {
                     var today = new Date();
-                    var day = today.getDay();
-                    var diff = day === 0 ? -6 : 1 - day;
-                    var mon = new Date(today); mon.setDate(today.getDate() + diff);
-                    syncDate.value = mon.toISOString().slice(0, 10);
+                    var dow = today.getDay();
+                    var mon = new Date(today); mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+                    var sun2 = new Date(mon);  sun2.setDate(mon.getDate() + 13); // 2주 후 일요일
+                    sInput.value = mon.toISOString().slice(0, 10);
+                    eInput.value = sun2.toISOString().slice(0, 10);
+                    onSyncDateChange();
                 }
                 if (_misoAdminData.length === 0) loadMisojigiAdmin();
             }
@@ -2266,17 +2269,44 @@ function showKakaoModal(text, forced) {
                 .updateMisojigi(name, { pos: newPos });
         }
 
+        // 시작/종료일 변경 시 동기화 대상 주차 표시
+        function onSyncDateChange() {
+            var s = (document.getElementById('sync-start-date') || {}).value;
+            var e = (document.getElementById('sync-end-date')   || {}).value;
+            var label = document.getElementById('sync-week-label');
+            if (!label) return;
+            if (!s || !e) { label.textContent = ''; return; }
+            var sd = new Date(s + 'T00:00:00'), ed = new Date(e + 'T00:00:00');
+            if (isNaN(sd.getTime()) || isNaN(ed.getTime()) || sd > ed) { label.textContent = ''; return; }
+            // 포함되는 주차 목록 생성
+            var weeks = [];
+            var cur = new Date(sd);
+            var dow = cur.getDay();
+            cur.setDate(cur.getDate() - (dow === 0 ? 6 : dow - 1)); // 해당주 월요일
+            while (cur <= ed) {
+                var y  = String(cur.getFullYear()).slice(-2);
+                var m  = cur.getMonth() + 1;
+                var wk = Math.ceil(cur.getDate() / 7);
+                weeks.push(y + '년' + m + '월' + wk + '주차');
+                cur.setDate(cur.getDate() + 7);
+            }
+            label.textContent = '→ ' + weeks.join(', ') + ' (' + weeks.length + '주)';
+        }
+
         function syncSchedulePositions() {
-            var dateInput = document.getElementById('sync-schedule-date');
-            var dateVal = dateInput ? dateInput.value : '';
-            if (!dateVal) { alert('동기화할 주차의 날짜를 선택해주세요.\n(해당 주 아무 날짜나 선택하면 됩니다)'); return; }
-            if (!confirm('📅 [' + dateVal + '] 주차 맞교대 시트에서\n스케줄 포지션을 자동으로 읽어와 업데이트합니다.\n\n계속하시겠습니까?')) return;
+            var startVal = (document.getElementById('sync-start-date') || {}).value || '';
+            var endVal   = (document.getElementById('sync-end-date')   || {}).value || '';
+            if (!startVal || !endVal) { alert('시작일과 종료일을 모두 선택해주세요.'); return; }
+            if (startVal > endVal) { alert('시작일이 종료일보다 늦습니다.'); return; }
+            var label = document.getElementById('sync-week-label');
+            var weekHint = label ? label.textContent : '';
+            if (!confirm('📅 스케줄 포지션 동기화\n' + weekHint + '\n\n맞교대 시트에서 포지션을 읽어 업데이트합니다.\n계속하시겠습니까?')) return;
             var btn = document.querySelector('[onclick="syncSchedulePositions()"]');
             if (btn) { btn.disabled = true; btn.textContent = '동기화 중...'; }
             fetch('/api/misojigi', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'syncSchedulePos', weekDate: dateVal })
+                body: JSON.stringify({ action: 'syncSchedulePos', startDate: startVal, endDate: endVal })
             })
             .then(function(r) { return r.json(); })
             .then(function(d) {
@@ -2286,21 +2316,21 @@ function showKakaoModal(text, forced) {
                     for (var nm in d.map) {
                         for (var i = 0; i < MISO_DATA.length; i++) {
                             if (MISO_DATA[i].name === nm) {
-                                // 콤마구분 → ' / ' 표시
-                                MISO_DATA[i].base_pos = d.map[nm].split(',').join(' / ') || null;
+                                MISO_DATA[i].base_pos = d.map[nm].replace(/,/g, ' / ') || null;
                                 break;
                             }
                         }
                     }
                 }
                 sessionStorage.removeItem('cgv_miso');
-                var summary = Object.keys(d.map || {}).map(function(n){ return n + '→' + d.map[n]; }).join('\n');
-                alert('✅ 동기화 완료! ' + d.updated + '명 업데이트됨\n\n' + summary);
+                var syncedStr = (d.synced || []).join(', ');
+                var summary   = Object.keys(d.map || {}).map(function(n){ return n + ' → ' + d.map[n]; }).join('\n');
+                alert('✅ 동기화 완료!\n동기화 주차: ' + syncedStr + '\n업데이트: ' + d.updated + '명\n\n' + summary);
                 loadMisojigiAdmin();
             })
             .catch(function(e) { alert('오류: ' + e); })
             .finally(function() {
-                if (btn) { btn.disabled = false; btn.textContent = '🔄 동기화'; }
+                if (btn) { btn.disabled = false; btn.textContent = '🔄 주차별 포지션 동기화'; }
             });
         }
 
