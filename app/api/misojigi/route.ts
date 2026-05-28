@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     const result = (data ?? []).map((row: Record<string, any>) => ({
       name: row.name,
       pos: row.pos ? row.pos.split(',').map((p: string) => p.trim()) : [],
+      base_pos: row.base_pos ?? null,   // 스케줄 지정 포지션 (매점/플로어/통합)
       hours: row.hours ?? '5.5',
       active: row.active,
       pin: row.pin ?? '00000',

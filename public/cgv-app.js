@@ -2073,22 +2073,23 @@ function showKakaoModal(text, forced) {
         function loadMisojigiAdmin() {
             var el = document.getElementById('miso-admin-list');
             if (el) el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">불러오는 중...</p>';
-            // 전화번호도 병렬 fetch (실패해도 명단은 표시)
-            fetch('/api/misojigi?mode=phones')
-                .then(function(r){ return r.json(); })
-                .then(function(d){ if (d && typeof d === 'object' && !d.error) _misoPhones = d; })
-                .catch(function(){})
-                .finally(function() {
-                    google.script.run
-                        .withSuccessHandler(function(list) {
-                            _misoAdminData = list || [];
-                            renderMisojigiAdmin(_misoAdminData);
-                        })
-                        .withFailureHandler(function(e) {
-                            if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + (e && e.message ? e.message : e) + '</p>';
-                        })
-                        .getAllMisojigiForAdmin();
-                });
+            // 전화번호 + 미소지기 목록 병렬 fetch (Supabase → Next.js API)
+            Promise.all([
+                fetch('/api/misojigi?mode=phones').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
+                fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).catch(function(){ return []; })
+            ]).then(function(results) {
+                var phones = results[0];
+                var list   = results[1];
+                if (phones && typeof phones === 'object' && !phones.error) _misoPhones = phones;
+                if (!Array.isArray(list)) {
+                    if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: 데이터를 불러올 수 없습니다</p>';
+                    return;
+                }
+                _misoAdminData = list;
+                renderMisojigiAdmin(_misoAdminData);
+            }).catch(function(e) {
+                if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + e + '</p>';
+            });
         }
 
         function renderMisojigiAdmin(list) {
@@ -2130,7 +2131,8 @@ function showKakaoModal(text, forced) {
                         '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
                     '<div id="ma-b-' + sid + '" style="' + (isExp ? '' : 'display:none') + '" class="px-3 pb-3 border-t border-slate-100 bg-slate-50">' +
-                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-1">포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
+                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-0.5">근무가능 포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
+                        '<div class="text-xs text-slate-500 font-bold mb-2">스케줄 포지션: <span class="' + (m.base_pos ? 'text-blue-700 font-black' : 'text-slate-400') + '">' + (m.base_pos || '미설정') + '</span></div>' +
                         (function() {
                             var ph = _misoPhones[m.name];
                             return ph && ph.display
@@ -2144,7 +2146,8 @@ function showKakaoModal(text, forced) {
                                     ? '<a href="tel:' + ph.tel + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all inline-flex items-center gap-1">📞 전화걸기</a>'
                                     : '';
                             })() +
-                            '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 포지션</button>' +
+                            '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 근무포지션</button>' +
+                            '<button data-miso-action="edit-base-pos" data-miso-name="' + m.name + '" data-miso-base-pos="' + (m.base_pos || '') + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all">🗓️ 스케줄포지션</button>' +
                             '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
                             hoursEditBtn +
@@ -2162,6 +2165,9 @@ function showKakaoModal(text, forced) {
                     if (action === 'edit-pos') {
                         var pos = JSON.parse(this.getAttribute('data-miso-pos') || '[]');
                         editMisojigiPos(name, pos);
+                    } else if (action === 'edit-base-pos') {
+                        var basePos = this.getAttribute('data-miso-base-pos') || '';
+                        editMisojigiBasePos(name, basePos);
                     } else if (action === 'reset-pin') {
                         resetMisojigiPin(name);
                     } else if (action === 'toggle-active') {
@@ -2247,6 +2253,39 @@ function showKakaoModal(text, forced) {
                 })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .updateMisojigi(name, { pos: newPos });
+        }
+
+        function editMisojigiBasePos(name, currentBasePos) {
+            var input = prompt(
+                name + ' 스케줄 포지션 설정\n\n' +
+                '스케줄에 실제 배정된 포지션을 입력하세요.\n' +
+                '현재: ' + (currentBasePos || '미설정') + '\n\n' +
+                '입력 (매점 / 플로어 / 통합 / 비워두면 초기화):',
+                currentBasePos || ''
+            );
+            if (input === null) return;
+            var trimmed = input.trim();
+            var valid = ['매점', '플로어', '통합'];
+            if (trimmed && valid.indexOf(trimmed) < 0) {
+                alert('유효하지 않은 포지션입니다.\n매점, 플로어, 통합 중 하나로 입력하세요.');
+                return;
+            }
+            fetch('/api/misojigi', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, base_pos: trimmed || null })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.error) { alert('저장 오류: ' + d.error); return; }
+                alert(name + ' 스케줄 포지션 → [' + (trimmed || '없음') + '] 저장됨');
+                for (var i = 0; i < MISO_DATA.length; i++) {
+                    if (MISO_DATA[i].name === name) { MISO_DATA[i].base_pos = trimmed || null; break; }
+                }
+                sessionStorage.removeItem('cgv_miso');
+                loadMisojigiAdmin();
+            })
+            .catch(function(e) { alert('오류: ' + e); });
         }
 
         function resetMisojigiPin(name) {
@@ -2389,13 +2428,15 @@ function showKakaoModal(text, forced) {
                         inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
                     } else {
                         var _inBuf = "<div class='space-y-1'>";
-                        // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790(t.subName)\uC758 MISO_DATA \uBCF8\uC778 \uD3EC\uC9C0\uC158
-                        //   (shift code\uC5D0 [\uD3EC\uC9C0\uC158] \uD0DC\uADF8\uAC00 \uC5C6\uC744 \uB54C \uC218\uB77D\uC790\uAC00 \uAC00\uC838\uC624\uB294 \uC2E4\uC81C \uD3EC\uC9C0\uC158 \uD45C\uC2DC)
+                        // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790 base_pos(\uC2A4\uCF00\uC904 \uD3EC\uC9C0\uC158) \uC6B0\uC120, \uC5C6\uC73C\uBA74 pos
+                        //   (shift code\uC5D0 [\uD3EC\uC9C0\uC158] \uD0DC\uADF8\uAC00 \uC5C6\uC744 \uB54C \uC218\uB77D\uC790 \uC2A4\uCF00\uC904 \uD3EC\uC9C0\uC158 \uD45C\uC2DC)
                         var _inFallbackPos = (function() {
                             if (t.subName) {
                                 for (var _smi = 0; _smi < MISO_DATA.length; _smi++) {
                                     if (MISO_DATA[_smi].name === t.subName) {
-                                        var _sp = MISO_DATA[_smi].pos;
+                                        var _sm = MISO_DATA[_smi];
+                                        if (_sm.base_pos) return _sm.base_pos;
+                                        var _sp = _sm.pos;
                                         return Array.isArray(_sp) && _sp.length
                                             ? _sp.join(' / ')
                                             : (typeof _sp === 'string' && _sp ? _sp : (t.reqPos || '\uBB34\uAD00'));
@@ -2534,19 +2575,24 @@ function showKakaoModal(text, forced) {
                 if (isP2||isD) {
                     // \u2605 \uC218\uB77D\uC790 \uBCF8\uC778 \uD3EC\uC9C0\uC158\u00B7hours \u2192 MISO_DATA\uC5D0\uC11C \uC9C1\uC811 \uC870\uD68C
                     var _subMiso = MISO_DATA.find(function(m){ return m.name === t.subName; });
-                    var _subOwnPos = _subMiso && Array.isArray(_subMiso.pos) && _subMiso.pos.length
-                        ? _subMiso.pos.join(' / ')
-                        : (_subMiso && typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''));
+                    // base_pos(스케줄 포지션) 우선, 없으면 pos(근무가능 포지션) 폴백
+                    var _subOwnPos = _subMiso
+                        ? (_subMiso.base_pos || (Array.isArray(_subMiso.pos) && _subMiso.pos.length
+                            ? _subMiso.pos.join(' / ')
+                            : (typeof _subMiso.pos === 'string' ? _subMiso.pos : (t.subPos || ''))))
+                        : (t.subPos || '');
                     var _subHours = _subMiso ? (parseFloat(_subMiso.hours) || 5.5) : null;
 
                     // 신청자 정보 (MISO_DATA)
                     var _reqMiso     = MISO_DATA.find(function(m){ return m.name === t.reqName; });
                     var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
 
-                    // ── 신청자·수락자 본인 포지션 ──
-                    var _reqOwnPos = _reqMiso && Array.isArray(_reqMiso.pos) && _reqMiso.pos.length
-                        ? _reqMiso.pos.join(' / ')
-                        : (_reqMiso && typeof _reqMiso.pos === 'string' ? _reqMiso.pos : (t.reqPos || ''));
+                    // ── 신청자·수락자 본인 포지션 (base_pos 우선) ──
+                    var _reqOwnPos = _reqMiso
+                        ? (_reqMiso.base_pos || (Array.isArray(_reqMiso.pos) && _reqMiso.pos.length
+                            ? _reqMiso.pos.join(' / ')
+                            : (typeof _reqMiso.pos === 'string' ? _reqMiso.pos : (t.reqPos || ''))))
+                        : (t.reqPos || '');
 
                     // ── 관리자 카드 (재설계) ──────────────────────────────
                     var _approvedRow = (t.approvedBy && isD)
