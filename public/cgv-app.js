@@ -2597,6 +2597,9 @@ function showKakaoModal(text, forced) {
                                         }
                                     }
                                 }
+                                // SCHED_POS_MAP 미동기화 시: 공고/지원에 적힌 포지션 [매점] 브래킷 사용
+                                var _brM = _lCode.match(/\[([^\]]+)\]/);
+                                if (_brM && _brM[1].trim()) return _brM[1].replace(/\//g, ' / ');
                                 return _inFallbackPos;
                             })();
                             // timeText \uB808\uC774\uBE14 (\uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC81C\uAC70 \uD6C4 \uCF54\uB4DC\uAC00 \uC5C6\uC744 \uB54C \uD45C\uC2DC)
