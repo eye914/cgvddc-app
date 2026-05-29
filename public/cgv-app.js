@@ -2728,10 +2728,16 @@ function showKakaoModal(text, forced) {
                         if (posFallback && String(posFallback).trim()) return posFallback;
                         return '';
                     };
-                    // ① OUT 헤더: 신청자의 OUT 날짜 스케줄 포지션
-                    var _reqOwnPos = _outPos;
-                    // ② IN 헤더: 수락자의 IN 날짜 스케줄 포지션
-                    var _subOwnPos = _inPos;
+                    // ── 본래(맞교대 이전) / 이후(맞교대 이후) 포지션 분리 ──
+                    //   근무시간 옆 인라인 뱃지 = 본래 포지션 (outHtml=rPL, inHtml=_inPos)
+                    //   우측 뱃지 = 맞교대 이후 포지션
+                    //   swap 시 서로 상대 슬롯을 받음 → OUT 이후 = IN 슬롯, IN 이후 = OUT 슬롯
+                    var _isSwapCard = !isSub;
+                    var _reqOwnPos = _isSwapCard ? _inPos : '';   // OUT(요청자) 맞교대 이후 = 받는 자리(IN 슬롯)
+                    var _subOwnPos = _isSwapCard ? _outPos : '';  // IN(수락자) 맞교대 이후 = 받는 자리(OUT 슬롯)
+                    // 본래와 동일(같은 포지션 교환)하거나 무관이면 우측 뱃지 생략
+                    if (_reqOwnPos === _outPos || _reqOwnPos === '무관') _reqOwnPos = '';
+                    if (_subOwnPos === _inPos || _subOwnPos === '무관') _subOwnPos = '';
 
                     // ── 관리자 카드 (재설계) ──────────────────────────────
                     var _approvedRow = (t.approvedBy && isD)
@@ -2742,14 +2748,14 @@ function showKakaoModal(text, forced) {
                         + '<span style="font-size:9px;font-weight:900;color:#ef4444;background:#fef2f2;padding:2px 7px;border-radius:5px;flex-shrink:0">OUT</span>'
                         + '<span style="font-size:14px;font-weight:900;color:#0f172a">' + t.reqName + '</span>'
                         + (_reqHoursVal ? '<span style="font-size:9px;font-weight:900;padding:2px 6px;border-radius:5px;background:#fee2e2;color:#b91c1c">' + _reqHoursVal + 'h</span>' : '')
-                        + (_reqOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#fef3c7;color:#92400e;white-space:nowrap">' + _reqOwnPos + '</span>' : '')
+                        + (_reqOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#fef3c7;color:#92400e;white-space:nowrap">이후 ' + _reqOwnPos + '</span>' : '')
                         + '</div>';
                     var _inNameRow =
                         '<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px">'
                         + '<span style="font-size:9px;font-weight:900;color:#2563eb;background:#eff6ff;padding:2px 8px;border-radius:5px;flex-shrink:0">IN</span>'
                         + '<span style="font-size:14px;font-weight:900;color:#0f172a">' + t.subName + '</span>'
                         + (_subHours ? '<span style="font-size:9px;font-weight:900;padding:2px 6px;border-radius:5px;background:#dbeafe;color:#1d4ed8">' + _subHours + 'h</span>' : '')
-                        + (_subOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#f3e8ff;color:#7c3aed;white-space:nowrap">' + _subOwnPos + '</span>' : '')
+                        + (_subOwnPos ? '<span style="margin-left:auto;font-size:9px;font-weight:900;padding:2px 8px;border-radius:5px;background:#f3e8ff;color:#7c3aed;white-space:nowrap">이후 ' + _subOwnPos + '</span>' : '')
                         + '</div>';
                     var _btnRow = isD ? '' :
                         '<div style="display:flex;gap:8px;margin-top:4px">'
