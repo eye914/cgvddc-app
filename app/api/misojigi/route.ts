@@ -117,10 +117,25 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: (dateMap as any)?.error ?? '포지션 데이터 없음' }, { status: 500 });
       }
 
-      // ── app_settings.schedule_pos_map 저장 (날짜별 맵 전체) ──
+      // ── 조회된 날짜가 없으면 기존 맵 보존 (빈 맵 덮어쓰기 방지) ──
+      const _dateKeys = Object.keys(dateMap);
+      if (_dateKeys.length === 0) {
+        return NextResponse.json({
+          ok: true, updated: 0, dateCount: 0,
+          note: '해당 기간에 읽어온 스케줄 날짜가 없어 기존 맵을 그대로 유지했습니다. (시트의 날짜 헤더 형식/주차 시트명을 확인하세요)',
+        });
+      }
+
+      // ── app_settings.schedule_pos_map 병합 저장 (기존 날짜 보존 + 신규 날짜 추가/갱신) ──
+      const { data: _existingRow } = await supabaseAdmin
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'schedule_pos_map')
+        .single();
+      const _mergedMap = Object.assign({}, (_existingRow?.value as any) || {}, dateMap);
       const { error: settingsError } = await supabaseAdmin
         .from('app_settings')
-        .upsert({ key: 'schedule_pos_map', value: dateMap as any }, { onConflict: 'key' });
+        .upsert({ key: 'schedule_pos_map', value: _mergedMap as any }, { onConflict: 'key' });
       if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
 
       // ── misojigi.base_pos 업데이트 (이 기간에 등장한 고유 포지션 집계) ──
