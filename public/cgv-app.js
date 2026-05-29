@@ -2521,6 +2521,22 @@ function showKakaoModal(text, forced) {
                     }
                     return "";
                 };
+                // ── 슬롯 점유자 기준 스케줄 포지션 (맞교대 이전 = 그 슬롯 본래 포지션) ──
+                //   승인완료(swap 적용): OUT슬롯=수락자, IN슬롯=요청자가 차지
+                //   승인 전: OUT슬롯=요청자, IN슬롯=수락자(본인 자리)
+                var _schedPosOf = function(dateSrc, nm) {
+                    if (!nm || !dateSrc) return "";
+                    var dm = String(dateSrc).match(/(\d{4})-(\d{2})-(\d{2})/);
+                    if (!dm) return "";
+                    var lbl = parseInt(dm[2],10) + '/' + parseInt(dm[3],10);
+                    return (SCHED_POS_MAP[lbl] && SCHED_POS_MAP[lbl][nm]) || "";
+                };
+                var _outOcc = isD ? t.subName : t.reqName;
+                var _inOcc  = isD ? t.reqName : t.subName;
+                // OUT 포지션: 요청자가 지정한 reqPos가 최우선 신뢰 → 보조로 스케줄/등록
+                var _outPos = (t.reqPos && t.reqPos !== '무관' ? t.reqPos : '') || _schedPosOf(t.shiftDate, _outOcc) || _regPosOf(t.reqName) || '무관';
+                // IN 포지션: IN 슬롯 점유자의 스케줄 포지션(=받는 근무 슬롯 본래 포지션)
+                var _inPos = _schedPosOf(t.desiredShift, _inOcc) || _regPosOf(t.subName) || '무관';
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var safeDate = t.shiftDate ? String(t.shiftDate) : "\uB0A0\uC9DC \uBBF8\uC815";
 
@@ -2564,22 +2580,7 @@ function showKakaoModal(text, forced) {
                         var _inBuf = "<div class='space-y-1'>";
                         // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
                         //   \uC6B0\uC120\uC21C\uC704: 1) SCHED_POS_MAP[\uB0A0\uC9DC][\uC218\uB77D\uC790] 2) base_pos 3) pos
-                        var _inFallbackPos = (function() {
-                            // 맞교대 이전(원래) 포지션 = 수락자 본인 등록 포지션(misojigi.pos)
-                            // ※ t.subPos/[bracket]=swap 후 포지션, base_pos=동기화로 오염 → 사용 안 함
-                            if (t.subName) {
-                                for (var _smi = 0; _smi < MISO_DATA.length; _smi++) {
-                                    if (MISO_DATA[_smi].name === t.subName) {
-                                        var _sm = MISO_DATA[_smi];
-                                        var _sp = _sm.pos;
-                                        if (Array.isArray(_sp) && _sp.length) return _sp.join(' / ');
-                                        if (typeof _sp === 'string' && _sp) return _sp;
-                                        if (_sm.base_pos) return _sm.base_pos;
-                                    }
-                                }
-                            }
-                            return '무관';
-                        })();
+                        var _inFallbackPos = _inPos;   // IN 슬롯 점유자 기준 포지션
                         _inLines.forEach(function(line, li) {
                             var _lParts = line.split(" / ");
                             var _lDate = _lParts[0] || '';
@@ -2624,7 +2625,7 @@ function showKakaoModal(text, forced) {
                         + (isMine ? "<button onclick=\"rejectAndReopen('"+t.id+"')\" class='text-[10px] bg-white text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg font-black shadow-sm active:scale-95'>\uC7AC\uBAA8\uC9D1 \uD558\uAE30</button>" : "")
                         + "</div>"
                         + "<div class='text-[13px] font-black text-slate-800 mb-1'>"+t.reqName+" \u2192 "+safeDate+"</div>"
-                        + "<div class='text-[11px] text-orange-800 font-bold bg-orange-100 px-3 py-2 rounded-xl mt-2'>\uAC70\uC808\uB41C \uC9C0\uC6D0\uC790: "+getGenderEmoji(t.subName)+" "+t.subName+((_regPosOf(t.subName)||t.subPos)?" ["+(_regPosOf(t.subName)||t.subPos)+"]":"")+"</div>"
+                        + "<div class='text-[11px] text-orange-800 font-bold bg-orange-100 px-3 py-2 rounded-xl mt-2'>\uAC70\uC808\uB41C \uC9C0\uC6D0\uC790: "+getGenderEmoji(t.subName)+" "+t.subName+(_inPos?" ["+_inPos+"]":"")+"</div>"
                         + (isMine ? "<div class='text-[10px] text-orange-600 font-bold mt-2'>"+"\uC704 \uBC84\uD2BC\uC73C\uB85C \uB2E4\uC2DC \uBAA8\uC9D1\uD558\uAC70\uB098 \uCDE8\uC18C \uBC84\uD2BC\uC73C\uB85C \uCDE8\uC18C\uD558\uC138\uC694.</div>" : "")
                         + (t.subName === currentUser ? "<div class='text-[10px] text-orange-600 font-bold mt-2'>"+"\uC9C0\uC6D0\uC774 \uAC70\uC808\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uB978 \uACF5\uACE0\uC5D0 \uC9C0\uC6D0\uD558\uC138\uC694.</div>" : "")
                         + "</div>";
@@ -2652,7 +2653,7 @@ function showKakaoModal(text, forced) {
                         + "<div><p class='text-[10px] text-red-400 font-black uppercase mb-1'>\uBCF4\uB0BC \uADFC\uBB34(OUT)</p>"+outHtml+"</div>"
                         + "<div class='h-px bg-slate-100'></div>"
                         + "<div><p class='text-[10px] text-blue-400 font-black uppercase mb-1'>"+(isSub?"\uB300\uD0C0":"\uD76C\uB9DD\uADFC\uBB34(IN)")+"</p>"+inHtml+"</div>"
-                        + (!isU ? "<div class='text-[11px] text-slate-500 mt-2'>\uC9C0\uC6D0\uC790: "+t.subName+" "+((_regPosOf(t.subName)||t.subPos)?"["+(_regPosOf(t.subName)||t.subPos)+"]":"")+"</div>" : "")
+                        + (!isU ? "<div class='text-[11px] text-slate-500 mt-2'>\uC9C0\uC6D0\uC790: "+t.subName+" "+(_inPos?"["+_inPos+"]":"")+"</div>" : "")
                         + "</div></div></details>";
 
                     var wk = getWeekKey(safeDate);
@@ -2694,7 +2695,7 @@ function showKakaoModal(text, forced) {
                     + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
                     + "<div class='h-px bg-slate-200 w-full'></div>"
                     + "<div><p class='text-[11px] "+(isSub?"text-orange-600":"text-blue-600")+" font-black tracking-widest uppercase mb-2'>"+(isSub?"\uB2E8\uC21C \uB300\uD0C0 \uC694\uCCAD":"\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 (IN)")+"</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+inHtml+"</div></div>"
-                    + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+(_regPosOf(t.subName)||t.subPos||"")+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
+                    + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+_inPos+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
                     + "</div>"
                     + "<div class='mt-6 flex gap-3'>"
                     + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-4 rounded-2xl font-black'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
@@ -2728,9 +2729,9 @@ function showKakaoModal(text, forced) {
                         return '';
                     };
                     // ① OUT 헤더: 신청자의 OUT 날짜 스케줄 포지션
-                    var _reqOwnPos = _posForDate(t.shiftDate, t.reqName, _reqMiso, t.reqPos);
+                    var _reqOwnPos = _outPos;
                     // ② IN 헤더: 수락자의 IN 날짜 스케줄 포지션
-                    var _subOwnPos = _posForDate(t.desiredShift, t.subName, _subMiso, '');
+                    var _subOwnPos = _inPos;
 
                     // ── 관리자 카드 (재설계) ──────────────────────────────
                     var _approvedRow = (t.approvedBy && isD)
