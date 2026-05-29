@@ -2588,6 +2588,10 @@ function showKakaoModal(text, forced) {
                             //   \uB77C\uC778\uBCC4 \uB0A0\uC9DC\uB85C SCHED_POS_MAP[M/D][\uC218\uB77D\uC790] \uC870\uD68C (\uC815\uD655)
                             //   [pos] \uD0DC\uADF8(=swap \uD6C4)\uB294 \uC758\uB3C4\uC801\uC73C\uB85C \uBB34\uC2DC
                             var _lPos = (function() {
+                                // 1) 라인에 적힌 [포지션] 브래킷 우선 (공고/지원 시 직접 선택값 = 최우선 신뢰)
+                                var _brM = _lCode.match(/\[([^\]]+)\]/);
+                                if (_brM && _brM[1].trim()) return _brM[1].replace(/\//g, ' / ');
+                                // 2) 동기화 스케줄(보조) - SCHED_POS_MAP[날짜][수락자]
                                 if (t.subName && _lDate) {
                                     var _ldM = _lDate.match(/(\d{4})-(\d{2})-(\d{2})/);
                                     if (_ldM) {
@@ -2597,9 +2601,6 @@ function showKakaoModal(text, forced) {
                                         }
                                     }
                                 }
-                                // SCHED_POS_MAP 미동기화 시: 공고/지원에 적힌 포지션 [매점] 브래킷 사용
-                                var _brM = _lCode.match(/\[([^\]]+)\]/);
-                                if (_brM && _brM[1].trim()) return _brM[1].replace(/\//g, ' / ');
                                 return _inFallbackPos;
                             })();
                             // timeText \uB808\uC774\uBE14 (\uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC81C\uAC70 \uD6C4 \uCF54\uB4DC\uAC00 \uC5C6\uC744 \uB54C \uD45C\uC2DC)
@@ -2727,6 +2728,14 @@ function showKakaoModal(text, forced) {
 
                     // ── 날짜별 SCHED_POS_MAP 조회 helper (맞교대 이전 = 그 날 실제 스케줄 포지션) ──
                     var _posForDate = function(shiftStr, personName, miso, posFallback) {
+                        // 1) shiftStr에 적힌 [포지션] 브래킷 우선 (공고/지원 시 직접 선택값)
+                        if (shiftStr) {
+                            var _brk = String(shiftStr).match(/\[([^\]]+)\]/);
+                            if (_brk && _brk[1].trim()) return _brk[1].replace(/\//g, ' / ');
+                        }
+                        // 2) 거래 레코드 명시 포지션 (t.reqPos / t.subPos)
+                        if (posFallback && String(posFallback).trim()) return posFallback;
+                        // 3) 동기화 스케줄 (보조)
                         if (shiftStr && personName) {
                             var _m = String(shiftStr).match(/(\d{4})-(\d{2})-(\d{2})/);
                             if (_m) {
@@ -2736,12 +2745,13 @@ function showKakaoModal(text, forced) {
                                 }
                             }
                         }
+                        // 4) MISO 등록 포지션
                         if (miso) {
                             if (miso.base_pos) return miso.base_pos;
                             if (Array.isArray(miso.pos) && miso.pos.length) return miso.pos.join(' / ');
                             if (typeof miso.pos === 'string') return miso.pos;
                         }
-                        return posFallback || '';
+                        return '';
                     };
                     // ① OUT 헤더: 신청자의 OUT 날짜 스케줄 포지션
                     var _reqOwnPos = _posForDate(t.shiftDate, t.reqName, _reqMiso, t.reqPos);
