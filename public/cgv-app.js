@@ -2571,11 +2571,11 @@ function showKakaoModal(text, forced) {
                                         var _sp = _sm.pos;
                                         return Array.isArray(_sp) && _sp.length
                                             ? _sp.join(' / ')
-                                            : (typeof _sp === 'string' && _sp ? _sp : (t.reqPos || '\uBB34\uAD00'));
+                                            : (typeof _sp === 'string' && _sp ? _sp : (t.subPos || '\uBB34\uAD00'));
                                     }
                                 }
                             }
-                            return t.reqPos || '\uBB34\uAD00';
+                            return t.subPos || '\uBB34\uAD00';
                         })();
                         _inLines.forEach(function(line, li) {
                             var _lParts = line.split(" / ");
