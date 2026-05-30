@@ -32,17 +32,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ★ 날짜별 포지션 맵 조회 (맞교대 카드 IN 포지션 표시용)
-    if (mode === 'posMap') {
-      const { data, error } = await supabaseAdmin
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'schedule_pos_map')
-        .single();
-      if (error) return NextResponse.json({});
-      return NextResponse.json(data?.value ?? {});
-    }
-
     const query = supabaseAdmin.from('misojigi').select('*').order('name');
     if (!all) query.eq('active', true);
 
@@ -52,9 +41,6 @@ export async function GET(req: NextRequest) {
     const result = (data ?? []).map((row: Record<string, any>) => ({
       name: row.name,
       pos: row.pos ? row.pos.split(',').map((p: string) => p.trim()) : [],
-      base_pos: row.base_pos            // 스케줄 지정 포지션 (콤마 구분 → ' / ' 조인)
-        ? row.base_pos.split(',').map((p: string) => p.trim()).join(' / ')
-        : null,
       hours: row.hours ?? '5.5',
       active: row.active,
       pin: row.pin ?? '00000',
@@ -95,69 +81,6 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action } = body as { action?: string };
-
-    // ── 스케줄 시트에서 날짜별 포지션 동기화 ────────────────────────
-    if (action === 'syncSchedulePos') {
-      const { startDate, endDate } = body as { startDate: string; endDate: string };
-      if (!startDate || !endDate) return NextResponse.json({ error: 'startDate, endDate 필요 (YYYY-MM-DD)' }, { status: 400 });
-      const GAS_URL = process.env.GAS_URL;
-      if (!GAS_URL) return NextResponse.json({ error: 'GAS_URL 미설정' }, { status: 500 });
-
-      // GAS에서 날짜별 포지션 맵 조회 { 'M/D': { name: pos } }
-      const gasRes = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'getSchedulePositionMapByDates', params: [startDate, endDate] }),
-      });
-      const gasJson = await gasRes.json() as { success: boolean; result: any; error?: string };
-      if (!gasJson.success) return NextResponse.json({ error: gasJson.error ?? 'GAS 오류' }, { status: 500 });
-
-      const dateMap = gasJson.result as Record<string, Record<string, string>>;
-      if (!dateMap || (dateMap as any).error) {
-        return NextResponse.json({ error: (dateMap as any)?.error ?? '포지션 데이터 없음' }, { status: 500 });
-      }
-
-      // ── 조회된 날짜가 없으면 기존 맵 보존 (빈 맵 덮어쓰기 방지) ──
-      const _dateKeys = Object.keys(dateMap);
-      if (_dateKeys.length === 0) {
-        return NextResponse.json({
-          ok: true, updated: 0, dateCount: 0,
-          note: '해당 기간에 읽어온 스케줄 날짜가 없어 기존 맵을 그대로 유지했습니다. (시트의 날짜 헤더 형식/주차 시트명을 확인하세요)',
-        });
-      }
-
-      // ── app_settings.schedule_pos_map 병합 저장 (기존 날짜 보존 + 신규 날짜 추가/갱신) ──
-      const { data: _existingRow } = await supabaseAdmin
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'schedule_pos_map')
-        .single();
-      const _mergedMap = Object.assign({}, (_existingRow?.value as any) || {}, dateMap);
-      const { error: settingsError } = await supabaseAdmin
-        .from('app_settings')
-        .upsert({ key: 'schedule_pos_map', value: _mergedMap as any }, { onConflict: 'key' });
-      if (settingsError) return NextResponse.json({ error: settingsError.message }, { status: 500 });
-
-      // ── misojigi.base_pos 업데이트 (이 기간에 등장한 고유 포지션 집계) ──
-      const personPos: Record<string, Set<string>> = {};
-      for (const dayMap of Object.values(dateMap)) {
-        for (const [name, pos] of Object.entries(dayMap)) {
-          if (!personPos[name]) personPos[name] = new Set();
-          personPos[name].add(pos);
-        }
-      }
-
-      let updated = 0;
-      for (const [name, posSet] of Object.entries(personPos)) {
-        const base_pos = [...posSet].join(',');
-        const { error } = await supabaseAdmin
-          .from('misojigi').update({ base_pos }).eq('name', name);
-        if (!error) updated++;
-      }
-
-      const dateCount = Object.keys(dateMap).length;
-      return NextResponse.json({ ok: true, updated, dateCount, map: dateMap });
-    }
 
     // ── 일반 PATCH ────────────────────────────────────────────────
     const { name, ...updates } = body as { name: string; [key: string]: any };

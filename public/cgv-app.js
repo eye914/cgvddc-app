@@ -10,7 +10,6 @@
         var pendingAdminTab = false;
         var MISO_DATA = []; // 앱 로드 시 미소지기DB에서 동적으로 채움
         var FULL_HOUR_NAMES = []; // 5.5h 미소지기 이름 목록
-        var SCHED_POS_MAP = {}; // 날짜별 포지션 맵 { 'M/D': { name: '매점'|'플로어'|'통합' } }
         var MALE_NAMES = ["\uae40\ud55c\uc194","\uc2e0\uc7ac\uc6a9","\uc870\ub3d9\uc6b0","\uc815\ud0dc\ubbfc","\uc190\uc815\ud604"];
         var currentFilter = "all"; // all / mine / open / nego / wait
 
@@ -1284,15 +1283,6 @@ function showKakaoModal(text, forced) {
             }
         }
 
-        function setSupportPositionSilently(pos) {
-            var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
-            if (!isTotal && currentUserPos.indexOf(pos) === -1) return;
-            document.querySelectorAll(".support-pos-chip").forEach(function(c){ c.classList.remove("pos-selected"); });
-            var el = document.getElementById("support-pos-"+pos);
-            if (el) el.classList.add("pos-selected");
-            document.getElementById("support-selected-pos").value = pos;
-        }
-
         function setSupportPosition(pos) {
             var t = trades.find(function(tr){ return tr.id === selectedTradeId; });
             var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
@@ -1552,10 +1542,15 @@ function showKakaoModal(text, forced) {
                     if (posWrap) posWrap.classList.add("hidden");
                     document.getElementById("support-selected-pos").value = t.reqPos || "";
                 } else {
-                    // 맞교대: 포지션 선택 UI 표시
+                    // 맞교대: 수락자가 본인 이전 포지션을 직접 선택 (본인 역량 내)
                     if (posWrap) posWrap.classList.remove("hidden");
-                    if (posLabelEl) posLabelEl.innerText = "투입 포지션 선택 (나의 역량: "+currentUserPos.join("/")+")"; 
-                    if (t.reqPos) setSupportPositionSilently(t.reqPos);
+                    if (posLabelEl) posLabelEl.innerText = "나의 이전 포지션 선택 (역량: "+currentUserPos.join("/")+")";
+                    // 선택 가능한 포지션이 하나뿐이면 자동 선택, 여러 개면 직접 선택
+                    var _openChips = Array.prototype.filter.call(
+                        document.querySelectorAll(".support-pos-chip"),
+                        function(c){ return !c.classList.contains("locked"); }
+                    );
+                    if (_openChips.length === 1) _openChips[0].click();
                 }
 
                 var timeS = document.getElementById("supporter-time-section");
@@ -1625,8 +1620,23 @@ function showKakaoModal(text, forced) {
             posContainer.innerHTML = "";
             // opt.pos가 없으면 공고자의 reqPos를 기본 포지션으로 사용
             var _trade = trades.find(function(tr){ return tr.id === selectedTradeId; });
-            var _defaultPos = (_trade && _trade.reqPos) ? _trade.reqPos : "\uD1B5\uD569";
-            var allowedPos = opt.pos ? opt.pos.split("/").map(function(s){ return s.trim(); }) : [_defaultPos];
+            var allowedPos;
+            if (_trade && _trade.tradeType === "sub") {
+                // \uB300\uD0C0: \uC694\uCCAD\uC790 \uD3EC\uC9C0\uC158 \uADF8\uB300\uB85C (\uC120\uD0DD UI\uB294 \uC228\uAE40 \uC0C1\uD0DC)
+                allowedPos = [ _trade.reqPos || "\uD1B5\uD569" ];
+            } else {
+                // \uB9DE\uAD50\uB300: \uC218\uB77D\uC790\uAC00 \uBCF8\uC778 \uC5ED\uB7C9 \uB0B4\uC5D0\uC11C '\uBCF8\uC778 \uC774\uC804 \uD3EC\uC9C0\uC158'\uC744 \uC9C1\uC811 \uC120\uD0DD
+                var _isTot = currentUserPos.indexOf("\uD1B5\uD569") > -1;
+                if (_isTot) {
+                    allowedPos = ["\uB9E4\uC810","\uB9E4\uC810\uB9C8\uAC10","\uD50C\uB85C\uC5B4","\uD1B5\uD569"];
+                } else {
+                    allowedPos = currentUserPos.slice();
+                    if (currentUserPos.indexOf("\uB9E4\uC810") > -1 && allowedPos.indexOf("\uB9E4\uC810\uB9C8\uAC10") === -1) {
+                        allowedPos.push("\uB9E4\uC810\uB9C8\uAC10");
+                    }
+                }
+                if (!allowedPos.length) allowedPos = [ (_trade && _trade.reqPos) ? _trade.reqPos : "\uD1B5\uD569" ];
+            }
             allowedPos.forEach(function(p){
                 var b = document.createElement("div");
                 var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
@@ -1700,39 +1710,11 @@ function showKakaoModal(text, forced) {
 
         function closeModal(){ document.getElementById("support-modal").style.display = "none"; }
 
-        // 날짜별 포지션 맵 로드 (비차단 — 맞교대 카드 IN 포지션 표시용)
-        function loadSchedPosMap(callback) {
-            // 세션 캐시 확인 (5분 TTL)
-            try {
-                var cached = sessionStorage.getItem('cgv_sched_pos_map_v3');
-                if (cached) {
-                    var parsed = JSON.parse(cached);
-                    if (parsed && parsed.data && parsed.ts && (Date.now() - parsed.ts) < 1 * 60 * 1000) {
-                        SCHED_POS_MAP = parsed.data;
-                        window._SCHED_POS_MAP = SCHED_POS_MAP; // 디버그용
-                        if (callback) callback();
-                        return;
-                    }
-                }
-            } catch(e) {}
-            fetch('/api/misojigi?mode=posMap')
-                .then(function(r){ return r.json(); })
-                .then(function(d){
-                    if (d && typeof d === 'object' && !d.error) {
-                        SCHED_POS_MAP = d;
-                        window._SCHED_POS_MAP = d; // 디버그용: 콘솔에서 _SCHED_POS_MAP 확인 가능
-                        try { sessionStorage.setItem('cgv_sched_pos_map_v3', JSON.stringify({ data: d, ts: Date.now() })); } catch(e) {}
-                    }
-                })
-                .catch(function(){})
-                .finally(function(){ if (callback) callback(); });
-        }
-
         function fetchData() {
             showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
-                var total = 4; // 미소지기DB + 교대DB + 출결DB + posMap 병렬
+                var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
                 var _fetchDone = false;
                 function onAllLoaded() {
                     loaded++;
@@ -1748,8 +1730,6 @@ function showKakaoModal(text, forced) {
                 setTimeout(function() {
                     if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); }
                 }, 12000);
-
-                loadSchedPosMap(onAllLoaded); // posMap 로드 (fetchData total에 포함)
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
                 var MISO_CACHE_TTL = 60 * 60 * 1000;
@@ -2165,8 +2145,7 @@ function showKakaoModal(text, forced) {
                         '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
                     '<div id="ma-b-' + sid + '" style="' + (isExp ? '' : 'display:none') + '" class="px-3 pb-3 border-t border-slate-100 bg-slate-50">' +
-                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-0.5">근무가능 포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
-                        '<div class="text-xs text-slate-500 font-bold mb-2">스케줄 포지션: <span class="' + (m.base_pos ? 'text-blue-700 font-black' : 'text-slate-400') + '">' + (m.base_pos || '미설정') + '</span></div>' +
+                        '<div class="text-xs text-slate-500 font-bold pt-2 mb-2">근무가능 포지션: <span class="text-slate-700">' + posStr + '</span></div>' +
                         (function() {
                             var ph = _misoPhones[m.name];
                             return ph && ph.display
@@ -2181,7 +2160,6 @@ function showKakaoModal(text, forced) {
                                     : '';
                             })() +
                             '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 근무포지션</button>' +
-                            '<button data-miso-action="edit-base-pos" data-miso-name="' + m.name + '" data-miso-base-pos="' + (m.base_pos || '') + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all">🗓️ 스케줄포지션</button>' +
                             '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
                             hoursEditBtn +
@@ -2199,9 +2177,6 @@ function showKakaoModal(text, forced) {
                     if (action === 'edit-pos') {
                         var pos = JSON.parse(this.getAttribute('data-miso-pos') || '[]');
                         editMisojigiPos(name, pos);
-                    } else if (action === 'edit-base-pos') {
-                        var basePos = this.getAttribute('data-miso-base-pos') || '';
-                        editMisojigiBasePos(name, basePos);
                     } else if (action === 'reset-pin') {
                         resetMisojigiPin(name);
                     } else if (action === 'toggle-active') {
@@ -2289,46 +2264,6 @@ function showKakaoModal(text, forced) {
                 .updateMisojigi(name, { pos: newPos });
         }
 
-        function editMisojigiBasePos(name, currentBasePos) {
-            // currentBasePos는 API에서 이미 ' / ' 조인된 문자열로 옴 → 입력용으로 ', '로 변환
-            var currentDisplay = (currentBasePos || '').replace(/ \/ /g, ', ');
-            var input = prompt(
-                name + ' 스케줄 포지션 설정\n\n' +
-                '스케줄에 실제 배정된 포지션을 입력하세요.\n' +
-                '여러 포지션은 콤마로 구분 (예: 매점, 플로어)\n' +
-                '현재: ' + (currentDisplay || '미설정') + '\n\n' +
-                '입력 (비워두면 초기화):',
-                currentDisplay || ''
-            );
-            if (input === null) return;
-            var valid = ['매점', '플로어', '통합'];
-            var parts = input.split(',').map(function(p) { return p.trim(); }).filter(function(p) { return p; });
-            var invalid = parts.filter(function(p) { return valid.indexOf(p) < 0; });
-            if (invalid.length > 0) {
-                alert('유효하지 않은 포지션: ' + invalid.join(', ') + '\n매점, 플로어, 통합만 사용 가능합니다.');
-                return;
-            }
-            // DB 저장: 콤마 구분 문자열 (예: "매점,플로어")
-            var saveVal = parts.length > 0 ? parts.join(',') : null;
-            // 화면 표시: ' / ' 구분 (예: "매점 / 플로어")
-            var displayVal = parts.length > 0 ? parts.join(' / ') : null;
-            fetch('/api/misojigi', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name, base_pos: saveVal })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-                if (d.error) { alert('저장 오류: ' + d.error); return; }
-                alert(name + ' 스케줄 포지션 → [' + (displayVal || '없음') + '] 저장됨');
-                for (var i = 0; i < MISO_DATA.length; i++) {
-                    if (MISO_DATA[i].name === name) { MISO_DATA[i].base_pos = displayVal; break; }
-                }
-                sessionStorage.removeItem('cgv_miso');
-                loadMisojigiAdmin();
-            })
-            .catch(function(e) { alert('오류: ' + e); });
-        }
 
         function resetMisojigiPin(name) {
             var newPin = prompt(name + ' 님의 새 PIN을 입력하세요.\n(숫자 ' + PIN_LENGTH_STAFF + '자리)');
@@ -2429,7 +2364,7 @@ function showKakaoModal(text, forced) {
                 var isR = t.status === "\uBC18\uB824\uB428";
                 var isSub = t.tradeType === "sub";
                 var rPL = t.reqPos||"\uBB34\uAD00";
-                // 수락자 등록 포지션(misojigi.pos) 조회 - 맞교대 이전 원래 포지션
+                // 등록 포지션(misojigi.pos) 조회 — reqPos/subPos가 없을 때만 쓰는 폴백
                 var _regPosOf = function(nm) {
                     if (!nm) return "";
                     for (var _ri = 0; _ri < MISO_DATA.length; _ri++) {
@@ -2437,28 +2372,14 @@ function showKakaoModal(text, forced) {
                             var _rp = MISO_DATA[_ri].pos;
                             if (Array.isArray(_rp) && _rp.length) return _rp.join(' / ');
                             if (typeof _rp === 'string' && _rp.trim()) return _rp;
-                            if (MISO_DATA[_ri].base_pos) return MISO_DATA[_ri].base_pos;
                             return "";
                         }
                     }
                     return "";
                 };
-                // ── 슬롯 점유자 기준 스케줄 포지션 (맞교대 이전 = 그 슬롯 본래 포지션) ──
-                //   승인완료(swap 적용): OUT슬롯=수락자, IN슬롯=요청자가 차지
-                //   승인 전: OUT슬롯=요청자, IN슬롯=수락자(본인 자리)
-                var _schedPosOf = function(dateSrc, nm) {
-                    if (!nm || !dateSrc) return "";
-                    var dm = String(dateSrc).match(/(\d{4})-(\d{2})-(\d{2})/);
-                    if (!dm) return "";
-                    var lbl = parseInt(dm[2],10) + '/' + parseInt(dm[3],10);
-                    return (SCHED_POS_MAP[lbl] && SCHED_POS_MAP[lbl][nm]) || "";
-                };
-                var _outOcc = isD ? t.subName : t.reqName;
-                var _inOcc  = isD ? t.reqName : t.subName;
-                // OUT 포지션: 요청자가 지정한 reqPos가 최우선 신뢰 → 보조로 스케줄/등록
-                var _outPos = (t.reqPos && t.reqPos !== '무관' ? t.reqPos : '') || _schedPosOf(t.shiftDate, _outOcc) || _regPosOf(t.reqName) || '무관';
-                // IN 포지션: 수락자가 지원 시 직접 선택한 subPos 최우선 (스케줄 동기화 불필요)
-                //   → 폴백: 등록 포지션(misojigi.pos)
+                // OUT(요청자) 이전 포지션 = 요청자가 OUT 공고 시 직접 선택한 reqPos (없으면 등록 포지션)
+                var _outPos = (t.reqPos && t.reqPos !== '무관' ? t.reqPos : '') || _regPosOf(t.reqName) || '무관';
+                // IN(수락자) 이전 포지션 = 수락자가 수락 시 직접 선택한 subPos (없으면 등록 포지션)
                 var _inPos = (t.subPos && t.subPos !== '무관' ? t.subPos : '') || _regPosOf(t.subName) || '무관';
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var safeDate = t.shiftDate ? String(t.shiftDate) : "\uB0A0\uC9DC \uBBF8\uC815";
@@ -2639,20 +2560,8 @@ function showKakaoModal(text, forced) {
                     var _reqMiso = MISO_DATA.find(function(m){ return m.name === t.reqName; });
                     var _reqHoursVal = _reqMiso ? (parseFloat(_reqMiso.hours) || 5.5) : null;
 
-                    // ── 날짜별 SCHED_POS_MAP 조회 helper (맞교대 이전 = 그 날 실제 스케줄 포지션) ──
-                    var _posForDate = function(shiftStr, personName, miso, posFallback) {
-                        // 맞교대 이전(원래) 포지션 = 본인 등록 포지션(misojigi.pos) 최우선
-                        // ※ [bracket]/posFallback=swap 후, base_pos/SCHED=동기화 오염 → 후순위
-                        if (miso) {
-                            if (Array.isArray(miso.pos) && miso.pos.length) return miso.pos.join(' / ');
-                            if (typeof miso.pos === 'string' && miso.pos.trim()) return miso.pos;
-                            if (miso.base_pos) return miso.base_pos;
-                        }
-                        if (posFallback && String(posFallback).trim()) return posFallback;
-                        return '';
-                    };
-                    // ── 본래(맞교대 이전) / 이후(맞교대 이후) 포지션 분리 ──
-                    //   근무시간 옆 인라인 뱃지 = 본래 포지션 (outHtml=rPL, inHtml=_inPos)
+                    // ── 이전(맞교대 전) / 이후(맞교대 후) 포지션 분리 ──
+                    //   인라인 뱃지(시간 옆) = 이전 포지션 (OUT=reqPos, IN=subPos)
                     //   우측 뱃지 = 맞교대 이후 포지션
                     //   swap 시 서로 상대 슬롯을 받음 → OUT 이후 = IN 슬롯, IN 이후 = OUT 슬롯
                     var _isSwapCard = !isSub;
