@@ -30,13 +30,9 @@
     var has = function (p) { return posArr.indexOf(p) > -1; };
     var isTotal = has('통합');
 
-    // 매점: 오픈·미들 (통합도 가능)
-    if (isTotal || has('매점')) {
-      rows.push({ id: 'mart', label: '매점', cls: 'mart', kinds: ['d', 'm'] });
-    }
-    // 매감(매점마감): 마감 (통합·매점도 가능)
+    // 매점: 오픈·미들·마감 (통합도 가능) — 마감을 별도 행 대신 매점에 통합
     if (isTotal || has('매점') || has('매점마감')) {
-      rows.push({ id: 'mart-close', label: '매감', cls: 'mart-close', kinds: ['n'] });
+      rows.push({ id: 'mart', label: '매점', cls: 'mart', kinds: ['d', 'm', 'n'] });
     }
     // 플로어: 주중=미들·마감, 주말=오픈·미들·마감 (통합도 가능)
     if (isTotal || has('플로어')) {
@@ -102,8 +98,8 @@
     var btnApply = document.getElementById('sched-sub-btn-apply');
     if (!viewEl || !applyEl) return;
 
-    var activeStyle   = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#e71a0f;color:white;transition:all .15s';
-    var inactiveStyle = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s';
+    var activeStyle   = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;background:#d8463a;color:white;transition:all .15s';
+    var inactiveStyle = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;background:transparent;color:#6c6c72;transition:all .15s';
 
     if (tab === 'view') {
       viewEl.style.display  = '';
@@ -228,7 +224,7 @@
     html += '<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;padding:14px 16px;margin-bottom:10px">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     html += '<span style="font-size:16px;font-weight:900;color:#0f172a">' + curUser.name + '</span>';
-    html += '<span style="display:inline-block;padding:2px 8px;background:#eff6ff;color:#1d4ed8;border-radius:6px;font-size:10px;font-weight:900">' + hours + 'h</span>';
+    html += '<span style="display:inline-block;padding:2px 8px;background:#eef4f9;color:#4a7fb5;border-radius:6px;font-size:10px;font-weight:800">' + hours + 'h</span>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
     html += '<span style="font-size:11px;font-weight:700;color:#64748b">근로일수 <b style="color:#0f172a">' + contractDays + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
@@ -236,20 +232,21 @@
     html += '</div>';
     /* 진행 바 */
     html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
-    html += '<div style="height:100%;border-radius:3px;background:' + (overLimit ? '#ef4444' : '#e71a0f') + ';width:' + pct + '%;transition:width .3s"></div>';
+    html += '<div style="height:100%;border-radius:3px;background:' + (overLimit ? '#cf6b62' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
-    html += '<p style="font-size:10px;color:#94a3b8;font-weight:700">🔒 근로일수는 관리자가 「미소지기 관리」에서 변경합니다</p>';
+    html += '<p style="font-size:10px;color:#a1a1a8;font-weight:600;line-height:1.5;word-break:keep-all">⚖️ 본 신청은 근로계약에 따라 편성에 반영됩니다. 희망하는 요일·타임슬롯·포지션을 신청해 주세요.</p>';
     html += '</div>';
 
-    /* ── 빠른 패턴 버튼 ── */
-    var patStyle = 'padding:7px 12px;border:1.5px solid #e2e8f0;background:white;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#334155';
-    var patStylePrimary = 'padding:7px 12px;border:1.5px solid #e71a0f;background:#fef2f2;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#e71a0f';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
-    html += '<button style="' + patStylePrimary + '" onclick="availSelectAll()">매일 전부 가능</button>';
-    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'weekday\')">평일만(월~금)</button>';
-    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'weekend\')">주말만(토~일)</button>';
-    html += '<button style="' + patStyle + '" onclick="availSelectPattern(\'mid\')">미들만</button>';
-    html += '<button style="padding:7px 12px;border:1.5px solid #fca5a5;background:#fef2f2;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;color:#dc2626" onclick="availReset()">초기화</button>';
+    /* ── 빠른 패턴 (매일전부가능 / 평일·주말·미들 그룹 / 초기화) ── */
+    var patStyle = 'padding:9px 0;border:1.5px solid #e6e6ec;background:white;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#4a4a52';
+    html += '<div style="margin-bottom:12px">';
+    html += '<button style="width:100%;padding:9px 0;border:1.5px solid #d8463a;background:#fbeeec;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#d8463a;margin-bottom:6px" onclick="availSelectAll()">매일 전부 가능</button>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:6px">';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekday\')">평일만</button>';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekend\')">주말만</button>';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'mid\')">미들만</button>';
+    html += '</div>';
+    html += '<button style="width:100%;' + patStyle + ';color:#a1a1a8" onclick="availReset()">초기화</button>';
     html += '</div>';
 
     /* ── 요일 카드 ── */
@@ -260,7 +257,7 @@
       var isSun     = dayIdx === 6;
       var isHoliday = HOLIDAYS.indexOf(dayIdx) > -1;
       var isAdminInt= ADMIN_INT.indexOf(dayIdx) > -1;
-      var nameColor = isSat ? '#2563eb' : isSun || isHoliday ? '#dc2626' : '#0f172a';
+      var nameColor = isSat ? '#5b8fd0' : isSun || isHoliday ? '#cf6b62' : '#2a2a2e';
       var curKinds  = getSelectedKinds(dayIdx);
       var allKinds  = getAllActiveKinds(dayIdx);
       var allOn     = allKinds.length > 0 && allKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
@@ -274,14 +271,14 @@
       html += '<div style="display:flex;align-items:center;gap:6px">';
       html += '<span style="font-size:15px;font-weight:900;color:' + nameColor + '">' + DAY_KOR[dayIdx] + '</span>';
       html += '<span style="font-size:11px;font-weight:700;color:#94a3b8">' + dateStr + '</span>';
-      if (isHoliday)  html += '<span style="font-size:9px;font-weight:900;color:#dc2626;background:#fef2f2;padding:2px 6px;border-radius:4px">공휴일</span>';
-      if (isAdminInt) html += '<span style="font-size:9px;font-weight:900;color:#0e7490;background:#ecfeff;padding:2px 6px;border-radius:4px">⚑통합모집</span>';
-      if (picks > 0)  html += '<span style="font-size:9px;font-weight:900;color:#e71a0f;background:#fef2f2;padding:2px 6px;border-radius:4px">' + picks + '개 선택</span>';
+      if (isHoliday)  html += '<span style="font-size:9px;font-weight:800;color:#c0564a;background:#f9ece9;padding:2px 6px;border-radius:5px">공휴일</span>';
+      if (isAdminInt) html += '<span style="font-size:9px;font-weight:800;color:#3f8a96;background:#ecf6f7;padding:2px 6px;border-radius:5px">통합모집</span>';
+      if (picks > 0)  html += '<span style="font-size:9px;font-weight:800;color:#d8463a;background:#fbeeec;padding:2px 6px;border-radius:5px">' + picks + '개</span>';
       html += '</div>';
       /* 전부 가능 버튼 */
       var allBtnStyle = allOn
-        ? 'padding:5px 10px;border:none;border-radius:8px;font-size:11px;font-weight:900;cursor:pointer;background:#e71a0f;color:white'
-        : 'padding:5px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:11px;font-weight:900;cursor:pointer;background:white;color:#64748b';
+        ? 'padding:5px 11px;border:none;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;background:#d8463a;color:white'
+        : 'padding:5px 11px;border:1.5px solid #e6e6ec;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;background:white;color:#6c6c72';
       html += '<button style="' + allBtnStyle + '" onclick="availToggleAll(' + dayIdx + ')">' + (allOn ? '✓ ' : '○ ') + '전부 가능</button>';
       html += '</div>';
 
@@ -292,22 +289,23 @@
         if (!activeGroups.length) return;
         hasAnyCell = true;
 
-        var labelColor = pos.cls === 'mart' ? '#b91c1c'
-          : pos.cls === 'mart-close' ? '#a21caf'
-          : pos.cls === 'floor' ? '#15803d' : '#6d28d9';
+        var labelColor = pos.cls === 'mart' ? '#b15644'
+          : pos.cls === 'mart-close' ? '#a85a86'
+          : pos.cls === 'floor' ? '#2f7d5c' : '#615aa0';
 
-        html += '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px">';
-        html += '<span style="flex:0 0 40px;font-size:11px;font-weight:900;color:' + labelColor + ';padding-top:6px">' + pos.label + '</span>';
-        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">';
+        html += '<span style="flex:0 0 42px;font-size:11px;font-weight:800;line-height:1.25;color:' + labelColor + '">' + pos.label + '</span>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;flex:1">';
 
-        activeGroups.forEach(function (g) {
+        // 오픈/미들/마감 3열 고정 — 해당 포지션이 안 쓰는 칸은 빈칸으로 정렬 유지
+        GROUPS.forEach(function (g) {
+          if (!isCellActive(dayIdx, pos, g.id)) { html += '<span></span>'; return; }
           var on    = curKinds.indexOf(g.id) > -1;
           var chipStyle = on
-            ? 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:none;background:#e71a0f;color:white;box-shadow:0 2px 6px rgba(231,26,15,.25)'
-            : 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #e2e8f0;background:white;color:#334155';
+            ? 'display:flex;align-items:center;justify-content:center;gap:3px;width:100%;padding:7px 3px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #d8463a;background:#d8463a;color:white;white-space:nowrap'
+            : 'display:flex;align-items:center;justify-content:center;gap:3px;width:100%;padding:7px 3px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #e6e6ec;background:white;color:#4a4a52;white-space:nowrap';
           html += '<button style="' + chipStyle + '" onclick="availToggleChip(' + dayIdx + ',\'' + g.id + '\')">';
-          html += g.icon + ' ' + g.label;
-          html += '<span style="font-size:9px;opacity:.7;margin-left:3px;font-weight:700">' + g.codes + '</span>';
+          html += g.label + '<span style="font-size:8.5px;opacity:.6;font-weight:700">' + g.codes + '</span>';
           html += '</button>';
         });
 
