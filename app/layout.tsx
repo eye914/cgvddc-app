@@ -37,6 +37,7 @@ const appVer   = fileVer('cgv-app.js');
 const ctrVer   = fileVer('contract-ui.js');
 const schVer   = fileVer('schedule-ui.js');
 const availVer = fileVer('availability-ui.js');
+const arrVer   = fileVer('arrange-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src={`/contract-ui.js?v=${ctrVer}`} defer />
         <script src={`/schedule-ui.js?v=${schVer}`} defer />
         <script src={`/availability-ui.js?v=${availVer}`} defer />
+        <script src={`/arrange-ui.js?v=${arrVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}
