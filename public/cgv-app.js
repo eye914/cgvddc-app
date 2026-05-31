@@ -2126,18 +2126,17 @@ function showKakaoModal(text, forced) {
                 var toggleClass = m.active
                     ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
                     : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100';
+                var BTN_N = 'text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200';
                 var hardDeleteBtn = m.active ? '' :
                     '<button data-miso-action="hard-delete" data-miso-name="' + m.name + '" ' +
-                        'class="text-xs font-black px-3 py-1.5 rounded-xl bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 transition-all">🗑️ DB삭제</button>';
+                        'class="text-xs font-bold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200">DB삭제</button>';
                 var hoursVal = parseFloat(m.hours) || 5.5;
-                var hoursBadge = hoursVal <= 4.5
-                    ? '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 ml-1">4.5h</span>'
-                    : '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 ml-1">5.5h</span>';
+                var hoursBadge = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 ml-1.5">' + hoursVal + 'h</span>';
                 var hoursEditBtn = '<button data-miso-action="edit-hours" data-miso-name="' + m.name + '" data-miso-hours="' + (m.hours || '5.5') + '" '
-                    + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-all">⏱️ 근무시간</button>';
+                    + 'class="' + BTN_N + '">근무시간</button>';
                 var cdVal = parseInt(m.contract_days, 10) || 5;
                 var contractEditBtn = '<button data-miso-action="edit-contract" data-miso-name="' + m.name + '" data-miso-cd="' + cdVal + '" '
-                    + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-all">📅 근로일수 ' + cdVal + '일</button>';
+                    + 'class="' + BTN_N + '">근로일수 ' + cdVal + '일</button>';
                 var sid = 'mi' + misoIdx;
                 misoIdx++;
                 var isExp = !!_misoExpanded[m.name];
@@ -2159,12 +2158,12 @@ function showKakaoModal(text, forced) {
                             (function() {
                                 var ph = _misoPhones[m.name];
                                 return ph && ph.tel
-                                    ? '<a href="tel:' + ph.tel + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-all inline-flex items-center gap-1">📞 전화걸기</a>'
+                                    ? '<a href="tel:' + ph.tel + '" class="' + BTN_N + '">전화걸기</a>'
                                     : '';
                             })() +
-                            '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all">✏️ 근무포지션</button>' +
-                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
-                            '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
+                            '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="' + BTN_N + '">근무포지션</button>' +
+                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="' + BTN_N + '">PIN 설정</button>' +
+                            '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-bold px-3 py-1.5 rounded-lg ' + toggleClass + '">' + toggleLabel + '</button>' +
                             hoursEditBtn +
                             contractEditBtn +
                             hardDeleteBtn +
