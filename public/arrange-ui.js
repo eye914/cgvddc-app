@@ -224,17 +224,25 @@
   function reload() { return loadData(ST.weekKey).then(render); }
 
   window.arrangeAssign = function (name) {
-    if (ST.busy) return; ST.busy = true;
+    if (ST.busy || !_slot) return; ST.busy = true;
     var s = staffBy(name);
-    post({ action: 'assign', weekKey: ST.weekKey, date: dateForDay(ST.day), dayOfWeek: ST.day, shiftCode: _slot.code, position: (POS_CLS[_slot.pos] || _slot.pos), name: name, hours: parseFloat(s ? s.hours : 5.5) || 5.5 })
-      .then(function (j) { ST.busy = false; if (j && j.error) { alert('오류: ' + j.error); return; } arrangeCloseSheet(); reload(); })
-      .catch(function () { ST.busy = false; alert('네트워크 오류'); });
+    var code = _slot.code, pos = _slot.pos, pcode = POS_CLS[pos] || pos, date = dateForDay(ST.day);
+    // 낙관적 업데이트: 즉시 화면 반영
+    ST.data.assignments = (ST.data.assignments || []).filter(function (a) { return !(a.date === date && a.shiftCode === code && a.position === pcode); });
+    ST.data.assignments.push({ date: date, dayOfWeek: ST.day, shiftCode: code, position: pcode, name: name, hours: String(s ? s.hours : '5.5') });
+    arrangeCloseSheet(); render();
+    post({ action: 'assign', weekKey: ST.weekKey, date: date, dayOfWeek: ST.day, shiftCode: code, position: pcode, name: name, hours: parseFloat(s ? s.hours : 5.5) || 5.5 })
+      .then(function (j) { ST.busy = false; if (j && j.error) { alert('배정 저장 실패: ' + j.error); reload(); } })
+      .catch(function () { ST.busy = false; alert('네트워크 오류 — 다시 시도해주세요'); reload(); });
   };
   window.arrangeRemove = function () {
     if (ST.busy || !_slot) return; ST.busy = true;
-    post({ action: 'remove', weekKey: ST.weekKey, date: dateForDay(ST.day), shiftCode: _slot.code, position: (POS_CLS[_slot.pos] || _slot.pos) })
-      .then(function (j) { ST.busy = false; if (j && j.error) { alert('오류: ' + j.error); return; } arrangeCloseSheet(); reload(); })
-      .catch(function () { ST.busy = false; alert('네트워크 오류'); });
+    var code = _slot.code, pos = _slot.pos, pcode = POS_CLS[pos] || pos, date = dateForDay(ST.day);
+    ST.data.assignments = (ST.data.assignments || []).filter(function (a) { return !(a.date === date && a.shiftCode === code && a.position === pcode); });
+    arrangeCloseSheet(); render();
+    post({ action: 'remove', weekKey: ST.weekKey, date: date, shiftCode: code, position: pcode })
+      .then(function (j) { ST.busy = false; if (j && j.error) { alert('해제 저장 실패: ' + j.error); reload(); } })
+      .catch(function () { ST.busy = false; alert('네트워크 오류 — 다시 시도해주세요'); reload(); });
   };
 
   window.arrangeSelDay = function (d) { ST.day = d; render(); };

@@ -4232,14 +4232,15 @@ function showKakaoModal(text, forced) {
                 var base = new Date(); base.setHours(0,0,0,0);
                 var dow = base.getDay();
                 base.setDate(base.getDate() + (dow === 0 ? -6 : 1 - dow)); // 이번 주 월요일
-                for (var w = -1; w <= 6; w++) {
+                // 차주(다음 주) 이상만 노출 — 과거 주차 제외
+                for (var w = 1; w <= 8; w++) {
                     var mon = new Date(base); mon.setDate(base.getDate() + w * 7);
                     var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
                     var val = mon.getFullYear() + '-' +
                         String(mon.getMonth() + 1).padStart(2, '0') + '-' +
                         String(mon.getDate()).padStart(2, '0');
                     var wnum = Math.ceil(mon.getDate() / 7);
-                    var label = String(mon.getFullYear()).slice(2) + '년 ' + (mon.getMonth() + 1) + '월 ' + wnum + '주차 (' +
+                    var label = (mon.getMonth() + 1) + '월 ' + wnum + '주차 (' +
                         (mon.getMonth() + 1) + '/' + mon.getDate() + '~' + (sun.getMonth() + 1) + '/' + sun.getDate() + ')';
                     var opt = document.createElement('option');
                     opt.value = val; opt.textContent = label;
