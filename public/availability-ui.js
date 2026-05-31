@@ -376,6 +376,8 @@
       days.push({ dayOfWeek: i, shiftCodes: getSelectedKinds(i) });
     }
 
+    var picked = countSelectedDays();
+
     fetch('/api/availability', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -384,17 +386,45 @@
       .then(function (r) { return r.json(); })
       .then(function (json) {
         if (json.ok) {
-          showAvailToast('✅ 스케줄 신청이 완료됐습니다!', '#16a34a');
+          renderAvailComplete(picked);
         } else {
           showAvailToast('오류: ' + (json.error || '다시 시도해주세요'), '#dc2626');
+          if (btn) { btn.disabled = false; btn.textContent = '신청하기'; }
         }
       })
       .catch(function () {
         showAvailToast('네트워크 오류. 다시 시도해주세요.', '#dc2626');
-      })
-      .finally(function () {
         if (btn) { btn.disabled = false; btn.textContent = '신청하기'; }
       });
+  };
+
+  /* ── 신청 완료 화면 ── */
+  function renderAvailComplete(picked) {
+    var mon = new Date(weekKey + 'T00:00:00');
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var wlabel = (mon.getMonth() + 1) + '/' + mon.getDate() + ' ~ ' + (sun.getMonth() + 1) + '/' + sun.getDate();
+    var footer = document.getElementById('avail-sticky-footer');
+    if (footer) footer.style.display = 'none';
+    var b = document.getElementById('avail-body');
+    if (!b) return;
+    b.innerHTML =
+      '<div style="text-align:center;padding:48px 24px">' +
+        '<div style="width:72px;height:72px;border-radius:50%;background:#e9f6ef;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:34px;color:#2f8a5f">✓</div>' +
+        '<div style="font-size:19px;font-weight:800;color:#2a2a2e;margin-bottom:8px;letter-spacing:-.03em">스케줄 신청 완료!</div>' +
+        '<div style="font-size:13px;font-weight:700;color:#6c6c72;margin-bottom:6px">' + wlabel + ' 주간</div>' +
+        '<div style="font-size:12px;font-weight:600;color:#a1a1a8;line-height:1.55;word-break:keep-all;margin:0 auto 24px;max-width:300px">희망 근무 <b style="color:#d8463a">' + picked + '일</b> 신청이 저장되었습니다. 관리자 편성 후 「내 근무」에서 확정 스케줄을 확인할 수 있어요.</div>' +
+        '<div style="display:flex;gap:8px;max-width:320px;margin:0 auto">' +
+          '<button onclick="availBackToForm()" style="flex:1;padding:13px 0;border:1.5px solid #e6e6ec;background:#fff;border-radius:13px;font-size:13px;font-weight:800;color:#4a4a52;cursor:pointer">✏️ 수정하기</button>' +
+          '<button onclick="switchSchedTab(\'view\')" style="flex:1;padding:13px 0;border:none;background:#d8463a;border-radius:13px;font-size:13px;font-weight:800;color:#fff;cursor:pointer">내 근무 보기</button>' +
+        '</div>' +
+      '</div>';
+  }
+  window.availBackToForm = function () {
+    var footer = document.getElementById('avail-sticky-footer');
+    if (footer) footer.style.display = '';
+    var btn = document.getElementById('avail-submit-btn');
+    if (btn) { btn.disabled = false; btn.textContent = '신청하기'; }
+    renderAvailUI();
   };
 
   function showAvailToast(msg, bgColor) {
