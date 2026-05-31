@@ -252,7 +252,7 @@
       var bars = '';
       items.forEach(function (it) {
         var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H;
-        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:9%;width:82%" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
+        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:29.5%;width:41%" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
           '<span class="ar-vbn">' + it.n + '</span>' + (it.sub ? '<span class="ar-vbt">' + it.sub + '</span>' : '') + '</div>';
       });
       cols += '<div class="ar-vcol">' + bars + '</div>';
