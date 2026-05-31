@@ -2135,6 +2135,9 @@ function showKakaoModal(text, forced) {
                     : '<span class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 ml-1">5.5h</span>';
                 var hoursEditBtn = '<button data-miso-action="edit-hours" data-miso-name="' + m.name + '" data-miso-hours="' + (m.hours || '5.5') + '" '
                     + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-all">⏱️ 근무시간</button>';
+                var cdVal = parseInt(m.contract_days, 10) || 5;
+                var contractEditBtn = '<button data-miso-action="edit-contract" data-miso-name="' + m.name + '" data-miso-cd="' + cdVal + '" '
+                    + 'class="text-xs font-black px-3 py-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition-all">📅 근로일수 ' + cdVal + '일</button>';
                 var sid = 'mi' + misoIdx;
                 misoIdx++;
                 var isExp = !!_misoExpanded[m.name];
@@ -2163,6 +2166,7 @@ function showKakaoModal(text, forced) {
                             '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="text-xs font-black px-3 py-1.5 rounded-xl bg-yellow-50 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 transition-all">🔑 PIN 설정</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-black px-3 py-1.5 rounded-xl ' + toggleClass + ' transition-all">' + toggleLabel + '</button>' +
                             hoursEditBtn +
+                            contractEditBtn +
                             hardDeleteBtn +
                         '</div>' +
                     '</div>' +
@@ -2186,6 +2190,9 @@ function showKakaoModal(text, forced) {
                     } else if (action === 'edit-hours') {
                         var currentHours = this.getAttribute('data-miso-hours') || '5.5';
                         toggleMisojigiHours(name, currentHours);
+                    } else if (action === 'edit-contract') {
+                        var curCd = parseInt(this.getAttribute('data-miso-cd'), 10) || 5;
+                        editMisojigiContract(name, curCd);
                     } else if (action === 'hard-delete') {
                         deleteMisojigiHard(name);
                     }
@@ -2208,6 +2215,22 @@ function showKakaoModal(text, forced) {
                 })
                 .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
                 .updateMisojigi(name, { hours: newHours });
+        }
+        function editMisojigiContract(name, cur) {
+            var input = prompt(name + ' 님의 주간 근로일수(1~7)를 입력하세요.', String(cur || 5));
+            if (input === null) return;
+            var v = parseInt(input, 10);
+            if (isNaN(v) || v < 1 || v > 7) { alert('1~7 사이 숫자를 입력해주세요.'); return; }
+            google.script.run
+                .withSuccessHandler(function() {
+                    for (var i = 0; i < MISO_DATA.length; i++) {
+                        if (MISO_DATA[i].name === name) { MISO_DATA[i].contract_days = v; break; }
+                    }
+                    alert(name + ' 근로일수 ' + v + '일로 변경되었습니다.');
+                    loadMisojigiAdmin();
+                })
+                .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
+                .updateMisojigi(name, { contract_days: v });
         }
         function showAddMisojigiForm() {
             var form = document.getElementById('miso-add-form');
