@@ -240,19 +240,15 @@
       lanes[posK].push({ n: a.name, s: s, e: e, code: a.shiftCode, pos: posK, cls: POS_CLS[posK],
         sub: is45h ? (a.shiftCode.charAt(0) === 'N' ? '(' + fmtMin(s) + '~)' : '(~' + fmtMin(e) + ')') : '' });
     });
-    function layoutV(items) {
+    // 막대 폭을 전 열에서 통일: 전체 열의 최대 동시인원(globalMax) 기준
+    function packLane(items) {
       items.sort(function (a, b) { return a.s - b.s || a.e - b.e; });
-      var i = 0, maxCols = 1;
-      while (i < items.length) {
-        var cluster = [items[i]], maxEnd = items[i].e, j = i + 1;
-        while (j < items.length && items[j].s < maxEnd) { cluster.push(items[j]); if (items[j].e > maxEnd) maxEnd = items[j].e; j++; }
-        var ends = [];
-        cluster.forEach(function (it) { var pl = false; for (var k = 0; k < ends.length; k++) { if (ends[k] <= it.s) { it.lane = k; ends[k] = it.e; pl = true; break; } } if (!pl) { it.lane = ends.length; ends.push(it.e); } });
-        if (ends.length > maxCols) maxCols = ends.length;
-        i = j;
-      }
-      items.forEach(function (it) { it.cols = maxCols; });
+      var ends = [];
+      items.forEach(function (it) { var pl = false; for (var k = 0; k < ends.length; k++) { if (ends[k] <= it.s) { it.lane = k; ends[k] = it.e; pl = true; break; } } if (!pl) { it.lane = ends.length; ends.push(it.e); } });
+      return ends.length;
     }
+    var globalMax = 1;
+    order.forEach(function (pos) { var m = packLane(lanes[pos]); if (m > globalMax) globalMax = m; });
     var head = '<div class="ar-vhead"><div class="ar-vh-g"></div>' + order.map(function (p) { return '<div class="ar-vh-c">' + p + '</div>'; }).join('') + '</div>';
     var lines = '';
     for (var h = 9; h <= 24; h++) { var top = PAD + (h - 9) / 15.5 * H; lines += '<div class="ar-hl" style="top:' + top + 'px"></div><div class="ar-hlab" style="top:' + top + 'px">' + h + '시</div>'; }
@@ -260,9 +256,9 @@
     lines += '<div class="ar-hl" style="top:' + (PAD + H) + 'px"></div>';
     var cols = '';
     order.forEach(function (pos) {
-      var items = lanes[pos]; layoutV(items); var bars = '';
+      var items = lanes[pos]; var bars = '';
       items.forEach(function (it) {
-        var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H, w = 100 / it.cols, left = it.lane * w;
+        var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H, w = 100 / globalMax, left = it.lane * w;
         bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:' + left + '%;width:calc(' + w + '% - 3px)" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
           '<span class="ar-vbn">' + it.n + '</span>' + (it.sub ? '<span class="ar-vbt">' + it.sub + '</span>' : '') + '</div>';
       });
