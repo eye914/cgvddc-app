@@ -122,6 +122,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── 해당 날짜 배정 전체 초기화 ──────────────────────────────
+    if (action === 'clearDay') {
+      const { weekKey, date } = body as { weekKey: string; date: string };
+      if (!weekKey || !date) {
+        return NextResponse.json({ error: '필수 항목 누락' }, { status: 400 });
+      }
+      const { error } = await supabaseAdmin
+        .from('schedule_assignments')
+        .delete()
+        .eq('week_key', weekKey)
+        .eq('date', date);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
     // ── 주차 확정 + GAS 시트 동기화 ───────────────────────────
     if (action === 'confirm') {
       const { weekKey } = body as { weekKey: string };

@@ -120,7 +120,14 @@
       + '.ar-cnt{font-size:10px;font-weight:700;color:#2a2a2e;background:#ececef;padding:4px 8px;border-radius:8px;}.ar-cnt.over{background:#f9ece9;color:#bf5848;}'
       + '.ar-add{font-size:12px;font-weight:800;color:#fff;background:#d8463a;border:none;border-radius:10px;padding:8px 13px;}'
       + '.ar-empty{padding:40px 20px;text-align:center;color:#b2b2b8;font-size:13px;font-weight:700;}'
-      + '.ar-hint{font-size:10px;color:#b2b2b8;text-align:center;margin:10px 0 2px;font-weight:600;}';
+      + '.ar-hint{font-size:10px;color:#b2b2b8;text-align:center;margin:10px 0 2px;font-weight:600;}'
+      + '.ar-pr.busy{opacity:.55;}'
+      + '.ar-busy{font-size:10px;font-weight:800;color:#9a9aa0;background:#f0f0f2;padding:7px 11px;border-radius:9px;white-space:nowrap;}'
+      + '.ar-clear{margin-top:9px;width:100%;border:1px solid #f0d6d2;background:#fdf3f1;color:#c4503e;border-radius:11px;padding:9px 0;font-size:11.5px;font-weight:800;cursor:pointer;}'
+      + '.ar-pg-b.link{cursor:pointer;text-decoration:underline;text-underline-offset:2px;}'
+      + '.ar-names{display:flex;flex-wrap:wrap;gap:6px;}'
+      + '.ar-chip{font-size:12px;font-weight:800;padding:6px 11px;border-radius:9px;}'
+      + '.ar-chip.s{background:#e9f6ef;color:#2f8a5f;}.ar-chip.n{background:#f0f0f2;color:#8a8a90;}';
     var st = document.createElement('style'); st.id = 'ar-style'; st.textContent = css; document.head.appendChild(st);
   }
 
@@ -163,8 +170,9 @@
     var pct = total ? Math.round(filled / total * 100) : 0;
     document.getElementById('ar-pg').innerHTML =
       '<div class="ar-pg-row"><div class="ar-pg-a">배정 ' + pct + '% <span>' + filled + ' 칸</span></div>' +
-      '<div class="ar-pg-b">신청 ' + (ST.data.submitted || []).length + ' · 미제출 ' + ((ST.data.staff || []).length - (ST.data.submitted || []).length) + '</div></div>' +
-      '<div class="ar-bar"><i style="width:' + pct + '%"></i></div>';
+      '<div class="ar-pg-b link" onclick="arrangeShowStatus()">신청 ' + (ST.data.submitted || []).length + ' · 미제출 ' + ((ST.data.staff || []).length - (ST.data.submitted || []).length) + ' ›</div></div>' +
+      '<div class="ar-bar"><i style="width:' + pct + '%"></i></div>' +
+      (filled > 0 ? '<button class="ar-clear" onclick="arrangeClearDay()">이 요일 배정 초기화 (' + filled + '칸)</button>' : '');
 
     // 그리드
     var html = '';
@@ -195,15 +203,23 @@
     var group = code.charAt(0).toLowerCase();
     var el = eligible(group, pos);
     var cur = cellOf(code, pos);
+    var pcode = POS_CLS[pos] || pos;
     var ov = document.getElementById('ar-ov');
     function row(s, isSub) {
       var ad = assignedDays(s.name), over = ad > s.contractDays;
-      return '<div class="ar-pr ' + (isSub ? 's' : '') + '">' +
+      // 같은 요일 다른 슬롯에 이미 배정된 경우 → 중복 배정 차단
+      var dayAsg = (ST.data.assignments || []).find(function (a) { return a.dayOfWeek === ST.day && a.name === s.name; });
+      var here = dayAsg && dayAsg.shiftCode === code && dayAsg.position === pcode;
+      var blocked = dayAsg && !here;
+      var right = blocked
+        ? '<span class="ar-busy">이미 ' + dayAsg.shiftCode + ' 배정</span>'
+        : '<button class="ar-add" onclick="arrangeAssign(\'' + s.name.replace(/'/g, "\\'") + '\')">배정</button>';
+      return '<div class="ar-pr ' + (isSub ? 's' : '') + (blocked ? ' busy' : '') + '">' +
         '<div class="ar-av ' + (isSub ? 's' : 'n') + '">' + s.name.charAt(0) + '</div>' +
         '<span class="pn">' + s.name + '</span>' +
         '<span class="ar-tag">' + (s.pos.join('·') || '-') + '</span>' +
         '<span class="ar-cnt ' + (over ? 'over' : '') + '">' + ad + '/' + s.contractDays + '</span>' +
-        '<button class="ar-add" onclick="arrangeAssign(\'' + s.name.replace(/'/g, "\\'") + '\')">배정</button></div>';
+        right + '</div>';
     }
     var h = '<div class="ar-grab"></div>' +
       '<div class="ar-sh-h"><div><div class="ar-sh-t">' + code + ' · ' + pos + '</div><div class="ar-sh-s">' + dayLabel(ST.day) + '(' + DAY_KOR[ST.day] + ') ' + (TIME[code] ? TIME[code].disp : '') + ' · 가능 직원</div></div><button class="ar-close" onclick="arrangeCloseSheet()">✕</button></div>';
@@ -247,6 +263,37 @@
 
   window.arrangeSelDay = function (d) { ST.day = d; render(); };
   window.arrangeDeploy = function () { alert('시트 배포(편성→시트 작성)는 다음 단계(Phase C)에서 연결됩니다.'); };
+
+  window.arrangeClearDay = function () {
+    var n = (ST.data.assignments || []).filter(function (a) { return a.dayOfWeek === ST.day; }).length;
+    if (!n || ST.busy) return;
+    if (!confirm(dayLabel(ST.day) + '(' + DAY_KOR[ST.day] + ') 배정 ' + n + '칸을 모두 초기화할까요?')) return;
+    ST.busy = true;
+    var date = dateForDay(ST.day);
+    ST.data.assignments = (ST.data.assignments || []).filter(function (a) { return a.dayOfWeek !== ST.day; });
+    render();
+    post({ action: 'clearDay', weekKey: ST.weekKey, date: date })
+      .then(function (j) { ST.busy = false; if (j && j.error) { alert('초기화 실패: ' + j.error); reload(); } })
+      .catch(function () { ST.busy = false; alert('네트워크 오류'); reload(); });
+  };
+
+  window.arrangeShowStatus = function () {
+    var subSet = {}; (ST.data.submitted || []).forEach(function (n) { subSet[n] = 1; });
+    var subs = [], non = [];
+    (ST.data.staff || []).forEach(function (s) { (subSet[s.name] ? subs : non).push(s.name); });
+    var mon = parseMon(ST.weekKey), sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var wl = (mon.getMonth() + 1) + '/' + mon.getDate() + '~' + (sun.getMonth() + 1) + '/' + sun.getDate();
+    var h = '<div class="ar-grab"></div>' +
+      '<div class="ar-sh-h"><div><div class="ar-sh-t">신청 현황</div><div class="ar-sh-s">' + wl + ' · 제출 ' + subs.length + ' / 미제출 ' + non.length + '</div></div><button class="ar-close" onclick="arrangeCloseSheet()">✕</button></div>' +
+      '<div class="ar-grp"><span class="ar-gd s"></span>신청 완료 (' + subs.length + ')</div>' +
+      (subs.length ? '<div class="ar-names">' + subs.map(function (n) { return '<span class="ar-chip s">' + n + '</span>'; }).join('') + '</div>' : '<div class="ar-hint">없음</div>') +
+      '<div class="ar-grp"><span class="ar-gd n"></span>미제출 (' + non.length + ')</div>' +
+      (non.length ? '<div class="ar-names">' + non.map(function (n) { return '<span class="ar-chip n">' + n + '</span>'; }).join('') + '</div>' : '<div class="ar-hint">전원 제출 완료</div>') +
+      '<div class="ar-hint">미제출자는 편성 시 전체 가능으로 간주됩니다.</div>';
+    var ov = document.getElementById('ar-ov');
+    ov.innerHTML = '<div class="ar-sheet">' + h + '</div>';
+    ov.classList.add('show');
+  };
 
   /* ── 데이터 로드 / 열기 ── */
   function loadData(weekKey) {
