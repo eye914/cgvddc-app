@@ -4325,6 +4325,7 @@ function showKakaoModal(text, forced) {
             .catch(function(){ alert('네트워크 오류'); });
         }
 
+        // ── 미소지기 스케줄 신청 (Step 1 취합)은 availability-ui.js가 담당 ──
         // 관리자 탭 진입 시 자동 로드
         var _origShowManager = typeof showView === 'function' ? showView : null;
         document.addEventListener('click', function(e) {

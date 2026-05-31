@@ -7,9 +7,9 @@
 
   /* ── 시간 그룹 정의 (미들은 범위가 넓어 대표값 표시) ── */
   var GROUPS = [
-    { id: 'd', label: '오픈', icon: '☀',  range55: '09:00~16:00', range45: '09:00~15:00' },
-    { id: 'm', label: '미들', icon: '🌤', range55: '11:30~22:00', range45: '11:30~21:00' },
-    { id: 'n', label: '마감', icon: '🌙', range55: '18:00~24:30', range45: '19:00~24:30' }
+    { id: 'd', label: '오픈', icon: '☀',  codes: 'D1~D4', range55: '09:00~16:00', range45: '09:00~15:00' },
+    { id: 'm', label: '미들', icon: '🌤', codes: 'M1~M8', range55: '11:30~22:00', range45: '11:30~21:00' },
+    { id: 'n', label: '마감', icon: '🌙', codes: 'N1~N2', range55: '18:00~24:30', range45: '19:00~24:30' }
   ];
 
   var DAY_KOR    = ['월', '화', '수', '목', '금', '토', '일'];
@@ -209,7 +209,6 @@
     var contractDays  = parseInt(curUser.contract_days, 10) || 5;
     var selectedDays  = countSelectedDays();
     var hours         = parseFloat(curUser.hours) || 5.5;
-    var hk            = hours >= 5.5 ? '5.5' : '4.5';
     var overLimit     = selectedDays > contractDays;
 
     /* 진행 상태 텍스트 */
@@ -303,13 +302,12 @@
 
         activeGroups.forEach(function (g) {
           var on    = curKinds.indexOf(g.id) > -1;
-          var range = hk === '5.5' ? g.range55 : g.range45;
           var chipStyle = on
             ? 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:none;background:#e71a0f;color:white;box-shadow:0 2px 6px rgba(231,26,15,.25)'
             : 'display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #e2e8f0;background:white;color:#334155';
           html += '<button style="' + chipStyle + '" onclick="availToggleChip(' + dayIdx + ',\'' + g.id + '\')">';
           html += g.icon + ' ' + g.label;
-          html += '<span style="font-size:9px;opacity:.7;margin-left:3px;font-weight:700">' + range + '</span>';
+          html += '<span style="font-size:9px;opacity:.7;margin-left:3px;font-weight:700">' + g.codes + '</span>';
           html += '</button>';
         });
 
