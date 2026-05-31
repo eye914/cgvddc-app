@@ -36,7 +36,10 @@
   }
   function cellOf(code, pos) {
     var date = dateForDay(ST.day);
-    return (ST.data.assignments || []).find(function (a) { return a.date === date && a.shiftCode === code && a.position === pos; });
+    var pcode = POS_CLS[pos] || pos; // DB position은 영문코드(mart/floor/int)
+    return (ST.data.assignments || []).find(function (a) {
+      return a.date === date && a.shiftCode === code && (a.position === pcode || a.position === pos);
+    });
   }
   // (코드그룹, 요일, 포지션) 가능 직원: 신청자(그 그룹) + 미제출(전체가능)
   function eligible(group, pos) {
@@ -223,13 +226,13 @@
   window.arrangeAssign = function (name) {
     if (ST.busy) return; ST.busy = true;
     var s = staffBy(name);
-    post({ action: 'assign', weekKey: ST.weekKey, date: dateForDay(ST.day), dayOfWeek: ST.day, shiftCode: _slot.code, position: _slot.pos, name: name, hours: parseFloat(s ? s.hours : 5.5) || 5.5 })
+    post({ action: 'assign', weekKey: ST.weekKey, date: dateForDay(ST.day), dayOfWeek: ST.day, shiftCode: _slot.code, position: (POS_CLS[_slot.pos] || _slot.pos), name: name, hours: parseFloat(s ? s.hours : 5.5) || 5.5 })
       .then(function (j) { ST.busy = false; if (j && j.error) { alert('오류: ' + j.error); return; } arrangeCloseSheet(); reload(); })
       .catch(function () { ST.busy = false; alert('네트워크 오류'); });
   };
   window.arrangeRemove = function () {
     if (ST.busy || !_slot) return; ST.busy = true;
-    post({ action: 'remove', weekKey: ST.weekKey, date: dateForDay(ST.day), shiftCode: _slot.code, position: _slot.pos })
+    post({ action: 'remove', weekKey: ST.weekKey, date: dateForDay(ST.day), shiftCode: _slot.code, position: (POS_CLS[_slot.pos] || _slot.pos) })
       .then(function (j) { ST.busy = false; if (j && j.error) { alert('오류: ' + j.error); return; } arrangeCloseSheet(); reload(); })
       .catch(function () { ST.busy = false; alert('네트워크 오류'); });
   };

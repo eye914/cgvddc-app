@@ -4242,7 +4242,6 @@ function showKakaoModal(text, forced) {
                     var wnum = Math.ceil(mon.getDate() / 7);
                     var label = String(mon.getFullYear()).slice(2) + '년 ' + (mon.getMonth() + 1) + '월 ' + wnum + '주차 (' +
                         (mon.getMonth() + 1) + '/' + mon.getDate() + '~' + (sun.getMonth() + 1) + '/' + sun.getDate() + ')';
-                    if (w === 1) label += ' ★차주';
                     var opt = document.createElement('option');
                     opt.value = val; opt.textContent = label;
                     sel.appendChild(opt);
