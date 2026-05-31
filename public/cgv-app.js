@@ -4202,26 +4202,29 @@ function showKakaoModal(text, forced) {
             el.style.background = '#f8fafc';
             el.style.color = '#94a3b8';
 
-            // 주차 목록도 같이 로드
-            fetch('/api/schedule?mode=weeks')
-                .then(function(r){ return r.json(); })
-                .then(function(json){
-                    var sel = document.getElementById('avail-week-picker');
-                    if (sel && Array.isArray(json.weeks)) {
-                        sel.innerHTML = '<option value="">주차를 선택하세요...</option>';
-                        json.weeks.forEach(function(wk){
-                            var opt = document.createElement('option');
-                            opt.value = wk;
-                            // 레이블: YYYY-MM-DD → M/D(월) ~ M/D(일)
-                            try {
-                                var mon = new Date(wk + 'T00:00:00');
-                                var sun = new Date(mon); sun.setDate(mon.getDate()+6);
-                                opt.textContent = wk + ' (' + (mon.getMonth()+1)+'/'+mon.getDate()+'~'+(sun.getMonth()+1)+'/'+sun.getDate()+')';
-                            } catch(e){ opt.textContent = wk; }
-                            sel.appendChild(opt);
-                        });
-                    }
-                }).catch(function(){});
+            // 대상 주차 목록: 이번 주 월요일 기준으로 직접 생성 (값=YYYY-MM-DD 월요일)
+            (function(){
+                var sel = document.getElementById('avail-week-picker');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">주차를 선택하세요...</option>';
+                var base = new Date(); base.setHours(0,0,0,0);
+                var dow = base.getDay();
+                base.setDate(base.getDate() + (dow === 0 ? -6 : 1 - dow)); // 이번 주 월요일
+                for (var w = -1; w <= 6; w++) {
+                    var mon = new Date(base); mon.setDate(base.getDate() + w * 7);
+                    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+                    var val = mon.getFullYear() + '-' +
+                        String(mon.getMonth() + 1).padStart(2, '0') + '-' +
+                        String(mon.getDate()).padStart(2, '0');
+                    var wnum = Math.ceil(mon.getDate() / 7);
+                    var label = String(mon.getFullYear()).slice(2) + '년 ' + (mon.getMonth() + 1) + '월 ' + wnum + '주차 (' +
+                        (mon.getMonth() + 1) + '/' + mon.getDate() + '~' + (sun.getMonth() + 1) + '/' + sun.getDate() + ')';
+                    if (w === 1) label += ' ★차주';
+                    var opt = document.createElement('option');
+                    opt.value = val; opt.textContent = label;
+                    sel.appendChild(opt);
+                }
+            })();
 
             fetch('/api/availability?mode=active')
                 .then(function(r){ return r.json(); })

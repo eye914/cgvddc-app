@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // ── 관리자: 주차 열기 ──────────────────────────────────────
     if (action === 'open') {
-      const { weekKey, openedBy } = body as { weekKey: string; openedBy?: string };
+      const { weekKey, openedBy, silent } = body as { weekKey: string; openedBy?: string; silent?: boolean };
       if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
 
       const value = {
@@ -102,16 +102,18 @@ export async function POST(req: NextRequest) {
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
       const label = `${mon.getMonth()+1}/${mon.getDate()}(월) ~ ${sun.getMonth()+1}/${sun.getDate()}(일)`;
 
-      // 전체 미소지기에게 푸시 발송 (관리자 제외하지 않음)
-      try {
-        await sendPushToAllExcept(
-          [],
-          '📅 스케줄 신청이 열렸습니다!',
-          `${label} 근무 가능 여부를 앱에서 신청해주세요.`,
-        );
-      } catch (_) { /* 푸시 실패해도 열기는 성공 처리 */ }
+      // 전체 미소지기에게 푸시 발송 (silent=true면 알림 생략 — 테스트용)
+      if (!silent) {
+        try {
+          await sendPushToAllExcept(
+            [],
+            '📅 스케줄 신청이 열렸습니다!',
+            `${label} 근무 가능 여부를 앱에서 신청해주세요.`,
+          );
+        } catch (_) { /* 푸시 실패해도 열기는 성공 처리 */ }
+      }
 
-      return NextResponse.json({ ok: true, weekKey, label });
+      return NextResponse.json({ ok: true, weekKey, label, pushed: !silent });
     }
 
     // ── 관리자: 주차 마감 ──────────────────────────────────────
