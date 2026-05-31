@@ -142,7 +142,7 @@
       + '.ar-vtrack{position:absolute;top:0;bottom:0;left:36px;right:0;display:flex;}'
       + '.ar-vcol{flex:1;position:relative;border-right:1px dashed #dadae1;}.ar-vcol:last-child{border-right:none;}'
       + '.ar-vbar{position:absolute;border-radius:9px;padding:4px 6px;overflow:hidden;border:1px solid transparent;}'
-      + '.ar-vbar.mart{background:#f6e8e4;border-color:#ecd2cb;}.ar-vbar.floor{background:#e3efe9;border-color:#cde4d7;}.ar-vbar.int{background:#eae7f4;border-color:#dad4ed;}'
+      + '.ar-vbar.mart{background:rgba(190,90,74,.24);border-color:rgba(190,90,74,.45);}.ar-vbar.floor{background:rgba(50,128,95,.22);border-color:rgba(50,128,95,.42);}.ar-vbar.int{background:rgba(100,92,162,.22);border-color:rgba(100,92,162,.42);}'
       + '.ar-vbn{display:block;font-size:10.5px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
       + '.ar-vbar.mart .ar-vbn{color:#b15644;}.ar-vbar.floor .ar-vbn{color:#2f7d5c;}.ar-vbar.int .ar-vbn{color:#615aa0;}'
       + '.ar-vbt{display:block;font-size:8px;font-weight:700;color:#6c6c72;opacity:.8;}';
@@ -240,15 +240,6 @@
       lanes[posK].push({ n: a.name, s: s, e: e, code: a.shiftCode, pos: posK, cls: POS_CLS[posK],
         sub: is45h ? (a.shiftCode.charAt(0) === 'N' ? '(' + fmtMin(s) + '~)' : '(~' + fmtMin(e) + ')') : '' });
     });
-    // 막대 폭을 전 열에서 통일: 전체 열의 최대 동시인원(globalMax) 기준
-    function packLane(items) {
-      items.sort(function (a, b) { return a.s - b.s || a.e - b.e; });
-      var ends = [];
-      items.forEach(function (it) { var pl = false; for (var k = 0; k < ends.length; k++) { if (ends[k] <= it.s) { it.lane = k; ends[k] = it.e; pl = true; break; } } if (!pl) { it.lane = ends.length; ends.push(it.e); } });
-      return ends.length;
-    }
-    var globalMax = 1;
-    order.forEach(function (pos) { var m = packLane(lanes[pos]); if (m > globalMax) globalMax = m; });
     var head = '<div class="ar-vhead"><div class="ar-vh-g"></div>' + order.map(function (p) { return '<div class="ar-vh-c">' + p + '</div>'; }).join('') + '</div>';
     var lines = '';
     for (var h = 9; h <= 24; h++) { var top = PAD + (h - 9) / 15.5 * H; lines += '<div class="ar-hl" style="top:' + top + 'px"></div><div class="ar-hlab" style="top:' + top + 'px">' + h + '시</div>'; }
@@ -256,10 +247,12 @@
     lines += '<div class="ar-hl" style="top:' + (PAD + H) + 'px"></div>';
     var cols = '';
     order.forEach(function (pos) {
-      var items = lanes[pos]; var bars = '';
+      // 중앙정렬 · 동일 폭 · 분할 안 함 (겹치면 반투명 누적으로 색이 진해짐)
+      var items = lanes[pos].slice().sort(function (a, b) { return a.s - b.s; });
+      var bars = '';
       items.forEach(function (it) {
-        var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H, w = 100 / globalMax, left = it.lane * w;
-        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:' + left + '%;width:calc(' + w + '% - 3px)" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
+        var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H;
+        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:9%;width:82%" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
           '<span class="ar-vbn">' + it.n + '</span>' + (it.sub ? '<span class="ar-vbt">' + it.sub + '</span>' : '') + '</div>';
       });
       cols += '<div class="ar-vcol">' + bars + '</div>';
