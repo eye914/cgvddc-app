@@ -18,7 +18,9 @@
   var GROUPS = [['d', '오픈', 'open'], ['m', '미들', 'mid'], ['n', '마감', 'close']];
   var TIME = {}; SHIFTS.d.concat(SHIFTS.m, SHIFTS.n).forEach(function (s) { TIME[s[0]] = { disp: s[1], b45: s[2] }; });
 
-  var ST = { weekKey: null, data: null, day: 0, busy: false };
+  var ST = { weekKey: null, data: null, day: 0, busy: false, view: 'g' };
+  function mn(t) { var p = String(t).split(':'); return (+p[0]) * 60 + (+p[1]); }
+  function fmtMin(m) { var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
 
   /* ── 유틸 ── */
   function parseMon(wk) { var p = String(wk).split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
@@ -127,7 +129,23 @@
       + '.ar-pg-b.link{cursor:pointer;text-decoration:underline;text-underline-offset:2px;}'
       + '.ar-names{display:flex;flex-wrap:wrap;gap:6px;}'
       + '.ar-chip{font-size:12px;font-weight:800;padding:6px 11px;border-radius:9px;}'
-      + '.ar-chip.s{background:#e9f6ef;color:#2f8a5f;}.ar-chip.n{background:#f0f0f2;color:#8a8a90;}';
+      + '.ar-chip.s{background:#e9f6ef;color:#2f8a5f;}.ar-chip.n{background:#f0f0f2;color:#8a8a90;}'
+      + '.ar-seg{display:flex;gap:3px;margin:10px 16px 0;background:#e9e9ed;border-radius:11px;padding:3px;}'
+      + '.ar-seg button{flex:1;border:none;background:transparent;padding:8px 0;border-radius:9px;font-size:12.5px;font-weight:800;color:#6c6c72;}'
+      + '.ar-seg button.on{background:#fff;color:#2a2a2e;box-shadow:0 1px 3px rgba(0,0,0,.08);}'
+      + '.ar-vbody{position:relative;margin:8px 0 0;background:#fff;border:.5px solid #eeeef1;border-radius:12px;}'
+      + '.ar-hl{position:absolute;left:36px;right:0;height:0;border-top:1px solid #e7e7eb;}'
+      + '.ar-hl.half{border-top:1px dotted #cdcdd5;}'
+      + '.ar-hlab{position:absolute;left:0;width:30px;text-align:right;transform:translateY(-50%);font-size:9px;color:#b2b2b8;font-weight:700;}'
+      + '.ar-vhead{display:flex;gap:6px;padding:0 0 6px;margin-top:6px;}'
+      + '.ar-vh-g{flex:0 0 36px;}.ar-vh-c{flex:1;text-align:center;font-size:11.5px;font-weight:800;color:#6c6c72;}'
+      + '.ar-vtrack{position:absolute;top:0;bottom:0;left:36px;right:0;display:flex;}'
+      + '.ar-vcol{flex:1;position:relative;border-right:1px dashed #dadae1;}.ar-vcol:last-child{border-right:none;}'
+      + '.ar-vbar{position:absolute;border-radius:9px;padding:4px 6px;overflow:hidden;border:1px solid transparent;}'
+      + '.ar-vbar.mart{background:#f6e8e4;border-color:#ecd2cb;}.ar-vbar.floor{background:#e3efe9;border-color:#cde4d7;}.ar-vbar.int{background:#eae7f4;border-color:#dad4ed;}'
+      + '.ar-vbn{display:block;font-size:10.5px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+      + '.ar-vbar.mart .ar-vbn{color:#b15644;}.ar-vbar.floor .ar-vbn{color:#2f7d5c;}.ar-vbar.int .ar-vbn{color:#615aa0;}'
+      + '.ar-vbt{display:block;font-size:8px;font-weight:700;color:#6c6c72;opacity:.8;}';
     var st = document.createElement('style'); st.id = 'ar-style'; st.textContent = css; document.head.appendChild(st);
   }
 
@@ -140,8 +158,9 @@
         '<div class="ar-hd-top"><div class="ar-title">스케줄 편성</div><button class="ar-close" onclick="closeArrangeScreen()">✕</button></div>' +
         '<div class="ar-week" id="ar-week"></div>' +
       '</div>' +
+      '<div class="ar-seg"><button id="ar-seg-g" class="on" onclick="arrangeView(\'g\')">그리드</button><button id="ar-seg-t" onclick="arrangeView(\'t\')">타임라인</button></div>' +
       '<div class="ar-pg" id="ar-pg"></div>' +
-      '<div class="ar-ch"><div></div><div>매점</div><div>플로어</div><div>통합</div></div>' +
+      '<div class="ar-ch" id="ar-ch"><div></div><div>매점</div><div>플로어</div><div>통합</div></div>' +
       '<div class="ar-body" id="ar-body"></div>' +
       '<div class="ar-foot"><button class="ar-btn ar-btn-g" onclick="closeArrangeScreen()">닫기</button><button class="ar-btn ar-btn-r" onclick="arrangeDeploy()">📤 시트로 배포</button></div>';
     document.body.appendChild(root);
@@ -174,6 +193,14 @@
       '<div class="ar-bar"><i style="width:' + pct + '%"></i></div>' +
       (filled > 0 ? '<button class="ar-clear" onclick="arrangeClearDay()">이 요일 배정 초기화 (' + filled + '칸)</button>' : '');
 
+    var ch = document.getElementById('ar-ch');
+    if (ST.view === 't') {
+      if (ch) ch.style.display = 'none';
+      renderTimeline();
+      return;
+    }
+    if (ch) ch.style.display = '';
+
     // 그리드
     var html = '';
     GROUPS.forEach(function (g) {
@@ -195,6 +222,62 @@
     });
     document.getElementById('ar-body').innerHTML = html;
   }
+
+  /* ── 세로 타임라인 (배정 막대) ── */
+  function renderTimeline() {
+    var START = 540, END = 1470, SPAN = END - START, HOURH = 44, PAD = 14, H = Math.round(SPAN / 60 * HOURH);
+    var order = ['매점', '플로어', '통합'];
+    var P = { mart: '매점', 'mart-close': '매점', floor: '플로어', int: '통합' };
+    var lanes = { '매점': [], '플로어': [], '통합': [] };
+    (ST.data.assignments || []).forEach(function (a) {
+      if (a.dayOfWeek !== ST.day) return;
+      var posK = P[a.position] || a.position;
+      if (!lanes[posK]) return;
+      var disp = (TIME[a.shiftCode] || {}).disp || '';
+      var pp = disp.split('~'); if (pp.length < 2) return;
+      var s = mn(pp[0]), e = mn(pp[1]), is45h = (parseFloat(a.hours) || 5.5) < 5.0;
+      if (is45h) { if (a.shiftCode.charAt(0) === 'N') s += 60; else e -= 60; }
+      lanes[posK].push({ n: a.name, s: s, e: e, code: a.shiftCode, pos: posK, cls: POS_CLS[posK],
+        sub: is45h ? (a.shiftCode.charAt(0) === 'N' ? '(' + fmtMin(s) + '~)' : '(~' + fmtMin(e) + ')') : '' });
+    });
+    function layoutV(items) {
+      items.sort(function (a, b) { return a.s - b.s || a.e - b.e; });
+      var i = 0, maxCols = 1;
+      while (i < items.length) {
+        var cluster = [items[i]], maxEnd = items[i].e, j = i + 1;
+        while (j < items.length && items[j].s < maxEnd) { cluster.push(items[j]); if (items[j].e > maxEnd) maxEnd = items[j].e; j++; }
+        var ends = [];
+        cluster.forEach(function (it) { var pl = false; for (var k = 0; k < ends.length; k++) { if (ends[k] <= it.s) { it.lane = k; ends[k] = it.e; pl = true; break; } } if (!pl) { it.lane = ends.length; ends.push(it.e); } });
+        if (ends.length > maxCols) maxCols = ends.length;
+        i = j;
+      }
+      items.forEach(function (it) { it.cols = maxCols; });
+    }
+    var head = '<div class="ar-vhead"><div class="ar-vh-g"></div>' + order.map(function (p) { return '<div class="ar-vh-c">' + p + '</div>'; }).join('') + '</div>';
+    var lines = '';
+    for (var h = 9; h <= 24; h++) { var top = PAD + (h - 9) / 15.5 * H; lines += '<div class="ar-hl" style="top:' + top + 'px"></div><div class="ar-hlab" style="top:' + top + 'px">' + h + '시</div>'; }
+    for (var t = START + 30; t < END; t += 60) { lines += '<div class="ar-hl half" style="top:' + (PAD + (t - START) / SPAN * H) + 'px"></div>'; }
+    lines += '<div class="ar-hl" style="top:' + (PAD + H) + 'px"></div>';
+    var cols = '';
+    order.forEach(function (pos) {
+      var items = lanes[pos]; layoutV(items); var bars = '';
+      items.forEach(function (it) {
+        var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H, w = 100 / it.cols, left = it.lane * w;
+        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:' + left + '%;width:calc(' + w + '% - 3px)" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
+          '<span class="ar-vbn">' + it.n + '</span>' + (it.sub ? '<span class="ar-vbt">' + it.sub + '</span>' : '') + '</div>';
+      });
+      cols += '<div class="ar-vcol">' + bars + '</div>';
+    });
+    document.getElementById('ar-body').innerHTML = head +
+      '<div class="ar-vbody" style="height:' + (H + PAD * 2) + 'px"><div>' + lines + '</div><div class="ar-vtrack">' + cols + '</div></div>' +
+      '<div class="ar-hint">막대 탭 → 해당 슬롯 편집 · 빈 시간대는 그리드에서 배정</div>';
+  }
+  window.arrangeView = function (v) {
+    ST.view = v;
+    document.getElementById('ar-seg-g').classList.toggle('on', v === 'g');
+    document.getElementById('ar-seg-t').classList.toggle('on', v === 't');
+    render();
+  };
 
   /* ── 가능직원 팝업 ── */
   var _slot = null;
