@@ -262,7 +262,27 @@
   };
 
   window.arrangeSelDay = function (d) { ST.day = d; render(); };
-  window.arrangeDeploy = function () { alert('시트 배포(편성→시트 작성)는 다음 단계(Phase C)에서 연결됩니다.'); };
+  window.arrangeDeploy = function () {
+    if (ST.busy) return;
+    var asgN = (ST.data.assignments || []).length;
+    if (!asgN) { alert('배정된 인원이 없습니다.'); return; }
+    var mon = parseMon(ST.weekKey);
+    var sheetName = String(mon.getFullYear()).slice(-2) + '년' + (mon.getMonth() + 1) + '월' + Math.ceil(mon.getDate() / 7) + '주차(편성)';
+    if (!confirm('현재 편성(' + asgN + '칸)을 시트에 작성할까요?\n→ ' + sheetName + ' 탭\n(없으면 전주차 원본 복제 후 작성)')) return;
+    ST.busy = true;
+    fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'deploySheet', weekKey: ST.weekKey }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        ST.busy = false;
+        if (j && j.error) { alert('배포 실패: ' + j.error); return; }
+        var rr = (j && j.result) || {};
+        if (rr.error) { alert('시트 작성 오류: ' + rr.error); return; }
+        var msg = '✅ 시트 배포 완료\n' + (rr.sheet || sheetName) + ' · ' + (rr.written || 0) + '칸 작성';
+        if (rr.missed && rr.missed.length) msg += '\n\n⚠ 미반영 ' + rr.missed.length + '건:\n' + rr.missed.slice(0, 8).join('\n');
+        alert(msg);
+      })
+      .catch(function () { ST.busy = false; alert('네트워크 오류'); });
+  };
 
   window.arrangeClearDay = function () {
     var n = (ST.data.assignments || []).filter(function (a) { return a.dayOfWeek === ST.day; }).length;

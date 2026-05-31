@@ -137,6 +137,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── 편성 → (편성) 시트 작성 (멱등) ─────────────────────────
+    if (action === 'deploySheet') {
+      const { weekKey } = body as { weekKey: string };
+      if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
+      const { data: rows, error: fErr } = await supabaseAdmin
+        .from('schedule_assignments')
+        .select('date, day_of_week, shift_code, position, name, hours')
+        .eq('week_key', weekKey);
+      if (fErr) return NextResponse.json({ error: fErr.message }, { status: 500 });
+      const assignments = (rows ?? []).map((r: Record<string, any>) => ({
+        date: r.date, dayOfWeek: r.day_of_week, shiftCode: r.shift_code,
+        position: r.position, name: r.name, hours: r.hours,
+      }));
+      const result = await callGAS('writeArrangement', [weekKey, assignments]);
+      return NextResponse.json({ ok: true, result });
+    }
+
     // ── 주차 확정 + GAS 시트 동기화 ───────────────────────────
     if (action === 'confirm') {
       const { weekKey } = body as { weekKey: string };
