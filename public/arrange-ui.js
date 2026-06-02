@@ -145,7 +145,11 @@
       + '.ar-vbar.mart{background:rgba(190,90,74,.24);border-color:rgba(190,90,74,.45);}.ar-vbar.floor{background:rgba(50,128,95,.22);border-color:rgba(50,128,95,.42);}.ar-vbar.int{background:rgba(100,92,162,.22);border-color:rgba(100,92,162,.42);}'
       + '.ar-vbn{display:block;font-size:10.5px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
       + '.ar-vbar.mart .ar-vbn{color:#b15644;}.ar-vbar.floor .ar-vbn{color:#2f7d5c;}.ar-vbar.int .ar-vbn{color:#615aa0;}'
-      + '.ar-vbt{display:block;font-size:8px;font-weight:700;color:#6c6c72;opacity:.8;}';
+      + '.ar-vbt{display:block;font-size:8px;font-weight:700;color:#6c6c72;opacity:.8;}'
+      + '.ar-vlab{position:absolute;left:0;right:0;text-align:center;pointer-events:none;padding-top:3px;z-index:2;}'
+      + '.ar-vln{font-size:10.5px;font-weight:800;letter-spacing:-.03em;white-space:nowrap;}'
+      + '.ar-vlab.mart .ar-vln{color:#b15644;}.ar-vlab.floor .ar-vln{color:#2f7d5c;}.ar-vlab.int .ar-vln{color:#615aa0;}'
+      + '.ar-vlt{display:block;font-size:8px;font-weight:700;color:#6c6c72;opacity:.85;margin-top:1px;}';
     var st = document.createElement('style'); st.id = 'ar-style'; st.textContent = css; document.head.appendChild(st);
   }
 
@@ -252,8 +256,9 @@
       var bars = '';
       items.forEach(function (it) {
         var top = PAD + (it.s - START) / SPAN * H, hgt = (it.e - it.s) / SPAN * H;
-        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:29.5%;width:41%" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')">' +
-          '<span class="ar-vbn">' + it.n + '</span>' + (it.sub ? '<span class="ar-vbt">' + it.sub + '</span>' : '') + '</div>';
+        bars += '<div class="ar-vbar ' + it.cls + '" style="top:' + top + 'px;height:' + (hgt - 3) + 'px;left:29.5%;width:41%" onclick="arrangeSlot(\'' + it.code + '\',\'' + pos + '\')"></div>' +
+          '<div class="ar-vlab ' + it.cls + '" style="top:' + top + 'px">' +
+          '<span class="ar-vln">' + it.n + '</span>' + (it.sub ? '<span class="ar-vlt">' + it.sub + '</span>' : '') + '</div>';
       });
       cols += '<div class="ar-vcol">' + bars + '</div>';
     });
