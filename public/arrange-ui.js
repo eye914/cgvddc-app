@@ -354,7 +354,8 @@
         if (j && j.error) { alert('배포 실패: ' + j.error); return; }
         var rr = (j && j.result) || {};
         if (rr.error) { alert('시트 작성 오류: ' + rr.error); return; }
-        var msg = '✅ 시트 배포 완료\n' + (rr.sheet || sheetName) + ' · ' + (rr.written || 0) + '칸 작성';
+        var tabs = rr.won ? (rr.won + ' + ' + rr.mat) : (rr.sheet || sheetName);
+        var msg = '✅ 시트 배포 완료 (원본+맞교대)\n' + tabs + ' · ' + (rr.written || 0) + '칸 작성';
         if (rr.missed && rr.missed.length) msg += '\n\n⚠ 미반영 ' + rr.missed.length + '건:\n' + rr.missed.slice(0, 8).join('\n');
         alert(msg);
       })
