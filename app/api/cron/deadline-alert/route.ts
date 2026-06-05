@@ -15,6 +15,24 @@ export async function GET(req: NextRequest) {
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   const tomorrowStr = tomorrow.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
+  // ── 승인 대기 리마인더: 관리자가 아직 승인 안 한 매칭 건(근무일 안 지난 것)은 매일 관리자에게 알림 ──
+  try {
+    const todayStr = nowKST.toISOString().slice(0, 10);
+    const { data: pending } = await supabaseAdmin
+      .from('trades')
+      .select('id, shift_date')
+      .eq('status', '승인대기')
+      .gte('shift_date', todayStr)
+      .order('shift_date', { ascending: true });
+    if (pending && pending.length > 0) {
+      const nearest = String(pending[0].shift_date).slice(0, 10);
+      await sendPushToAdmins(
+        '🔔 승인 대기 중인 교대',
+        `승인 대기 ${pending.length}건 (가장 임박: ${nearest}). 앱에서 승인 또는 반려해 주세요.`,
+      );
+    }
+  } catch (_) { /* 리마인더 실패해도 마감 알림은 계속 진행 */ }
+
   // 내일 교대인 미체결(모집중) 공고 조회
   const { data: trades, error } = await supabaseAdmin
     .from('trades')
