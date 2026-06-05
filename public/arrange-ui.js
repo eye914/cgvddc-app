@@ -317,8 +317,16 @@
   function reload() { return loadData(ST.weekKey).then(render); }
 
   window.arrangeAssign = function (name) {
-    if (ST.busy || !_slot) return; ST.busy = true;
+    if (ST.busy || !_slot) return;
     var s = staffBy(name);
+    // 계약일수 초과 배정 시 확인 (b안)
+    var alreadyToday = (ST.data.assignments || []).some(function (a) { return a.name === name && a.dayOfWeek === ST.day; });
+    if (!alreadyToday) {
+      var cd = s ? (parseInt(s.contractDays, 10) || 5) : 5;
+      var newDays = assignedDays(name) + 1;
+      if (newDays > cd && !confirm(name + '님은 계약 ' + cd + '일인데 ' + newDays + '일째 배정입니다.\n그래도 배정할까요?')) return;
+    }
+    ST.busy = true;
     var code = _slot.code, pos = _slot.pos, pcode = POS_CLS[pos] || pos, date = dateForDay(ST.day);
     // 낙관적 업데이트: 즉시 화면 반영
     ST.data.assignments = (ST.data.assignments || []).filter(function (a) { return !(a.date === date && a.shiftCode === code && a.position === pcode); });
