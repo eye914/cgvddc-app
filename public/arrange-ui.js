@@ -166,7 +166,7 @@
       '<div class="ar-pg" id="ar-pg"></div>' +
       '<div class="ar-ch" id="ar-ch"><div></div><div>매점</div><div>플로어</div><div>통합</div></div>' +
       '<div class="ar-body" id="ar-body"></div>' +
-      '<div class="ar-foot"><button class="ar-btn ar-btn-g" onclick="closeArrangeScreen()">닫기</button><button class="ar-btn ar-btn-r" onclick="arrangeDeploy()">📤 시트로 배포</button></div>';
+      '<div class="ar-foot"><button class="ar-btn ar-btn-g" onclick="closeArrangeScreen()">닫기</button><button class="ar-btn ar-btn-r" id="ar-deploy-btn" onclick="arrangeDeploy()">📤 시트로 배포</button></div>';
     document.body.appendChild(root);
     var ov = document.createElement('div'); ov.id = 'ar-ov'; ov.className = 'ar-ov';
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
@@ -353,12 +353,15 @@
     if (!asgN) { alert('배정된 인원이 없습니다.'); return; }
     var mon = parseMon(ST.weekKey);
     var sheetName = String(mon.getFullYear()).slice(-2) + '년' + (mon.getMonth() + 1) + '월' + Math.ceil(mon.getDate() / 7) + '주차(편성)';
-    if (!confirm('현재 편성(' + asgN + '칸)을 시트에 작성할까요?\n→ ' + sheetName + ' 탭\n(없으면 전주차 원본 복제 후 작성)')) return;
+    if (!confirm('현재 편성(' + asgN + '칸)을 시트에 작성할까요?\n→ (원본) + (맞교대) 두 탭 생성\n\n※ 무거운 시트 복제라 최대 1분 걸립니다. 완료 알림이 뜰 때까지 닫지 마세요.')) return;
     ST.busy = true;
+    var _db = document.getElementById('ar-deploy-btn');
+    if (_db) { _db.disabled = true; _db.textContent = '⏳ 배포 중...(최대 1분, 닫지 마세요)'; }
+    function _restoreDeployBtn() { if (_db) { _db.disabled = false; _db.textContent = '📤 시트로 배포'; } }
     fetch('/api/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'deploySheet', weekKey: ST.weekKey }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        ST.busy = false;
+        ST.busy = false; _restoreDeployBtn();
         if (j && j.error) { alert('배포 실패: ' + j.error); return; }
         var rr = (j && j.result) || {};
         if (rr.error) { alert('시트 작성 오류: ' + rr.error); return; }
@@ -367,7 +370,7 @@
         if (rr.missed && rr.missed.length) msg += '\n\n⚠ 미반영 ' + rr.missed.length + '건:\n' + rr.missed.slice(0, 8).join('\n');
         alert(msg);
       })
-      .catch(function () { ST.busy = false; alert('네트워크 오류'); });
+      .catch(function () { ST.busy = false; _restoreDeployBtn(); alert('네트워크 오류'); });
   };
 
   window.arrangeClearDay = function () {
