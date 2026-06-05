@@ -41,22 +41,31 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { urgent, ...tradeBody } = body; // urgent는 DB 컬럼 아님 — 푸시 문구용
     const { data, error } = await supabaseAdmin
       .from('trades')
-      .insert([toSnake(body)])
+      .insert([toSnake(tradeBody)])
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const row = toCamel(data);
-    // 공고 등록 → 등록자 제외 전체 미소지기에게 알림 발송
+    // 공고 등록 → 등록자 제외 전체 미소지기에게 알림 발송 (긴급이면 🆘 강조)
     const typeLabel = row.tradeType === 'sub' ? '대타' : '맞교대';
     const shiftShort = (row.shiftDate ?? '').split(' / ')[0];
-    await sendPushToAllExcept(
-      [row.reqName],
-      `📢 새 ${typeLabel} 공고`,
-      `${row.reqName}님의 ${shiftShort} [${row.reqPos}] 공고가 등록됐습니다.`
-    );
+    if (urgent) {
+      await sendPushToAllExcept(
+        [row.reqName],
+        '🆘 긴급 대타 요청!',
+        `${shiftShort} [${row.reqPos}] 긴급 대타 구합니다! 가능하신 분은 지금 앱에서 지원해 주세요.`
+      );
+    } else {
+      await sendPushToAllExcept(
+        [row.reqName],
+        `📢 새 ${typeLabel} 공고`,
+        `${row.reqName}님의 ${shiftShort} [${row.reqPos}] 공고가 등록됐습니다.`
+      );
+    }
 
     // GAS 요청DB 시트에 비동기 기록 (실패해도 등록은 완료, 서버 로그만)
     const saveRes = await callGASWithCheck('saveTradeToDB', [row]);
