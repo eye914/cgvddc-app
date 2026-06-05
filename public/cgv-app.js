@@ -4350,6 +4350,30 @@ function showKakaoModal(text, forced) {
             .catch(function(){ alert('네트워크 오류'); });
         }
 
+        function resetAvailWeek() {
+            var weekKey = getSelectedAvailWeek();
+            if (!weekKey) { alert('주차를 선택해주세요.'); return; }
+            var mon = new Date(weekKey + 'T00:00:00');
+            var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+            var lbl = (mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(sun.getMonth()+1)+'/'+sun.getDate();
+            if (!confirm('⚠️ ' + lbl + ' 주차 신청 내역을 전부 삭제할까요?\n\n이 주차에 신청한 모든 미소지기 기록이 사라집니다.\n(재취합·테스트용 — 되돌릴 수 없습니다)')) return;
+            fetch('/api/availability', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'resetWeek', weekKey: weekKey })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(json){
+                if (json.ok) {
+                    alert('🧹 초기화 완료 — ' + (json.deleted || 0) + '건 삭제됐습니다.');
+                    loadAvailOpenStatus();
+                } else {
+                    alert('오류: ' + (json.error || '다시 시도'));
+                }
+            })
+            .catch(function(){ alert('네트워크 오류'); });
+        }
+
         // ── 미소지기 스케줄 신청 (Step 1 취합)은 availability-ui.js가 담당 ──
         // 관리자 탭 진입 시 자동 로드
         var _origShowManager = typeof showView === 'function' ? showView : null;

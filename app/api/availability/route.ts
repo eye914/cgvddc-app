@@ -136,6 +136,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, pushed: !silent });
     }
 
+    // ── 관리자: 해당 주차 신청 전체 초기화 (재취합/테스트용) ──────
+    if (action === 'resetWeek') {
+      const { weekKey } = body as { weekKey: string };
+      if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
+      const { error, count } = await supabaseAdmin
+        .from('availability')
+        .delete({ count: 'exact' })
+        .eq('week_key', weekKey);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, deleted: count ?? 0 });
+    }
+
     // ── 미소지기: 신청 저장 ────────────────────────────────────
     const { name, weekKey, days } = body as {
       name: string;
