@@ -118,11 +118,22 @@ export async function POST(req: NextRequest) {
 
     // ── 관리자: 주차 마감 ──────────────────────────────────────
     if (action === 'close') {
+      const { silent } = body as { silent?: boolean };
       const { error } = await supabaseAdmin
         .from('app_settings')
         .upsert({ key: SETTINGS_KEY, value: null }, { onConflict: 'key' });
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-      return NextResponse.json({ ok: true });
+      // 전체 미소지기에게 마감 알림 (silent=true면 생략 — 테스트용)
+      if (!silent) {
+        try {
+          await sendPushToAllExcept(
+            [],
+            '📋 스케줄 신청이 마감되었습니다',
+            '편성이 완료되면 확정 일정을 다시 안내드리겠습니다.',
+          );
+        } catch (_) { /* 푸시 실패해도 마감은 성공 처리 */ }
+      }
+      return NextResponse.json({ ok: true, pushed: !silent });
     }
 
     // ── 미소지기: 신청 저장 ────────────────────────────────────

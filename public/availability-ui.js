@@ -368,6 +368,12 @@
   /* ── 신청 제출 ── */
   window.availSubmit = function () {
     if (!curUser) return;
+    var notice = '📋 신청 전 확인\n\n'
+      + "선택하신 요일은 '근무 희망'으로 접수됩니다.\n"
+      + '최종 근무는 매장 운영·인원 상황에 따라 조정될 수 있어요.\n'
+      + '가능한 요일을 넉넉히 선택하실수록 희망이 더 잘 반영됩니다.\n\n'
+      + '이대로 신청할까요?';
+    if (!confirm(notice)) return;
     var btn = document.getElementById('avail-submit-btn');
     if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
 
