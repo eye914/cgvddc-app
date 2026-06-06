@@ -4374,6 +4374,65 @@ function showKakaoModal(text, forced) {
             .catch(function(){ alert('네트워크 오류'); });
         }
 
+        // ── 긴급 대타 요청 (관리자 전용) ─────────────────────────
+        function openUrgentSubModal() {
+            var names = [];
+            (MISO_DATA || []).forEach(function(m){ if (m && m.name && names.indexOf(m.name) === -1) names.push(m.name); });
+            names.sort(function(a,b){ return a.localeCompare(b,'ko'); });
+            var nameOpts = '<option value="">결근자 선택</option>' + names.map(function(n){ return '<option value="'+n+'">'+n+'</option>'; }).join('');
+            var codeOpts = '<option value="">시프트 선택</option>';
+            ['D','M','N'].forEach(function(g){ (SHIFT_CODES[g]||[]).forEach(function(s){ var t = parseTimeDisplay(s.time).main; codeOpts += '<option value="'+s.code+'">'+s.code+'   '+t+'</option>'; }); });
+            var posOpts = ['매점','플로어','통합','매점마감'].map(function(p){ return '<option value="'+p+'">'+p+'</option>'; }).join('');
+            var lblS = 'display:block;font-size:11px;font-weight:800;color:#64748b;margin:12px 0 5px';
+            var inS  = 'width:100%;padding:11px 12px;border:1px solid #e2e8f0;border-radius:11px;font-size:13px;font-weight:700;color:#0f172a;background:#fff;box-sizing:border-box';
+            var html = ''
+              + '<div id="urgent-sub-ov" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeUrgentSubModal()">'
+              + '<div style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom))">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+              +   '<div style="font-size:15.5px;font-weight:900;color:#0f172a">긴급 대타 요청</div>'
+              +   '<button onclick="closeUrgentSubModal()" style="border:none;background:#f1f5f9;width:28px;height:28px;border-radius:50%;font-size:16px;color:#64748b;cursor:pointer;line-height:1">×</button>'
+              + '</div>'
+              + '<p style="font-size:11px;color:#94a3b8;font-weight:700;line-height:1.55;margin-bottom:4px">결근이 확정된 자리를 입력하면 전체 미소지기에게 긴급 대타 요청 알림이 발송됩니다. 지원·승인 후 시트에 반영됩니다.</p>'
+              + '<label style="'+lblS+'">결근자</label><select id="us-name" style="'+inS+'">'+nameOpts+'</select>'
+              + '<label style="'+lblS+'">날짜</label><input type="date" id="us-date" style="'+inS+'">'
+              + '<label style="'+lblS+'">시프트</label><select id="us-code" style="'+inS+'">'+codeOpts+'</select>'
+              + '<label style="'+lblS+'">포지션</label><select id="us-pos" style="'+inS+'">'+posOpts+'</select>'
+              + '<label style="'+lblS+'">사유 (선택)</label><input type="text" id="us-reason" placeholder="예: 당일 결근" style="'+inS+'">'
+              + '<button onclick="submitUrgentSub()" style="width:100%;margin-top:18px;padding:14px 0;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">전체에 긴급 요청 보내기</button>'
+              + '</div></div>';
+            var wrap = document.createElement('div'); wrap.id = 'urgent-sub-wrap'; wrap.innerHTML = html;
+            document.body.appendChild(wrap);
+        }
+        function closeUrgentSubModal() {
+            var w = document.getElementById('urgent-sub-wrap'); if (w) w.remove();
+        }
+        function submitUrgentSub() {
+            var name = document.getElementById('us-name').value;
+            var rDate = document.getElementById('us-date').value;
+            var rCode = document.getElementById('us-code').value;
+            var rPos = document.getElementById('us-pos').value;
+            var reason = (document.getElementById('us-reason').value || '').trim() || '긴급 결근';
+            if (!name || !rDate || !rCode || !rPos) { alert('결근자·날짜·시프트·포지션을 모두 선택해주세요.'); return; }
+            var rDay = DAYS[new Date(rDate + 'T00:00:00').getDay()];
+            var nT = {
+                id: 'TRD-' + rDate.replace(/-/g,'').substring(4) + '-' + String(Date.now()).slice(-4),
+                reqName: name, subName: '모집중',
+                shiftDate: rDate + '(' + rDay + ') / ' + rCode,
+                reqPos: rPos, desiredShift: '대타 요청',
+                reason: reason, status: '모집중', tradeType: 'sub', urgent: true
+            };
+            if (!confirm(name + '님 결근 — ' + rDate + ' ' + rCode + ' [' + rPos + ']\n전체 미소지기에게 긴급 대타 요청을 보낼까요?')) return;
+            fetch('/api/trades', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(nT) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){
+                    if (j && j.error) { alert('오류: ' + j.error); return; }
+                    alert('긴급 대타 요청이 전체에게 발송됐습니다.');
+                    closeUrgentSubModal();
+                    if (typeof fetchData === 'function') fetchData();
+                })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+
         // ── 미소지기 스케줄 신청 (Step 1 취합)은 availability-ui.js가 담당 ──
         // 관리자 탭 진입 시 자동 로드
         var _origShowManager = typeof showView === 'function' ? showView : null;
