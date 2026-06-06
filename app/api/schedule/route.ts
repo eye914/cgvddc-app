@@ -137,6 +137,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // ── 해당 주차 편성(배정) 전체 초기화 (앱 데이터만, 시트 무관) ──
+    if (action === 'clearWeek') {
+      const { weekKey } = body as { weekKey: string };
+      if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
+      const { error, count } = await supabaseAdmin
+        .from('schedule_assignments')
+        .delete({ count: 'exact' })
+        .eq('week_key', weekKey);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, deleted: count ?? 0 });
+    }
+
     // ── 편성 → (편성) 시트 작성 (멱등) ─────────────────────────
     if (action === 'deploySheet') {
       const { weekKey } = body as { weekKey: string };

@@ -505,11 +505,18 @@
                                 🔒 신청 마감
                             </button>
                         </div>
-                        <!-- 신청 초기화 (재취합·테스트용) -->
-                        <button onclick="resetAvailWeek()"
-                            style="width:100%;margin-top:8px;padding:9px 0;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:12px;font-size:11px;font-weight:800;cursor:pointer">
-                            🧹 이 주차 신청 초기화
-                        </button>
+                        <!-- 데이터 초기화 (앱 데이터만 삭제 · 시트 탭은 안전) -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+                            <button onclick="resetAvailWeek()"
+                                style="padding:9px 0;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:12px;font-size:11px;font-weight:800;cursor:pointer">
+                                신청 초기화
+                            </button>
+                            <button onclick="resetArrangeWeek()"
+                                style="padding:9px 0;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:12px;font-size:11px;font-weight:800;cursor:pointer">
+                                편성 초기화
+                            </button>
+                        </div>
+                        <div style="font-size:9.5px;color:#94a3b8;font-weight:700;text-align:center;margin-top:5px">초기화는 앱 데이터만 삭제하며 시트 탭은 건드리지 않습니다</div>
                         <!-- 편성 진입 -->
                         <button onclick="openArrangeScreen()"
                             style="width:100%;margin-top:8px;padding:13px 0;background:#0f172a;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">

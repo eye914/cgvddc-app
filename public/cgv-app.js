@@ -4350,13 +4350,16 @@ function showKakaoModal(text, forced) {
             .catch(function(){ alert('네트워크 오류'); });
         }
 
+        function _weekLbl(weekKey) {
+            var mon = new Date(weekKey + 'T00:00:00');
+            var sun = new Date(mon); sun.setDate(mon.getDate()+6);
+            return (mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(sun.getMonth()+1)+'/'+sun.getDate();
+        }
+        // 신청(취합) 초기화 — availability 만 삭제 (시트·편성 안전)
         function resetAvailWeek() {
             var weekKey = getSelectedAvailWeek();
             if (!weekKey) { alert('주차를 선택해주세요.'); return; }
-            var mon = new Date(weekKey + 'T00:00:00');
-            var sun = new Date(mon); sun.setDate(mon.getDate()+6);
-            var lbl = (mon.getMonth()+1)+'/'+mon.getDate()+' ~ '+(sun.getMonth()+1)+'/'+sun.getDate();
-            if (!confirm('⚠️ ' + lbl + ' 주차 신청 내역을 전부 삭제할까요?\n\n이 주차에 신청한 모든 미소지기 기록이 사라집니다.\n(재취합·테스트용 — 되돌릴 수 없습니다)')) return;
+            if (!confirm('[신청(취합) 초기화]\n' + _weekLbl(weekKey) + '\n\n● 삭제: 이 주차에 미소지기들이 낸 신청(취합) 내역\n● 안전(삭제 안 됨): 시트 탭(원본/맞교대), 앱 편성(배정)\n\n되돌릴 수 없습니다. 진행할까요?')) return;
             fetch('/api/availability', {
                 method: 'POST',
                 headers: {'Content-Type':'application/json'},
@@ -4365,8 +4368,28 @@ function showKakaoModal(text, forced) {
             .then(function(r){ return r.json(); })
             .then(function(json){
                 if (json.ok) {
-                    alert('🧹 초기화 완료 — ' + (json.deleted || 0) + '건 삭제됐습니다.');
+                    alert('신청(취합) 초기화 완료 — ' + (json.deleted || 0) + '건 삭제됐습니다.\n(시트·편성은 그대로입니다)');
                     loadAvailOpenStatus();
+                } else {
+                    alert('오류: ' + (json.error || '다시 시도'));
+                }
+            })
+            .catch(function(){ alert('네트워크 오류'); });
+        }
+        // 편성(배정) 초기화 — schedule_assignments 만 삭제 (시트·신청 안전)
+        function resetArrangeWeek() {
+            var weekKey = getSelectedAvailWeek();
+            if (!weekKey) { alert('주차를 선택해주세요.'); return; }
+            if (!confirm('[편성(배정) 초기화]\n' + _weekLbl(weekKey) + '\n\n● 삭제: 앱에서 배정한 편성 데이터(배정 그리드)\n● 안전(삭제 안 됨): 시트 탭(원본/맞교대), 미소지기 신청 내역\n\n되돌릴 수 없습니다. 진행할까요?')) return;
+            fetch('/api/schedule', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ action: 'clearWeek', weekKey: weekKey })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(json){
+                if (json.ok) {
+                    alert('편성(배정) 초기화 완료 — ' + (json.deleted || 0) + '건 삭제됐습니다.\n(시트는 그대로입니다. 시트를 비우려면 다시 배포하세요.)');
                 } else {
                     alert('오류: ' + (json.error || '다시 시도'));
                 }
