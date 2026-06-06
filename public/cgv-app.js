@@ -4433,6 +4433,69 @@ function showKakaoModal(text, forced) {
                 .catch(function(){ alert('네트워크 오류'); });
         }
 
+        // ── 이벤트 / 공휴일 설정 (관리자) ───────────────────────
+        function openEventModal() {
+            fetch('/api/events').then(function(r){ return r.json(); })
+                .then(function(j){ _renderEventModal((j && j.events) || {}); })
+                .catch(function(){ _renderEventModal({}); });
+        }
+        function _renderEventModal(events) {
+            var dates = Object.keys(events).sort();
+            var listHtml = dates.length ? dates.map(function(d){
+                var e = events[d]; var tags = [];
+                if (e.holiday) tags.push('공휴일');
+                if (e.recruitInt) tags.push('통합 모집');
+                return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f9">'
+                  + '<div><div style="font-size:12.5px;font-weight:800;color:#0f172a">'+d+(e.label?'   '+e.label:'')+'</div>'
+                  + (tags.length?'<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-top:2px">'+tags.join(' · ')+'</div>':'')+'</div>'
+                  + '<button onclick="deleteEvent(\''+d+'\')" style="border:none;background:#fef2f2;color:#b91c1c;font-size:10px;font-weight:800;padding:5px 9px;border-radius:8px;cursor:pointer">삭제</button>'
+                  + '</div>';
+            }).join('') : '<div style="font-size:11px;color:#94a3b8;font-weight:700;padding:10px 0;text-align:center">등록된 이벤트가 없습니다.</div>';
+            var lblS = 'display:block;font-size:11px;font-weight:800;color:#64748b;margin:12px 0 5px';
+            var inS  = 'width:100%;padding:11px 12px;border:1px solid #e2e8f0;border-radius:11px;font-size:13px;font-weight:700;color:#0f172a;background:#fff;box-sizing:border-box';
+            var html = ''
+              + '<div id="event-ov" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeEventModal()">'
+              + '<div style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));max-height:86vh;overflow:auto">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+              +   '<div style="font-size:15.5px;font-weight:900;color:#0f172a">이벤트 / 공휴일 설정</div>'
+              +   '<button onclick="closeEventModal()" style="border:none;background:#f1f5f9;width:28px;height:28px;border-radius:50%;font-size:16px;color:#64748b;cursor:pointer;line-height:1">×</button>'
+              + '</div>'
+              + '<p style="font-size:11px;color:#94a3b8;font-weight:700;line-height:1.55;margin-bottom:4px">설정한 날짜는 미소지기 신청 화면에 표시됩니다.</p>'
+              + '<label style="'+lblS+'">날짜</label><input type="date" id="ev-date" style="'+inS+'">'
+              + '<label style="'+lblS+'">이벤트명 (예: 현충일, 시사회)</label><input type="text" id="ev-label" placeholder="이벤트명 입력" style="'+inS+'">'
+              + '<div style="display:flex;gap:10px;margin-top:14px">'
+              +   '<label style="flex:1;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;cursor:pointer"><input type="checkbox" id="ev-holiday" style="width:16px;height:16px">공휴일</label>'
+              +   '<label style="flex:1;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;cursor:pointer"><input type="checkbox" id="ev-int" style="width:16px;height:16px">통합 모집</label>'
+              + '</div>'
+              + '<button onclick="submitEvent()" style="width:100%;margin-top:18px;padding:14px 0;background:#0f172a;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">저장</button>'
+              + '<div style="margin-top:18px;font-size:11px;font-weight:800;color:#64748b;margin-bottom:4px">등록된 이벤트</div>'
+              + listHtml
+              + '</div></div>';
+            closeEventModal();
+            var wrap = document.createElement('div'); wrap.id = 'event-wrap'; wrap.innerHTML = html;
+            document.body.appendChild(wrap);
+        }
+        function closeEventModal() { var w = document.getElementById('event-wrap'); if (w) w.remove(); }
+        function submitEvent() {
+            var date = document.getElementById('ev-date').value;
+            var label = document.getElementById('ev-label').value;
+            var holiday = document.getElementById('ev-holiday').checked;
+            var recruitInt = document.getElementById('ev-int').checked;
+            if (!date) { alert('날짜를 선택해주세요.'); return; }
+            if (!label.trim() && !holiday && !recruitInt) { alert('이벤트명 또는 공휴일/통합모집 중 하나는 설정해주세요.'); return; }
+            fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date:date, label:label, holiday:holiday, recruitInt:recruitInt }) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){ if (j && j.error) { alert('오류: '+j.error); return; } _renderEventModal(j.events || {}); })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+        function deleteEvent(date) {
+            if (!confirm(date + ' 이벤트를 삭제할까요?')) return;
+            fetch('/api/events', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date:date }) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){ if (j && j.error) { alert('오류: '+j.error); return; } _renderEventModal(j.events || {}); })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+
         // ── 미소지기 스케줄 신청 (Step 1 취합)은 availability-ui.js가 담당 ──
         // 관리자 탭 진입 시 자동 로드
         var _origShowManager = typeof showView === 'function' ? showView : null;

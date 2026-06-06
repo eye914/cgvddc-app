@@ -15,6 +15,7 @@
   var DAY_KOR    = ['월', '화', '수', '목', '금', '토', '일'];
   var HOLIDAYS   = [];        // 공휴일 dayIdx 목록 (추후 API로 로드 가능)
   var ADMIN_INT  = [];        // 관리자 지정 통합 모집일 dayIdx
+  var EVENT_LABEL = {};       // dayIdx → 이벤트명 (예: 현충일)
 
   /* ── State ── */
   var selected   = {};        // dayIdx(0~6) → Set<'d'|'m'|'n'>
@@ -179,8 +180,23 @@
         var footer = document.getElementById('avail-sticky-footer');
         if (footer) footer.style.display = '';
 
-        /* 기존 신청 데이터 로드 */
-        fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name))
+        /* 이벤트/공휴일 로드 → HOLIDAYS / ADMIN_INT / EVENT_LABEL 채운 뒤 신청 데이터 로드 */
+        fetch('/api/events')
+          .then(function(r) { return r.json(); })
+          .then(function(ev) {
+            HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {};
+            var emap = (ev && ev.events) || {};
+            for (var di = 0; di < 7; di++) {
+              var e = emap[fmtDate(weekDates[di])];
+              if (!e) continue;
+              if (e.label)      EVENT_LABEL[di] = e.label;
+              if (e.holiday)    HOLIDAYS.push(di);
+              if (e.recruitInt) ADMIN_INT.push(di);
+            }
+          }, function() { HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {}; })
+          .then(function() {
+            return fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name));
+          })
           .then(function(r) { return r.json(); })
           .then(function(json) {
             selected = {};
@@ -273,6 +289,7 @@
       html += '<span style="font-size:11px;font-weight:700;color:#94a3b8">' + dateStr + '</span>';
       if (isHoliday)  html += '<span style="font-size:9px;font-weight:800;color:#c0564a;background:#f9ece9;padding:2px 6px;border-radius:5px">공휴일</span>';
       if (isAdminInt) html += '<span style="font-size:9px;font-weight:800;color:#3f8a96;background:#ecf6f7;padding:2px 6px;border-radius:5px">통합모집</span>';
+      if (EVENT_LABEL[dayIdx]) html += '<span style="font-size:9px;font-weight:800;color:#8a6d3b;background:#fbf3e2;padding:2px 6px;border-radius:5px">' + EVENT_LABEL[dayIdx] + '</span>';
       if (picks > 0)  html += '<span style="font-size:9px;font-weight:800;color:#d8463a;background:#fbeeec;padding:2px 6px;border-radius:5px">' + picks + '개</span>';
       html += '</div>';
       /* 전부 가능 버튼 */
