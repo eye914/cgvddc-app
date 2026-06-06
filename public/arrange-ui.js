@@ -353,7 +353,7 @@
     if (!asgN) { alert('배정된 인원이 없습니다.'); return; }
     var mon = parseMon(ST.weekKey);
     var sheetName = String(mon.getFullYear()).slice(-2) + '년' + (mon.getMonth() + 1) + '월' + Math.ceil(mon.getDate() / 7) + '주차(편성)';
-    if (!confirm('현재 편성(' + asgN + '칸)을 시트에 작성할까요?\n→ (원본) + (맞교대) 두 탭 생성\n\n※ 무거운 시트 복제라 최대 1분 걸립니다. 완료 알림이 뜰 때까지 닫지 마세요.')) return;
+    if (!confirm('현재 편성(' + asgN + '칸)을 시트에 작성할까요?\n→ (원본) + (맞교대) 두 탭 생성\n\n[주의] 이미 시트에 손으로 작성/수정한 주차라면 그 내용이 덮어써집니다. 수동 작성한 주차라면 배포하지 마세요.\n\n[참고] 시트 복제라 최대 1분 걸립니다. 완료 알림이 뜰 때까지 닫지 마세요.')) return;
     ST.busy = true;
     var _db = document.getElementById('ar-deploy-btn');
     if (_db) { _db.disabled = true; _db.textContent = '⏳ 배포 중...(최대 1분, 닫지 마세요)'; }
