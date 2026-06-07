@@ -33,6 +33,40 @@ export async function GET(req: NextRequest) {
     }
   } catch (_) { /* 리마인더 실패해도 마감 알림은 계속 진행 */ }
 
+  // ── 스케줄 신청 취합 미제출자 독려: 신청이 열린 주차가 있으면 미제출자에게 매일 1회 ──
+  try {
+    const { data: setRow } = await supabaseAdmin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'availability_open_week')
+      .maybeSingle();
+    const openWeek = (setRow?.value as any)?.week_key;
+    if (openWeek) {
+      const { data: staff } = await supabaseAdmin
+        .from('misojigi')
+        .select('name')
+        .eq('active', true);
+      const { data: subs } = await supabaseAdmin
+        .from('availability')
+        .select('name')
+        .eq('week_key', openWeek);
+      const submitted = new Set((subs || []).map((r: any) => r.name));
+      const missing = (staff || [])
+        .map((r: any) => r.name)
+        .filter((n: string) => n && !submitted.has(n));
+      if (missing.length > 0) {
+        const mon = new Date(openWeek + 'T00:00:00');
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        const lbl = `${mon.getMonth() + 1}/${mon.getDate()} ~ ${sun.getMonth() + 1}/${sun.getDate()}`;
+        await sendPushToNames(
+          missing,
+          '스케줄 신청 마감 전 안내',
+          `${lbl} 주 근무 신청이 아직 접수되지 않았습니다. 마감 전 앱에서 신청해 주세요.`,
+        );
+      }
+    }
+  } catch (_) { /* 독려 실패해도 다른 알림은 계속 진행 */ }
+
   // 내일 교대인 미체결(모집중) 공고 조회
   const { data: trades, error } = await supabaseAdmin
     .from('trades')
