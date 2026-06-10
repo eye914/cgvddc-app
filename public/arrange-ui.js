@@ -43,13 +43,14 @@
       return a.date === date && a.shiftCode === code && (a.position === pcode || a.position === pos);
     });
   }
-  // (코드그룹, 요일, 포지션) 가능 직원: 신청자(그 그룹) + 미제출(전체가능)
+  // (코드그룹, 요일, 포지션) 가능 직원: 신청자(그 그룹) + 미제출(전체가능) + 그 외(신청했지만 이 시간 미희망)
   function eligible(group, pos) {
-    var subs = [], non = [];
+    var subs = [], non = [], other = [];
     (ST.data.staff || []).forEach(function (s) {
       if (!submitted(s.name)) { non.push(s); return; }
       var av = (ST.data.availability[s.name] || {})[ST.day] || [];
       if (av.indexOf(group) > -1) subs.push(s);
+      else other.push(s); // 신청은 했지만 이 요일·시간은 안 고름 → 필요 시 배정 가능
     });
     function rank(arr) {
       return arr.sort(function (a, b) {
@@ -58,7 +59,7 @@
         return am - bm || a.name.localeCompare(b.name, 'ko');
       });
     }
-    return { subs: rank(subs), non: rank(non) };
+    return { subs: rank(subs), non: rank(non), other: rank(other) };
   }
 
   /* ── 스타일 1회 주입 ── */
@@ -305,7 +306,9 @@
     h += el.subs.length ? el.subs.map(function (s) { return row(s, true); }).join('') : '<div class="ar-hint">신청자 없음</div>';
     h += '<div class="ar-grp"><span class="ar-gd n"></span>미제출 · 전체 가능 (' + el.non.length + ')</div>';
     h += el.non.length ? el.non.map(function (s) { return row(s, false); }).join('') : '<div class="ar-hint">없음</div>';
-    h += '<div class="ar-hint">신청자 먼저 · 미제출자는 회색 · 카운터 빨강=계약일수 초과</div>';
+    h += '<div class="ar-grp"><span class="ar-gd n"></span>그 외 · 이 시간 미신청 (' + el.other.length + ')</div>';
+    h += el.other.length ? el.other.map(function (s) { return row(s, false); }).join('') : '<div class="ar-hint">없음</div>';
+    h += '<div class="ar-hint">신청자 먼저 · 미제출/그 외는 회색(필요 시 배정 가능) · 카운터 빨강=계약일수 초과</div>';
     ov.innerHTML = '<div class="ar-sheet">' + h + '</div>';
     ov.classList.add('show');
   };
