@@ -4519,6 +4519,59 @@ function showKakaoModal(text, forced) {
                 .catch(function(){ alert('네트워크 오류'); });
         }
 
+        // ── 관리자 관리 (추가/삭제) ─────────────────────────────
+        function openAdminManageModal() {
+            fetch('/api/admins').then(function(r){ return r.json(); })
+                .then(function(j){ _renderAdminModal((j && j.admins) || []); })
+                .catch(function(){ _renderAdminModal([]); });
+        }
+        function _renderAdminModal(admins) {
+            var listHtml = admins.length ? admins.map(function(a){
+                return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">'
+                  + '<div style="font-size:13px;font-weight:800;color:#0f172a">'+a.name+'</div>'
+                  + '<button onclick="deleteAdmin(\''+a.name+'\')" style="border:none;background:#fef2f2;color:#b91c1c;font-size:11px;font-weight:800;padding:6px 11px;border-radius:8px;cursor:pointer">삭제</button>'
+                  + '</div>';
+            }).join('') : '<div style="font-size:11px;color:#94a3b8;font-weight:700;padding:10px 0;text-align:center">등록된 관리자가 없습니다.</div>';
+            var lblS = 'display:block;font-size:11px;font-weight:800;color:#64748b;margin:12px 0 5px';
+            var inS  = 'width:100%;padding:11px 12px;border:1px solid #e2e8f0;border-radius:11px;font-size:13px;font-weight:700;color:#0f172a;background:#fff;box-sizing:border-box';
+            var html = ''
+              + '<div id="admin-ov" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:99999;display:flex;align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeAdminModal()">'
+              + '<div style="width:100%;max-width:460px;background:#fff;border-radius:20px 20px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom));max-height:86vh;overflow:auto">'
+              + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+              +   '<div style="font-size:15.5px;font-weight:900;color:#0f172a">관리자 관리</div>'
+              +   '<button onclick="closeAdminModal()" style="border:none;background:#f1f5f9;width:28px;height:28px;border-radius:50%;font-size:16px;color:#64748b;cursor:pointer;line-height:1">×</button>'
+              + '</div>'
+              + '<p style="font-size:11px;color:#94a3b8;font-weight:700;line-height:1.55;margin-bottom:4px">관리자는 본인 PIN으로 로그인합니다. 추가 시 PIN을 정해 주세요.</p>'
+              + '<div style="margin-top:14px;font-size:11px;font-weight:800;color:#64748b;margin-bottom:2px">현재 관리자</div>'
+              + listHtml
+              + '<label style="'+lblS+'">새 관리자 이름</label><input type="text" id="adm-name" placeholder="이름" style="'+inS+'">'
+              + '<label style="'+lblS+'">PIN (숫자 4~6자리)</label><input type="text" inputmode="numeric" id="adm-pin" placeholder="예: 10251" style="'+inS+'">'
+              + '<button onclick="submitAdmin()" style="width:100%;margin-top:18px;padding:14px 0;background:#0f172a;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">관리자 추가</button>'
+              + '</div></div>';
+            closeAdminModal();
+            var wrap = document.createElement('div'); wrap.id = 'admin-wrap'; wrap.innerHTML = html;
+            document.body.appendChild(wrap);
+        }
+        function closeAdminModal() { var w = document.getElementById('admin-wrap'); if (w) w.remove(); }
+        function submitAdmin() {
+            var name = (document.getElementById('adm-name').value || '').trim();
+            var pin = (document.getElementById('adm-pin').value || '').trim();
+            if (!name) { alert('이름을 입력하세요.'); return; }
+            if (!/^\d{4,6}$/.test(pin)) { alert('PIN은 숫자 4~6자리로 입력하세요.'); return; }
+            if (!confirm(name + ' 님을 관리자로 추가할까요? (PIN: ' + pin + ')')) return;
+            fetch('/api/admins', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:name, pin:pin }) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){ if (j && j.error) { alert('오류: '+j.error); return; } alert(name + ' 관리자 추가 완료'); openAdminManageModal(); })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+        function deleteAdmin(name) {
+            if (!confirm(name + ' 님을 관리자에서 삭제할까요?\n(해당 관리자는 더 이상 로그인할 수 없습니다)')) return;
+            fetch('/api/admins', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:name }) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){ if (j && j.error) { alert('오류: '+j.error); return; } openAdminManageModal(); })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+
         // ── 미소지기 스케줄 신청 (Step 1 취합)은 availability-ui.js가 담당 ──
         // 관리자 탭 진입 시 자동 로드
         var _origShowManager = typeof showView === 'function' ? showView : null;
