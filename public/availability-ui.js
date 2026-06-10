@@ -225,12 +225,10 @@
 
     /* 진행 상태 텍스트 */
     var progressMsg;
-    if (overLimit) {
-      progressMsg = '<span style="color:#dc2626;font-weight:900;font-size:11px">⚠ +' + (selectedDays - contractDays) + '일 초과 (관리자 검토)</span>';
-    } else if (selectedDays === contractDays) {
-      progressMsg = '<span style="color:#16a34a;font-weight:900;font-size:11px">✓ 계약일수 일치</span>';
+    if (selectedDays < contractDays) {
+      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">근로일수 ' + contractDays + '일 — 가능한 요일을 넉넉히 골라 주세요</span>';
     } else {
-      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">' + (contractDays - selectedDays) + '일 더 선택 필요</span>';
+      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">좋아요! 많이 고를수록 희망 반영이 잘 돼요</span>';
     }
     var pct = Math.min(selectedDays / contractDays * 100, 100);
 
@@ -248,9 +246,9 @@
     html += '</div>';
     /* 진행 바 */
     html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
-    html += '<div style="height:100%;border-radius:3px;background:' + (overLimit ? '#cf6b62' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
+    html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= contractDays ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
-    html += '<p style="font-size:10px;color:#a1a1a8;font-weight:600;line-height:1.5;word-break:keep-all">⚖️ 본 신청은 근로계약에 따라 편성에 반영됩니다. 희망하는 요일·타임슬롯·포지션을 신청해 주세요.</p>';
+    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px">근로일수(' + contractDays + '일)는 <b>최소 근무</b>예요. <b>가능한 요일을 근로일수보다 많이</b> 선택해 주세요 — 그중에서 편성에 반영됩니다. <b>제한 없이 자유롭게</b> 고르셔도 됩니다.</p>';
     html += '</div>';
 
     /* ── 빠른 패턴 (매일전부가능 / 평일·주말·미들 그룹 / 초기화) ── */
