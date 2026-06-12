@@ -222,6 +222,7 @@
     var selectedDays  = countSelectedDays();
     var hours         = parseFloat(curUser.hours) || 5.5;
     var overLimit     = selectedDays > contractDays;
+    var weekendOk     = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
 
     /* 진행 상태 텍스트 */
     var progressMsg;
@@ -249,6 +250,7 @@
     html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= contractDays ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
     html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px">근로일수(' + contractDays + '일)는 <b>최소 근무</b>예요. <b>가능한 요일을 근로일수보다 많이</b> 선택해 주세요 — 그중에서 편성에 반영됩니다. <b>제한 없이 자유롭게</b> 고르셔도 됩니다.</p>';
+    html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (weekendOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (weekendOk ? '주말 근무 선택 완료 (토·일 중 하루 이상)' : '주말 근무 필수 — 토·일 중 하루 이상 꼭 선택해야 신청이 완료됩니다.') + '</p>';
     html += '</div>';
 
     /* ── 빠른 패턴 (매일전부가능 / 평일·주말·미들 그룹 / 초기화) ── */
@@ -289,6 +291,7 @@
       if (isAdminInt) html += '<span style="font-size:9px;font-weight:800;color:#3f8a96;background:#ecf6f7;padding:2px 6px;border-radius:5px">통합모집</span>';
       if (EVENT_LABEL[dayIdx]) html += '<span style="font-size:9px;font-weight:800;color:#8a6d3b;background:#fbf3e2;padding:2px 6px;border-radius:5px">' + EVENT_LABEL[dayIdx] + '</span>';
       if (picks > 0)  html += '<span style="font-size:9px;font-weight:800;color:#d8463a;background:#fbeeec;padding:2px 6px;border-radius:5px">' + picks + '개</span>';
+      if ((dayIdx === 5 || dayIdx === 6) && !weekendOk) html += '<span style="font-size:9px;font-weight:800;color:#dc2626;background:#fef2f2;padding:2px 6px;border-radius:5px">주말 필수</span>';
       html += '</div>';
       /* 전부 가능 버튼 */
       var allBtnStyle = allOn
@@ -383,6 +386,11 @@
   /* ── 신청 제출 ── */
   window.availSubmit = function () {
     if (!curUser) return;
+    // 주말(토 dayIdx 5 · 일 dayIdx 6) 중 하루는 필수
+    if (getSelectedKinds(5).length === 0 && getSelectedKinds(6).length === 0) {
+      alert('주말 근무는 필수입니다.\n\n토요일 또는 일요일 중 가능한 날을 최소 하루 선택해야 신청이 완료됩니다.');
+      return;
+    }
     var notice = '📋 신청 전 확인\n\n'
       + "선택하신 요일은 '근무 희망'으로 접수됩니다.\n"
       + '최종 근무는 매장 운영·인원 상황에 따라 조정될 수 있어요.\n'
