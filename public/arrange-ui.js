@@ -183,7 +183,9 @@
     var wk = '';
     for (var d = 0; d < 7; d++) {
       var cls = d === 5 ? 'sat' : d === 6 ? 'sun' : '';
-      wk += '<div class="ar-wd ' + cls + (d === ST.day ? ' on' : '') + '" onclick="arrangeSelDay(' + d + ')"><div class="w">' + DAY_KOR[d] + '</div><div class="d">' + dayLabel(d).split('/')[1] + '</div></div>';
+      var ev = (ST.data.events || {})[d];
+      var dot = ev ? '<div style="width:5px;height:5px;border-radius:50%;margin-top:2px;background:' + (ev.holiday ? '#d06b66' : '#3f8a96') + '"></div>' : '';
+      wk += '<div class="ar-wd ' + cls + (d === ST.day ? ' on' : '') + '" onclick="arrangeSelDay(' + d + ')"><div class="w">' + DAY_KOR[d] + '</div><div class="d">' + dayLabel(d).split('/')[1] + '</div>' + dot + '</div>';
     }
     document.getElementById('ar-week').innerHTML = wk;
 
@@ -192,10 +194,19 @@
     GROUPS.forEach(function (g) { SHIFTS[g[0]].forEach(function () { POS.forEach(function () { total++; }); }); });
     (ST.data.assignments || []).forEach(function (a) { if (a.dayOfWeek === ST.day) filled++; });
     var pct = total ? Math.round(filled / total * 100) : 0;
+    var dayEv = (ST.data.events || {})[ST.day], evBanner = '';
+    if (dayEv) {
+      var _gm = { d: '오픈', m: '미들', n: '마감' }, parts = [];
+      if (dayEv.label) parts.push(dayEv.label);
+      if (dayEv.holiday) parts.push('공휴일');
+      if (dayEv.recruitInt) { var gl = (dayEv.intGroups && dayEv.intGroups.length) ? dayEv.intGroups.map(function (g) { return _gm[g]; }).join('·') : '전체'; parts.push('통합모집(' + gl + ')'); }
+      if (parts.length) evBanner = '<div style="margin-top:8px;background:#fbf3e2;border:1px solid #f0e2bf;border-radius:11px;padding:9px 12px;font-size:11.5px;font-weight:800;color:#8a6d3b">' + parts.join('  ·  ') + '</div>';
+    }
     document.getElementById('ar-pg').innerHTML =
       '<div class="ar-pg-row"><div class="ar-pg-a">배정 ' + pct + '% <span>' + filled + ' 칸</span></div>' +
       '<div class="ar-pg-b link" onclick="arrangeShowStatus()">신청 ' + (ST.data.submitted || []).length + ' · 미제출 ' + ((ST.data.staff || []).length - (ST.data.submitted || []).length) + ' ›</div></div>' +
       '<div class="ar-bar"><i style="width:' + pct + '%"></i></div>' +
+      evBanner +
       (filled > 0 ? '<button class="ar-clear" onclick="arrangeClearDay()">이 요일 배정 초기화 (' + filled + '칸)</button>' : '');
 
     var ch = document.getElementById('ar-ch');

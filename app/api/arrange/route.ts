@@ -69,12 +69,28 @@ export async function GET(req: NextRequest) {
       hours: String(r.hours ?? '5.5'),
     }));
 
+    // ── 4) 이벤트/공휴일 (요일별 0~6) ─────────────────────────
+    const { data: evRow } = await supabaseAdmin
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'schedule_events')
+      .maybeSingle();
+    const evMap = (evRow?.value as Record<string, any>) || {};
+    const events: Record<number, any> = {};
+    const mon = new Date(weekKey + 'T00:00:00');
+    for (let di = 0; di < 7; di++) {
+      const d = new Date(mon); d.setDate(mon.getDate() + di);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (evMap[key]) events[di] = evMap[key];
+    }
+
     return NextResponse.json({
       weekKey,
       staff,
       availability,
       submitted: Array.from(submittedSet),
       assignments,
+      events,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
