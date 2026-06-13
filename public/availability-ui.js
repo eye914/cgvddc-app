@@ -16,6 +16,7 @@
   var HOLIDAYS   = [];        // 공휴일 dayIdx 목록 (추후 API로 로드 가능)
   var ADMIN_INT  = [];        // 관리자 지정 통합 모집일 dayIdx
   var EVENT_LABEL = {};       // dayIdx → 이벤트명 (예: 현충일)
+  var EVENT_INT_GROUPS = {};  // dayIdx → 통합모집 시간그룹 ['d','m','n'] (이벤트 통합모집일만)
 
   /* ── State ── */
   var selected   = {};        // dayIdx(0~6) → Set<'d'|'m'|'n'>
@@ -65,6 +66,8 @@
   /* ── 셀 활성 여부 ── */
   function isCellActive(dayIdx, pos, groupId) {
     if (pos.specialOnly    && !isSpecialDay(dayIdx)) return false;
+    // 이벤트 통합모집일: 관리자가 지정한 시간대(오픈/미들/마감)의 통합만 열림
+    if (pos.id === 'int' && ADMIN_INT.indexOf(dayIdx) > -1 && EVENT_INT_GROUPS[dayIdx] && EVENT_INT_GROUPS[dayIdx].indexOf(groupId) === -1) return false;
     if (pos.weekdayNoOpen  && groupId === 'd' && !isWeekend(dayIdx)) return false;
     if (pos.kinds.indexOf(groupId) === -1) return false;
     return true;
@@ -184,16 +187,16 @@
         fetch('/api/events')
           .then(function(r) { return r.json(); })
           .then(function(ev) {
-            HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {};
+            HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {}; EVENT_INT_GROUPS = {};
             var emap = (ev && ev.events) || {};
             for (var di = 0; di < 7; di++) {
               var e = emap[fmtDate(weekDates[di])];
               if (!e) continue;
               if (e.label)      EVENT_LABEL[di] = e.label;
               if (e.holiday)    HOLIDAYS.push(di);
-              if (e.recruitInt) ADMIN_INT.push(di);
+              if (e.recruitInt) { ADMIN_INT.push(di); EVENT_INT_GROUPS[di] = (e.intGroups && e.intGroups.length) ? e.intGroups : ['d','m','n']; }
             }
-          }, function() { HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {}; })
+          }, function() { HOLIDAYS = []; ADMIN_INT = []; EVENT_LABEL = {}; EVENT_INT_GROUPS = {}; })
           .then(function() {
             return fetch('/api/availability?weekKey=' + weekKey + '&name=' + encodeURIComponent(name));
           })

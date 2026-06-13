@@ -4467,7 +4467,7 @@ function showKakaoModal(text, forced) {
             var listHtml = dates.length ? dates.map(function(d){
                 var e = events[d]; var tags = [];
                 if (e.holiday) tags.push('공휴일');
-                if (e.recruitInt) tags.push('통합 모집');
+                if (e.recruitInt) { var _gm={d:'오픈',m:'미들',n:'마감'}; var _gl=(e.intGroups&&e.intGroups.length)?e.intGroups.map(function(g){return _gm[g];}).join('·'):'전체'; tags.push('통합 모집('+_gl+')'); }
                 return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f1f5f9">'
                   + '<div><div style="font-size:12.5px;font-weight:800;color:#0f172a">'+d+(e.label?'   '+e.label:'')+'</div>'
                   + (tags.length?'<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-top:2px">'+tags.join(' · ')+'</div>':'')+'</div>'
@@ -4490,6 +4490,12 @@ function showKakaoModal(text, forced) {
               +   '<label style="flex:1;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;cursor:pointer"><input type="checkbox" id="ev-holiday" style="width:16px;height:16px">공휴일</label>'
               +   '<label style="flex:1;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;cursor:pointer"><input type="checkbox" id="ev-int" style="width:16px;height:16px">통합 모집</label>'
               + '</div>'
+              + '<div style="margin-top:10px"><div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px">통합 모집 시간대 <span style="color:#94a3b8;font-weight:700">(통합 모집 선택 시 필수)</span></div>'
+              +   '<div style="display:flex;gap:8px">'
+              +     '<label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:10px 0;cursor:pointer"><input type="checkbox" id="ev-int-d" style="width:15px;height:15px">오픈</label>'
+              +     '<label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:10px 0;cursor:pointer"><input type="checkbox" id="ev-int-m" style="width:15px;height:15px">미들</label>'
+              +     '<label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:800;color:#0f172a;background:#f8fafc;border:1px solid #e2e8f0;border-radius:11px;padding:10px 0;cursor:pointer"><input type="checkbox" id="ev-int-n" style="width:15px;height:15px">마감</label>'
+              +   '</div></div>'
               + '<button onclick="submitEvent()" style="width:100%;margin-top:18px;padding:14px 0;background:#0f172a;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">저장</button>'
               + '<div style="margin-top:18px;font-size:11px;font-weight:800;color:#64748b;margin-bottom:4px">등록된 이벤트</div>'
               + listHtml
@@ -4504,9 +4510,14 @@ function showKakaoModal(text, forced) {
             var label = document.getElementById('ev-label').value;
             var holiday = document.getElementById('ev-holiday').checked;
             var recruitInt = document.getElementById('ev-int').checked;
+            var intGroups = [];
+            if (document.getElementById('ev-int-d').checked) intGroups.push('d');
+            if (document.getElementById('ev-int-m').checked) intGroups.push('m');
+            if (document.getElementById('ev-int-n').checked) intGroups.push('n');
             if (!date) { alert('날짜를 선택해주세요.'); return; }
             if (!label.trim() && !holiday && !recruitInt) { alert('이벤트명 또는 공휴일/통합모집 중 하나는 설정해주세요.'); return; }
-            fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date:date, label:label, holiday:holiday, recruitInt:recruitInt }) })
+            if (recruitInt && intGroups.length === 0) { alert('통합 모집 시간대(오픈/미들/마감)를 1개 이상 선택해주세요.\n단체가 열리는 시간대만 통합 신청이 열립니다.'); return; }
+            fetch('/api/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ date:date, label:label, holiday:holiday, recruitInt:recruitInt, intGroups:intGroups }) })
                 .then(function(r){ return r.json(); })
                 .then(function(j){ if (j && j.error) { alert('오류: '+j.error); return; } _renderEventModal(j.events || {}); })
                 .catch(function(){ alert('네트워크 오류'); });

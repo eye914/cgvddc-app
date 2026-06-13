@@ -32,17 +32,22 @@ export async function GET() {
 // POST: 특정 날짜 이벤트 설정/수정 (모두 비면 삭제)
 export async function POST(req: NextRequest) {
   try {
-    const { date, label, holiday, recruitInt } = await req.json();
+    const { date, label, holiday, recruitInt, intGroups } = await req.json();
     if (!date) return NextResponse.json({ error: 'date 필수' }, { status: 400 });
     const map = await getEvents();
     const hasLabel = label && String(label).trim();
     if (!hasLabel && !holiday && !recruitInt) {
       delete map[date];
     } else {
+      const groups = Array.isArray(intGroups)
+        ? intGroups.filter((g: string) => ['d', 'm', 'n'].indexOf(g) > -1)
+        : [];
       map[date] = {
         label: hasLabel ? String(label).trim() : '',
         holiday: !!holiday,
         recruitInt: !!recruitInt,
+        // 통합 모집 시간대(오픈 d/미들 m/마감 n). 비어있고 통합모집이면 전체로 간주
+        intGroups: recruitInt ? groups : [],
       };
     }
     await saveEvents(map);
