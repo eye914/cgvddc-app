@@ -760,11 +760,12 @@ function showKakaoModal(text, forced) {
             var diff = d.getDate() - day + (day === 0 ? -6 : 1);
             var mon = new Date(d.setDate(diff));
             var sun = new Date(mon); sun.setDate(mon.getDate()+6);
-            return mon.getFullYear()+"\uB144 "+(mon.getMonth()+1)+"/"+mon.getDate()+"(\uC6D4) ~ "+(sun.getMonth()+1)+"/"+sun.getDate()+"(\uC77C) \uC8FC\uAC04";
+            var wkNum = Math.ceil(mon.getDate()/7);
+            return mon.getFullYear()+"\uB144 "+(mon.getMonth()+1)+"\uC6D4 "+wkNum+"\uC8FC\uCC28 ("+(mon.getMonth()+1)+"/"+mon.getDate()+"(\uC6D4)~"+(sun.getMonth()+1)+"/"+sun.getDate()+"(\uC77C))";
         }
 
         function parseWeekStart(key) {
-            var m = key.match(/(\d{4})[^\d]+(\d+)\/(\d+)/);
+            var m = key.match(/(\d{4})\uB144[^(]*\((\d+)\/(\d+)/);
             if (!m) return new Date(0);
             return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
         }
@@ -788,7 +789,7 @@ function showKakaoModal(text, forced) {
 
         // "2026년 5/26(월) ~ 6/1(일) 주간" → "2026년 5월"  (월요일 기준)
         function getMonthKeyFromWeekKey(wkKey) {
-            var m = wkKey.match(/(\d{4})년\s+(\d+)\/\d+/);
+            var m = wkKey.match(/(\d{4})년\s+(\d+)월/);
             if (!m) return '기타';
             return m[1] + '년 ' + parseInt(m[2]) + '월';
         }
