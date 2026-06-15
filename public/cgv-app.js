@@ -1308,6 +1308,27 @@ function showKakaoModal(text, forced) {
             return false;
         }
 
+        // 특정 날짜에 본인 실제 근무(맞교대 시트) 조회 → cb({published, mine:[{code,pos}]})
+        // 미발행/조회실패 시 published=false (검증 통과시켜 기존 기능 안 깨짐)
+        function _fetchActualShifts(name, dateYMD, cb) {
+            try {
+                fetch('/api/schedule?mode=today&fresh=1&date=' + encodeURIComponent(dateYMD))
+                    .then(function(r){ return r.json(); })
+                    .then(function(d){
+                        if (!d || !d.weekKey || !d.schedule) { cb({ published:false, mine:[] }); return; }
+                        var p = String(dateYMD).split('-'); var md = parseInt(p[1],10)+'/'+parseInt(p[2],10);
+                        var key = String(name).replace(/\s/g,'');
+                        var mine = d.schedule.filter(function(row){
+                            if (!row.date || row.date.indexOf(md+'(') !== 0) return false;
+                            var nm = String(row.name||'').replace(/\([^)]*\)/g,'').replace(/\s/g,'');
+                            return nm === key;
+                        }).map(function(row){ return { code: row.shiftCode, pos: row.position }; });
+                        cb({ published:true, mine:mine });
+                    })
+                    .catch(function(){ cb({ published:false, mine:[] }); });
+            } catch(e) { cb({ published:false, mine:[] }); }
+        }
+
         function submitNewTrade() {
             if (!currentUser){ alert("\uC0C1\uB2E8\uC5D0\uC11C \uBCF8\uC778 \uC774\uB984\uC744 \uBA3C\uC800 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
             if (checkPenaltyStatus(currentUser)){ alert("\uADFC\uD0DC \uD398\uB110\uD2F0 \uC801\uC6A9 - \uD604\uC7AC \uC2DC\uC2A4\uD15C \uC774\uC6A9 \uAD8C\uD55C\uC774 \uC815\uC9C0\uB41C \uC0C1\uD0DC\uC785\uB2C8\uB2E4."); return; }
@@ -1322,6 +1343,18 @@ function showKakaoModal(text, forced) {
             if (isExpired(rDate)){ alert("전날 22시 이후에는 신청할 수 없습니다."); return; }
             if (rCode.startsWith("N") && rPos === "\uB9E4\uC810"){ alert("\uB9C8\uAC10(N) \uC2DC\uAC04\uB300(OUT)\uC5D0\uB294 \uC77C\uBC18 \uB9E4\uC810\uC744 \uC120\uD0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."); return; }
 
+            // \u2605 \uBCF4\uB0BC \uADFC\uBB34(OUT)\uAC00 \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uC640 \uC77C\uCE58\uD558\uB294\uC9C0 \uAC80\uC99D
+            var _outCode = String(rCode).split(" ")[0];
+            _fetchActualShifts(currentUser, rDate, function(act){
+                if (act.published && act.mine.length > 0 && !act.mine.some(function(m){ return m.code === _outCode; })) {
+                    alert("\uADF8 \uB0A0(" + rDate + ") \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uB294 [" + act.mine.map(function(m){ return m.code; }).join(", ") + "] \uC785\uB2C8\uB2E4.\n\uBCF4\uB0BC \uADFC\uBB34(OUT)\uB294 \uC2E4\uC81C \uADFC\uBB34\uC640 \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4. (\uC120\uD0DD: " + _outCode + ")");
+                    return;
+                }
+                _proceedSubmitTrade();
+            });
+            return;
+
+            function _proceedSubmitTrade() {
             var dShiftData = "";
             if (type === "swap") {
                 var dates = Object.keys(wishData).sort();
@@ -1390,6 +1423,7 @@ function showKakaoModal(text, forced) {
                 showLoader(false);
                 fetchData(); clearReqData(); clearWishData();
             }
+            } // _proceedSubmitTrade
         }
 
         // 공고자 근무시간(h)과 타임코드(e.g."D1")를 받아 실제 시작~종료 반환
