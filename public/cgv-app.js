@@ -1705,6 +1705,22 @@ function showKakaoModal(text, forced) {
             var targetDate = document.getElementById("support-selected-target-date").value;
             var sCode = document.getElementById("support-selected-code").value;
             if (!sPos){ alert("\uD22C\uC785\uB420 \uD3EC\uC9C0\uC158\uC744 \uD655\uC2E4\uD788 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694."); return; }
+            // \u2605 \uB9DE\uAD50\uB300 \uC218\uB77D: \uB0B4\uAC00 \uB0B4\uC904 \uADFC\uBB34(sCode)\uAC00 \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uC640 \uAC19\uC740\uC9C0 \uAC80\uC99D (\uC7AC\uC9C4\uC785 \uAC00\uB4DC)
+            if (t.tradeType !== "sub" && sCode && !window.__supportChecked) {
+                var _accCode2 = String(sCode).split(" ")[0];
+                var _accDate2 = String(targetDate).split("(")[0];
+                if (_accDate2) {
+                    _fetchActualShifts(currentUser, _accDate2, function(act){
+                        if (act.published && act.mine.length > 0 && !act.mine.some(function(m){ return m.code === _accCode2; })) {
+                            alert("\uADF8 \uB0A0(" + _accDate2 + ") \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uB294 [" + act.mine.map(function(m){ return m.code; }).join(", ") + "] \uC785\uB2C8\uB2E4.\n\uB0B4\uAC00 \uB0B4\uC904 \uADFC\uBB34\uB294 \uC2E4\uC81C \uADFC\uBB34\uC640 \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4. (\uC120\uD0DD: " + _accCode2 + ")");
+                            return;
+                        }
+                        window.__supportChecked = true;
+                        try { confirmSupport(); } finally { window.__supportChecked = false; }
+                    });
+                    return;
+                }
+            }
             var fD = t.desiredShift;
             if (t.tradeType !== "sub") {
                 if (!targetDate){ alert("\uB0B4\uAC00 \uB4E4\uC5B4\uAC08 \uC815\uD655\uD55C \uB0A0\uC9DC(\uC635\uC158)\uB97C \uC704\uC5D0\uC11C \uD558\uB098 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694."); return; }
