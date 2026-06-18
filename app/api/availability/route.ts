@@ -5,6 +5,15 @@ import { sendPushToAllExcept } from '@/lib/push';
 const SETTINGS_KEY = 'availability_open_week';
 const CAP_KEY = 'weekend_capacity';
 
+async function callGAS(action: string, params: any[]) {
+  const GAS_URL = process.env.GAS_URL;
+  if (!GAS_URL) throw new Error('GAS_URL 미설정');
+  const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params }) });
+  const parsed = JSON.parse(await r.text());
+  if (!parsed?.success) throw new Error(parsed?.error || 'GAS 실패');
+  return parsed.result;
+}
+
 /** 주말 정원 조회 (기본: 토 12, 일 9) — 토=dayIdx5, 일=dayIdx6 */
 async function getWeekendCaps(): Promise<{ sat: number; sun: number }> {
   const def = { sat: 12, sun: 9 };
@@ -174,6 +183,40 @@ export async function POST(req: NextRequest) {
         .eq('week_key', weekKey);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true, deleted: count ?? 0 });
+    }
+
+    // ── 관리자: 신청현황 시트로 내보내기 (매트릭스 탭) ──────────
+    if (action === 'exportSheet') {
+      const { weekKey } = body as { weekKey: string };
+      if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
+      const { data: miso } = await supabaseAdmin
+        .from('misojigi').select('name').eq('active', true).order('name');
+      const names = (miso ?? []).map((r: any) => String(r.name).trim());
+      const { data: avRows } = await supabaseAdmin
+        .from('availability').select('name, day_of_week, shift_codes').eq('week_key', weekKey);
+      const byName: Record<string, Record<number, string[]>> = {};
+      (avRows ?? []).forEach((r: any) => {
+        (byName[r.name] = byName[r.name] || {})[r.day_of_week] = r.shift_codes || [];
+      });
+      const KR = ['월', '화', '수', '목', '금', '토', '일'];
+      const mon = new Date(weekKey + 'T00:00:00');
+      const dates: string[] = [];
+      for (let i = 0; i < 7; i++) { const d = new Date(mon); d.setDate(mon.getDate() + i); dates.push((d.getMonth() + 1) + '/' + d.getDate() + '(' + KR[i] + ')'); }
+      const GLB: Record<string, string> = { d: '오픈', m: '미들', n: '마감' };
+      const lbl = (codes: string[]) => !codes || !codes.length ? '' : (codes.length >= 3 ? '전부' : codes.map((c) => GLB[c] || c).join('·'));
+      const totals = [0, 0, 0, 0, 0, 0, 0];
+      const rows = names.map((nm) => {
+        const submitted = !!byName[nm];
+        const days: string[] = [];
+        for (let i = 0; i < 7; i++) { const codes = (byName[nm] || {})[i] || []; days.push(lbl(codes)); if (codes.length) totals[i]++; }
+        return { name: nm, submitted, days };
+      });
+      try {
+        const result = await callGAS('writeAvailabilityMatrix', [weekKey, { dates, rows, totals }]);
+        return NextResponse.json({ ok: true, result });
+      } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+      }
     }
 
     // ── 미소지기: 신청 저장 ────────────────────────────────────

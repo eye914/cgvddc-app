@@ -4448,6 +4448,20 @@ function showKakaoModal(text, forced) {
             .catch(function(){ alert('네트워크 오류'); });
         }
 
+        // ── 신청현황 시트로 내보내기 ─────────────────────────────
+        function exportAvailSheet() {
+            var weekKey = getSelectedAvailWeek();
+            if (!weekKey) { alert('주차를 선택해주세요.'); return; }
+            if (!confirm(_weekLbl(weekKey) + ' 신청현황을 시트로 내보낼까요?\n→ "○주차(신청현황)" 탭에 매트릭스로 작성됩니다.')) return;
+            fetch('/api/availability', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'exportSheet', weekKey: weekKey }) })
+                .then(function(r){ return r.json(); })
+                .then(function(json){
+                    if (json.ok) { var rr = json.result || {}; alert('신청현황 시트 작성 완료\n' + (rr.sheet || '') + ' · ' + (rr.rows || 0) + '명'); }
+                    else { alert('오류: ' + (json.error || '다시 시도')); }
+                })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+
         // ── 긴급 대타 요청 (관리자 전용) ─────────────────────────
         function openUrgentSubModal() {
             var names = [];
