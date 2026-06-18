@@ -189,11 +189,21 @@
     }
     document.getElementById('ar-week').innerHTML = wk;
 
-    // 진행률 (선택 요일)
-    var total = 0, filled = 0;
-    GROUPS.forEach(function (g) { SHIFTS[g[0]].forEach(function () { POS.forEach(function () { total++; }); }); });
-    (ST.data.assignments || []).forEach(function (a) { if (a.dayOfWeek === ST.day) filled++; });
-    var pct = total ? Math.round(filled / total * 100) : 0;
+    // 배정 현황 (선택 요일)
+    var filled = 0, byGrp = { d: 0, m: 0, n: 0 }, asgNames = {};
+    (ST.data.assignments || []).forEach(function (a) {
+      if (a.dayOfWeek !== ST.day) return;
+      filled++; asgNames[a.name] = 1;
+      var gc = String(a.shiftCode).charAt(0);
+      if (gc === 'D') byGrp.d++; else if (gc === 'M') byGrp.m++; else if (gc === 'N') byGrp.n++;
+    });
+    var availN = 0;
+    (ST.data.staff || []).forEach(function (s) {
+      if (asgNames[s.name]) return;
+      if (!submitted(s.name)) { availN++; return; }
+      var av = (ST.data.availability[s.name] || {})[ST.day] || [];
+      if (av.length > 0) availN++;
+    });
     var dayEv = (ST.data.events || {})[ST.day], evBanner = '';
     if (dayEv) {
       var _gm = { d: '오픈', m: '미들', n: '마감' }, parts = [];
@@ -203,9 +213,9 @@
       if (parts.length) evBanner = '<div style="margin-top:8px;background:#fbf3e2;border:1px solid #f0e2bf;border-radius:11px;padding:9px 12px;font-size:11.5px;font-weight:800;color:#8a6d3b">' + parts.join('  ·  ') + '</div>';
     }
     document.getElementById('ar-pg').innerHTML =
-      '<div class="ar-pg-row"><div class="ar-pg-a">배정 ' + pct + '% <span>' + filled + ' 칸</span></div>' +
+      '<div class="ar-pg-row"><div class="ar-pg-a">배정 ' + filled + '명 <span>· 미배정 가능 ' + availN + '명</span></div>' +
       '<div class="ar-pg-b link" onclick="arrangeShowStatus()">신청 ' + (ST.data.submitted || []).length + ' · 미제출 ' + ((ST.data.staff || []).length - (ST.data.submitted || []).length) + ' ›</div></div>' +
-      '<div class="ar-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div style="font-size:11px;font-weight:700;color:#8a8a90;margin-top:4px">오픈 ' + byGrp.d + '  ·  미들 ' + byGrp.m + '  ·  마감 ' + byGrp.n + '</div>' +
       evBanner +
       (filled > 0 ? '<button class="ar-clear" onclick="arrangeClearDay()">이 요일 배정 초기화 (' + filled + '칸)</button>' : '');
 
