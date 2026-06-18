@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
       const GLB: Record<string, string> = { d: '오픈', m: '미들', n: '마감' };
       const lbl = (codes: string[]) => !codes || !codes.length ? '' : (codes.length >= 3 ? '전부' : codes.map((c) => GLB[c] || c).join('·'));
       const totals = [0, 0, 0, 0, 0, 0, 0];
-      const rows = names.map((nm) => {
+      const rows = names.map((nm: string) => {
         const submitted = !!byName[nm];
         const days: string[] = [];
         for (let i = 0; i < 7; i++) { const codes = (byName[nm] || {})[i] || []; days.push(lbl(codes)); if (codes.length) totals[i]++; }
