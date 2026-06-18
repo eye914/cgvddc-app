@@ -3,6 +3,19 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendPushToAllExcept } from '@/lib/push';
 
 const SETTINGS_KEY = 'availability_open_week';
+const CAP_KEY = 'weekend_capacity';
+
+/** 주말 정원 조회 (기본: 토 12, 일 9) — 토=dayIdx5, 일=dayIdx6 */
+async function getWeekendCaps(): Promise<{ sat: number; sun: number }> {
+  const def = { sat: 12, sun: 9 };
+  const { data } = await supabaseAdmin
+    .from('app_settings')
+    .select('value')
+    .eq('key', CAP_KEY)
+    .maybeSingle();
+  const v = (data?.value as { sat?: number; sun?: number }) || {};
+  return { sat: Number(v.sat ?? def.sat), sun: Number(v.sun ?? def.sun) };
+}
 
 /** app_settings에서 현재 열린 주차 조회 */
 async function getOpenWeek(): Promise<{ weekKey: string | null; openedBy?: string; openedAt?: string }> {
@@ -32,11 +45,26 @@ export async function GET(req: NextRequest) {
     // ── 현재 열린 주차 조회 ────────────────────────────────────
     if (mode === 'active') {
       const info = await getOpenWeek();
+      const caps = await getWeekendCaps();
+      const counts: Record<number, number> = {};
+      if (info.weekKey) {
+        const { data: avRows } = await supabaseAdmin
+          .from('availability')
+          .select('name, day_of_week')
+          .eq('week_key', info.weekKey);
+        const perDay: Record<number, Set<string>> = {};
+        (avRows ?? []).forEach((r: any) => {
+          (perDay[r.day_of_week] = perDay[r.day_of_week] || new Set()).add(r.name);
+        });
+        for (let d = 0; d < 7; d++) counts[d] = perDay[d] ? perDay[d].size : 0;
+      }
       return NextResponse.json({
         weekKey:  info.weekKey,
         isOpen:   !!info.weekKey,
         openedBy: info.openedBy ?? null,
         openedAt: info.openedAt ?? null,
+        counts,
+        caps,
       });
     }
 
@@ -163,6 +191,35 @@ export async function POST(req: NextRequest) {
     const info = await getOpenWeek();
     if (info.weekKey !== weekKey) {
       return NextResponse.json({ error: '현재 신청 가능한 주차가 아닙니다.' }, { status: 403 });
+    }
+
+    // 주말 정원 검사: 본인이 '새로' 추가하는 주말 요일이 정원 초과면 거부 (선착순)
+    {
+      const caps = await getWeekendCaps();
+      const { data: prevRows } = await supabaseAdmin
+        .from('availability')
+        .select('day_of_week')
+        .eq('week_key', weekKey)
+        .eq('name', name);
+      const prevDays = new Set((prevRows ?? []).map((r: any) => r.day_of_week));
+      for (const dow of [5, 6]) { // 토=5, 일=6
+        const selectingNow = days.some((d) => d.dayOfWeek === dow && d.shiftCodes.length > 0);
+        if (selectingNow && !prevDays.has(dow)) {
+          const cap = dow === 5 ? caps.sat : caps.sun;
+          const { data: dayRows } = await supabaseAdmin
+            .from('availability')
+            .select('name')
+            .eq('week_key', weekKey)
+            .eq('day_of_week', dow);
+          const others = new Set((dayRows ?? []).map((r: any) => r.name).filter((n: string) => n !== name));
+          if (others.size >= cap) {
+            return NextResponse.json(
+              { error: `${dow === 5 ? '토요일' : '일요일'} 신청이 정원(${cap}명)이 다 찼습니다. 다른 주말 요일을 선택해 주세요.` },
+              { status: 409 }
+            );
+          }
+        }
+      }
     }
 
     const toUpsert = days
