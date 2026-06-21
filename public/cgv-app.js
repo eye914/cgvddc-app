@@ -760,8 +760,10 @@ function showKakaoModal(text, forced) {
             var diff = d.getDate() - day + (day === 0 ? -6 : 1);
             var mon = new Date(d.setDate(diff));
             var sun = new Date(mon); sun.setDate(mon.getDate()+6);
-            var wkNum = Math.ceil(mon.getDate()/7);
-            return mon.getFullYear()+"\uB144 "+(mon.getMonth()+1)+"\uC6D4 "+wkNum+"\uC8FC\uCC28 ("+(mon.getMonth()+1)+"/"+mon.getDate()+"(\uC6D4)~"+(sun.getMonth()+1)+"/"+sun.getDate()+"(\uC77C))";
+            // \uC8FC \uB300\uD45C\uC6D4/\uC8FC\uCC28 = \uBAA9\uC694\uC77C(\uC6D4+3) \uAE30\uC900 (\uADF8 \uC8FC \uACFC\uBC18\uC774 \uC18D\uD55C \uB2EC)
+            var thu = new Date(mon); thu.setDate(mon.getDate()+3);
+            var wkNum = Math.ceil(thu.getDate()/7);
+            return thu.getFullYear()+"\uB144 "+(thu.getMonth()+1)+"\uC6D4 "+wkNum+"\uC8FC\uCC28 ("+(mon.getMonth()+1)+"/"+mon.getDate()+"(\uC6D4)~"+(sun.getMonth()+1)+"/"+sun.getDate()+"(\uC77C))";
         }
 
         function parseWeekStart(key) {
@@ -4290,8 +4292,9 @@ function showKakaoModal(text, forced) {
                     var val = mon.getFullYear() + '-' +
                         String(mon.getMonth() + 1).padStart(2, '0') + '-' +
                         String(mon.getDate()).padStart(2, '0');
-                    var wnum = Math.ceil(mon.getDate() / 7);
-                    var label = (mon.getMonth() + 1) + '월 ' + wnum + '주차 (' +
+                    var thu = new Date(mon); thu.setDate(mon.getDate() + 3); // 목요일 기준 대표월/주차
+                    var wnum = Math.ceil(thu.getDate() / 7);
+                    var label = (thu.getMonth() + 1) + '월 ' + wnum + '주차 (' +
                         (mon.getMonth() + 1) + '/' + mon.getDate() + '~' + (sun.getMonth() + 1) + '/' + sun.getDate() + ')';
                     var opt = document.createElement('option');
                     opt.value = val; opt.textContent = label;
