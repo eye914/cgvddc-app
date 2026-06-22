@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
     const { name, pos, hours, employeeId } = await req.json();
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });
 
+    // 근로일수 디폴트: 5.5h → 2일, 4.5h(그 외) → 3일
+    const hrs = Number(hours ?? 5.5);
+    const contractDays = hrs >= 5.5 ? 2 : 3;
+
     const { error } = await supabaseAdmin.from('misojigi').insert({
       name: name.trim(),
       pos: Array.isArray(pos) ? pos.join(',') : (pos || ''),
@@ -66,6 +70,7 @@ export async function POST(req: NextRequest) {
       active: true,
       pin: '00000',
       employee_id: employeeId ? employeeId.trim() : null,
+      contract_days: contractDays,
     });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

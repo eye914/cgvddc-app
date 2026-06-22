@@ -4,9 +4,14 @@ import { sendPushToAllExcept } from '@/lib/push';
 
 const SETTINGS_KEY = 'availability_open_week';
 const CAP_KEY = 'day_capacity';
-// 요일별 신청 정원 기본값 [월,화,수,목,금,토,일] — 실제 배정 수요 기반
-const DEFAULT_CAPS = [6, 6, 7, 6, 7, 10, 8];
+const EVENTS_KEY = 'schedule_events';
 const DOW_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
+const GROUP_IDS = ['d', 'm', 'n'];       // 오픈, 미들, 마감
+const GROUP_NAMES = ['오픈', '미들', '마감'];
+// 기본 정원 [오픈, 미들, 마감] + 이벤트 시간대 보너스
+const DEFAULT_CAP = { weekday: [3, 3, 4], sat: [3, 4, 5], sun: [3, 4, 4], eventBonus: 1 };
+
+type CapConfig = { weekday: number[]; sat: number[]; sun: number[]; eventBonus: number };
 
 async function callGAS(action: string, params: any[]) {
   const GAS_URL = process.env.GAS_URL;
@@ -17,18 +22,49 @@ async function callGAS(action: string, params: any[]) {
   return parsed.result;
 }
 
-/** 요일별 신청 정원 조회 (기본: DEFAULT_CAPS). value = [월..일] 7개 숫자 배열 */
-async function getDayCaps(): Promise<number[]> {
+/** 정원 설정 조회 (기본: DEFAULT_CAP). value = {weekday:[o,m,n], sat, sun, eventBonus} */
+async function getCapConfig(): Promise<CapConfig> {
   const { data } = await supabaseAdmin
-    .from('app_settings')
-    .select('value')
-    .eq('key', CAP_KEY)
-    .maybeSingle();
-  const v = data?.value;
-  if (Array.isArray(v) && v.length === 7) {
-    return v.map((n: any, i: number) => Number(n ?? DEFAULT_CAPS[i]));
+    .from('app_settings').select('value').eq('key', CAP_KEY).maybeSingle();
+  const v = (data?.value as Partial<CapConfig>) || {};
+  const arr = (a: any, def: number[]) =>
+    Array.isArray(a) && a.length === 3 ? a.map(Number) : def;
+  return {
+    weekday: arr(v.weekday, DEFAULT_CAP.weekday),
+    sat: arr(v.sat, DEFAULT_CAP.sat),
+    sun: arr(v.sun, DEFAULT_CAP.sun),
+    eventBonus: Number(v.eventBonus ?? DEFAULT_CAP.eventBonus),
+  };
+}
+
+/** schedule_events 맵 조회 { 'YYYY-MM-DD': {recruitInt, intGroups, ...} } */
+async function getEventsMap(): Promise<Record<string, any>> {
+  const { data } = await supabaseAdmin
+    .from('app_settings').select('value').eq('key', EVENTS_KEY).maybeSingle();
+  return (data?.value as Record<string, any>) || {};
+}
+
+/** 주차 월요일 + dayIdx → 'YYYY-MM-DD' */
+function dateForDay(weekKey: string, dayIdx: number): string {
+  const d = new Date(weekKey + 'T00:00:00');
+  d.setDate(d.getDate() + dayIdx);
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+/** 요일(0~6)×시간대(0~2) 유효 정원 7×3 (이벤트 보너스 반영) */
+function buildCapMatrix(cfg: CapConfig, weekKey: string, events: Record<string, any>): number[][] {
+  const out: number[][] = [];
+  for (let dow = 0; dow < 7; dow++) {
+    const base = dow === 5 ? cfg.sat : dow === 6 ? cfg.sun : cfg.weekday;
+    const ev = events[dateForDay(weekKey, dow)];
+    const evGroups: string[] = ev && ev.recruitInt
+      ? (Array.isArray(ev.intGroups) && ev.intGroups.length ? ev.intGroups : GROUP_IDS)
+      : [];
+    out.push(GROUP_IDS.map((g, gi) => base[gi] + (evGroups.indexOf(g) > -1 ? cfg.eventBonus : 0)));
   }
-  return [...DEFAULT_CAPS];
+  return out;
 }
 
 /** app_settings에서 현재 열린 주차 조회 */
@@ -59,18 +95,30 @@ export async function GET(req: NextRequest) {
     // ── 현재 열린 주차 조회 ────────────────────────────────────
     if (mode === 'active') {
       const info = await getOpenWeek();
-      const caps = await getDayCaps();
-      const counts: Record<number, number> = {};
+      const cfg = await getCapConfig();
+      // counts/caps = 7×3 (요일 × [오픈,미들,마감])
+      const counts: number[][] = Array.from({ length: 7 }, () => [0, 0, 0]);
+      let caps: number[][] = Array.from({ length: 7 }, () => [0, 0, 0]);
       if (info.weekKey) {
+        const events = await getEventsMap();
+        caps = buildCapMatrix(cfg, info.weekKey, events);
         const { data: avRows } = await supabaseAdmin
           .from('availability')
-          .select('name, day_of_week')
+          .select('name, day_of_week, shift_codes')
           .eq('week_key', info.weekKey);
-        const perDay: Record<number, Set<string>> = {};
+        // 시간대별 distinct 인원 집계
+        const sets: Record<string, Set<string>> = {};
         (avRows ?? []).forEach((r: any) => {
-          (perDay[r.day_of_week] = perDay[r.day_of_week] || new Set()).add(r.name);
+          (r.shift_codes ?? []).forEach((g: string) => {
+            const gi = GROUP_IDS.indexOf(g);
+            if (gi < 0) return;
+            const key = r.day_of_week + ':' + gi;
+            (sets[key] = sets[key] || new Set()).add(r.name);
+          });
         });
-        for (let d = 0; d < 7; d++) counts[d] = perDay[d] ? perDay[d].size : 0;
+        for (let d = 0; d < 7; d++)
+          for (let gi = 0; gi < 3; gi++)
+            counts[d][gi] = sets[d + ':' + gi] ? sets[d + ':' + gi].size : 0;
       }
       return NextResponse.json({
         weekKey:  info.weekKey,
@@ -241,34 +289,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '현재 신청 가능한 주차가 아닙니다.' }, { status: 403 });
     }
 
-    // 요일별 정원 검사: 본인이 '새로' 추가하는 요일이 정원 초과면 거부 (선착순)
+    // 시간대별 정원 검사: 본인이 '새로' 추가하는 (요일×시간대)가 정원 초과면 거부 (선착순)
     {
-      const caps = await getDayCaps();
-      // 본인이 이미 신청한 요일
+      const cfg = await getCapConfig();
+      const events = await getEventsMap();
+      const capMatrix = buildCapMatrix(cfg, weekKey, events);
+      // 본인이 이미 신청한 (요일→시간대 Set)
       const { data: prevRows } = await supabaseAdmin
         .from('availability')
-        .select('day_of_week')
+        .select('day_of_week, shift_codes')
         .eq('week_key', weekKey)
         .eq('name', name);
-      const prevDays = new Set((prevRows ?? []).map((r: any) => r.day_of_week));
-      // 이번 주 전체 신청 1회 조회 → 요일별 인원(본인 제외) 메모리 집계
+      const prevSelf: Record<number, Set<string>> = {};
+      (prevRows ?? []).forEach((r: any) => {
+        prevSelf[r.day_of_week] = new Set(r.shift_codes ?? []);
+      });
+      // 이번 주 전체 신청 1회 조회 → (요일×시간대) 인원(본인 제외) 메모리 집계
       const { data: allRows } = await supabaseAdmin
         .from('availability')
-        .select('name, day_of_week')
+        .select('name, day_of_week, shift_codes')
         .eq('week_key', weekKey);
-      const othersPerDay: Record<number, Set<string>> = {};
+      const othersSets: Record<string, Set<string>> = {};
       (allRows ?? []).forEach((r: any) => {
         if (r.name === name) return;
-        (othersPerDay[r.day_of_week] = othersPerDay[r.day_of_week] || new Set()).add(r.name);
+        (r.shift_codes ?? []).forEach((g: string) => {
+          const key = r.day_of_week + ':' + g;
+          (othersSets[key] = othersSets[key] || new Set()).add(r.name);
+        });
       });
-      for (let dow = 0; dow < 7; dow++) {
-        const selectingNow = days.some((d) => d.dayOfWeek === dow && d.shiftCodes.length > 0);
-        if (selectingNow && !prevDays.has(dow)) {
-          const cap = caps[dow];
-          const cnt = othersPerDay[dow] ? othersPerDay[dow].size : 0;
+      for (const d of days) {
+        const dow = d.dayOfWeek;
+        for (const g of (d.shiftCodes || [])) {
+          const gi = GROUP_IDS.indexOf(g);
+          if (gi < 0) continue;
+          const had = prevSelf[dow] && prevSelf[dow].has(g);
+          if (had) continue; // 이미 신청한 시간대는 통과
+          const cap = capMatrix[dow][gi];
+          const cnt = othersSets[dow + ':' + g] ? othersSets[dow + ':' + g].size : 0;
           if (cnt >= cap) {
             return NextResponse.json(
-              { error: `${DOW_NAMES[dow]}요일 신청이 정원(${cap}명)이 다 찼습니다. 다른 요일을 선택해 주세요.` },
+              { error: `${DOW_NAMES[dow]}요일 ${GROUP_NAMES[gi]} 정원(${cap}명)이 다 찼습니다. 다른 시간대를 선택해 주세요.` },
               { status: 409 }
             );
           }
