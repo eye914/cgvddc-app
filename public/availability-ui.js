@@ -17,8 +17,8 @@
   var ADMIN_INT  = [];        // 관리자 지정 통합 모집일 dayIdx
   var EVENT_LABEL = {};       // dayIdx → 이벤트명 (예: 현충일)
   var EVENT_INT_GROUPS = {};  // dayIdx → 통합모집 시간그룹 ['d','m','n'] (이벤트 통합모집일만)
-  var DAY_COUNTS = {};        // dayIdx → 신청자 수 (주말 정원 표시용)
-  var WK_CAPS    = { sat: 12, sun: 9 }; // 주말 정원 (토=5, 일=6)
+  var DAY_COUNTS = {};        // dayIdx → 신청자 수 (요일별 정원 표시용)
+  var DAY_CAPS   = [6, 6, 7, 6, 7, 10, 8]; // 요일별 정원 [월..일] (서버값으로 덮임)
 
   /* ── State ── */
   var selected   = {};        // dayIdx(0~6) → Set<'d'|'m'|'n'>
@@ -163,7 +163,7 @@
           return;
         }
         DAY_COUNTS = info.counts || {};
-        if (info.caps) WK_CAPS = info.caps;
+        if (Array.isArray(info.caps)) DAY_CAPS = info.caps;
 
         /* 주차 세팅 */
         weekKey   = info.weekKey;
@@ -288,10 +288,10 @@
       var allOn     = allKinds.length > 0 && allKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
       var picks     = new Set(curKinds).size;
       var isWk   = (dayIdx === 5 || dayIdx === 6);
-      var wkCap  = dayIdx === 5 ? WK_CAPS.sat : WK_CAPS.sun;
-      var wkCnt  = DAY_COUNTS[dayIdx] || 0;
+      var dayCap = DAY_CAPS[dayIdx];
+      var dayCnt = DAY_COUNTS[dayIdx] || 0;
       var iAmIn  = curKinds.length > 0;
-      var wkFull = isWk && !iAmIn && wkCnt >= wkCap;
+      var dayFull = !iAmIn && dayCnt >= dayCap; // 모든 요일 정원 적용
 
       /* 카드 */
       html += '<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;padding:12px 14px;margin-bottom:8px">';
@@ -306,21 +306,21 @@
       if (EVENT_LABEL[dayIdx]) html += '<span style="font-size:9px;font-weight:800;color:#8a6d3b;background:#fbf3e2;padding:2px 6px;border-radius:5px">' + EVENT_LABEL[dayIdx] + '</span>';
       if (picks > 0)  html += '<span style="font-size:9px;font-weight:800;color:#d8463a;background:#fbeeec;padding:2px 6px;border-radius:5px">' + picks + '개</span>';
       if ((dayIdx === 5 || dayIdx === 6) && !weekendOk) html += '<span style="font-size:9px;font-weight:800;color:#dc2626;background:#fef2f2;padding:2px 6px;border-radius:5px">주말 필수</span>';
-      if (isWk) html += '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;' + (wkFull ? 'color:#dc2626;background:#fef2f2' : 'color:#64748b;background:#f1f5f9') + '">' + (wkFull ? '정원 마감' : (wkCnt + '/' + wkCap)) + '</span>';
+      html += '<span style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;' + (dayFull ? 'color:#dc2626;background:#fef2f2' : 'color:#64748b;background:#f1f5f9') + '">' + (dayFull ? '정원 마감' : (dayCnt + '/' + dayCap)) + '</span>';
       html += '</div>';
       /* 전부 가능 버튼 */
       var allBtnStyle = allOn
         ? 'padding:5px 11px;border:none;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;background:#d8463a;color:white'
         : 'padding:5px 11px;border:1.5px solid #e6e6ec;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;background:white;color:#6c6c72';
-      if (wkFull) {
+      if (dayFull) {
         html += '<span style="padding:5px 11px;border-radius:9px;font-size:11px;font-weight:800;background:#f1f5f9;color:#94a3b8">마감</span>';
       } else {
         html += '<button style="' + allBtnStyle + '" onclick="availToggleAll(' + dayIdx + ')">' + (allOn ? '✓ ' : '○ ') + '전부 가능</button>';
       }
       html += '</div>';
 
-      if (wkFull) {
-        html += '<p style="font-size:11px;color:#dc2626;font-weight:700;line-height:1.5;padding:6px 2px;word-break:keep-all">' + (isSat ? '토' : '일') + '요일 신청이 정원(' + wkCap + '명)이 다 찼습니다. 다른 주말 요일을 선택해 주세요.</p>';
+      if (dayFull) {
+        html += '<p style="font-size:11px;color:#dc2626;font-weight:700;line-height:1.5;padding:6px 2px;word-break:keep-all">' + DAY_KOR[dayIdx] + '요일 신청이 정원(' + dayCap + '명)이 다 찼습니다. 다른 요일을 선택해 주세요.</p>';
       } else {
       /* 포지션별 칩 행 */
       var hasAnyCell = false;

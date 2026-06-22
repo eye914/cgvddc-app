@@ -3,7 +3,10 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { sendPushToAllExcept } from '@/lib/push';
 
 const SETTINGS_KEY = 'availability_open_week';
-const CAP_KEY = 'weekend_capacity';
+const CAP_KEY = 'day_capacity';
+// 요일별 신청 정원 기본값 [월,화,수,목,금,토,일] — 실제 배정 수요 기반
+const DEFAULT_CAPS = [6, 6, 7, 6, 7, 10, 8];
+const DOW_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
 
 async function callGAS(action: string, params: any[]) {
   const GAS_URL = process.env.GAS_URL;
@@ -14,16 +17,18 @@ async function callGAS(action: string, params: any[]) {
   return parsed.result;
 }
 
-/** 주말 정원 조회 (기본: 토 12, 일 9) — 토=dayIdx5, 일=dayIdx6 */
-async function getWeekendCaps(): Promise<{ sat: number; sun: number }> {
-  const def = { sat: 12, sun: 9 };
+/** 요일별 신청 정원 조회 (기본: DEFAULT_CAPS). value = [월..일] 7개 숫자 배열 */
+async function getDayCaps(): Promise<number[]> {
   const { data } = await supabaseAdmin
     .from('app_settings')
     .select('value')
     .eq('key', CAP_KEY)
     .maybeSingle();
-  const v = (data?.value as { sat?: number; sun?: number }) || {};
-  return { sat: Number(v.sat ?? def.sat), sun: Number(v.sun ?? def.sun) };
+  const v = data?.value;
+  if (Array.isArray(v) && v.length === 7) {
+    return v.map((n: any, i: number) => Number(n ?? DEFAULT_CAPS[i]));
+  }
+  return [...DEFAULT_CAPS];
 }
 
 /** app_settings에서 현재 열린 주차 조회 */
@@ -54,7 +59,7 @@ export async function GET(req: NextRequest) {
     // ── 현재 열린 주차 조회 ────────────────────────────────────
     if (mode === 'active') {
       const info = await getOpenWeek();
-      const caps = await getWeekendCaps();
+      const caps = await getDayCaps();
       const counts: Record<number, number> = {};
       if (info.weekKey) {
         const { data: avRows } = await supabaseAdmin
@@ -236,28 +241,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '현재 신청 가능한 주차가 아닙니다.' }, { status: 403 });
     }
 
-    // 주말 정원 검사: 본인이 '새로' 추가하는 주말 요일이 정원 초과면 거부 (선착순)
+    // 요일별 정원 검사: 본인이 '새로' 추가하는 요일이 정원 초과면 거부 (선착순)
     {
-      const caps = await getWeekendCaps();
+      const caps = await getDayCaps();
+      // 본인이 이미 신청한 요일
       const { data: prevRows } = await supabaseAdmin
         .from('availability')
         .select('day_of_week')
         .eq('week_key', weekKey)
         .eq('name', name);
       const prevDays = new Set((prevRows ?? []).map((r: any) => r.day_of_week));
-      for (const dow of [5, 6]) { // 토=5, 일=6
+      // 이번 주 전체 신청 1회 조회 → 요일별 인원(본인 제외) 메모리 집계
+      const { data: allRows } = await supabaseAdmin
+        .from('availability')
+        .select('name, day_of_week')
+        .eq('week_key', weekKey);
+      const othersPerDay: Record<number, Set<string>> = {};
+      (allRows ?? []).forEach((r: any) => {
+        if (r.name === name) return;
+        (othersPerDay[r.day_of_week] = othersPerDay[r.day_of_week] || new Set()).add(r.name);
+      });
+      for (let dow = 0; dow < 7; dow++) {
         const selectingNow = days.some((d) => d.dayOfWeek === dow && d.shiftCodes.length > 0);
         if (selectingNow && !prevDays.has(dow)) {
-          const cap = dow === 5 ? caps.sat : caps.sun;
-          const { data: dayRows } = await supabaseAdmin
-            .from('availability')
-            .select('name')
-            .eq('week_key', weekKey)
-            .eq('day_of_week', dow);
-          const others = new Set((dayRows ?? []).map((r: any) => r.name).filter((n: string) => n !== name));
-          if (others.size >= cap) {
+          const cap = caps[dow];
+          const cnt = othersPerDay[dow] ? othersPerDay[dow].size : 0;
+          if (cnt >= cap) {
             return NextResponse.json(
-              { error: `${dow === 5 ? '토요일' : '일요일'} 신청이 정원(${cap}명)이 다 찼습니다. 다른 주말 요일을 선택해 주세요.` },
+              { error: `${DOW_NAMES[dow]}요일 신청이 정원(${cap}명)이 다 찼습니다. 다른 요일을 선택해 주세요.` },
               { status: 409 }
             );
           }
