@@ -19,7 +19,7 @@
   var EVENT_INT_GROUPS = {};  // dayIdx → 통합모집 시간그룹 ['d','m','n'] (이벤트 통합모집일만)
   // 7×3 행렬: [요일][시간대(0=오픈,1=미들,2=마감)]
   var DAY_COUNTS = [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
-  var DAY_CAPS   = [[3,3,4],[3,3,4],[3,3,4],[3,3,4],[3,3,4],[3,4,5],[3,4,4]]; // 서버값으로 덮임
+  var DAY_CAPS   = [[2,3,4],[2,3,4],[2,3,4],[2,3,4],[2,3,4],[3,4,5],[3,4,4]]; // 서버값으로 덮임
   var GROUP_IDX  = { d: 0, m: 1, n: 2 };  // 시간대 → 행렬 열
 
   /* ── State ── */
@@ -232,13 +232,14 @@
     var hours         = parseFloat(curUser.hours) || 5.5;
     var overLimit     = selectedDays > contractDays;
     var weekendOk     = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
+    var closeOk       = [0,1,2,3,4,5,6].some(function(di){ return getSelectedKinds(di).indexOf('n') > -1; });
 
     /* 진행 상태 텍스트 */
     var progressMsg;
     if (selectedDays < contractDays) {
-      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">근로일수 ' + contractDays + '일 — 가능한 요일을 넉넉히 골라 주세요</span>';
+      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">근로일수 ' + contractDays + '일 중 ' + selectedDays + '일 선택</span>';
     } else {
-      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">좋아요! 많이 고를수록 희망 반영이 잘 돼요</span>';
+      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">근로일수만큼 선택 완료!</span>';
     }
     var pct = Math.min(selectedDays / contractDays * 100, 100);
 
@@ -258,20 +259,15 @@
     html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
     html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= contractDays ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
-    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px">근로일수(' + contractDays + '일)는 <b>최소 근무</b>예요. <b>가능한 요일을 근로일수보다 많이</b> 선택해 주세요 — 그중에서 편성에 반영됩니다. <b>제한 없이 자유롭게</b> 고르셔도 됩니다.</p>';
+    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px"><b>근로일수(' + contractDays + '일)만큼</b> 요일을 선택해 주세요. 한 요일 안에서 가능한 시간대(오픈·미들·마감)는 여러 개 골라도 됩니다. 시간대마다 <b>선착순 정원</b>이 있어 차면 잠깁니다.</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (weekendOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (weekendOk ? '주말 근무 선택 완료 (토·일 중 하루 이상)' : '주말 근무 필수 — 토·일 중 하루 이상 꼭 선택해야 신청이 완료됩니다.') + '</p>';
+    html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (closeOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#9a6b00;background:#fdf6e3') + '">' + (closeOk ? '마감 근무 선택 완료 — 감사합니다!' : '마감(폐점) 가능하시면 하루라도 마감을 선택해 주세요. 마감 인원이 늘 부족해요.') + '</p>';
     html += '</div>';
 
-    /* ── 빠른 패턴 (매일전부가능 / 평일·주말·미들 그룹 / 초기화) ── */
+    /* ── 초기화 ── */
     var patStyle = 'padding:9px 0;border:1.5px solid #e6e6ec;background:white;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#4a4a52';
     html += '<div style="margin-bottom:12px">';
-    html += '<button style="width:100%;padding:9px 0;border:1.5px solid #d8463a;background:#fbeeec;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#d8463a;margin-bottom:6px" onclick="availSelectAll()">매일 전부 가능</button>';
-    html += '<div style="display:flex;gap:6px;margin-bottom:6px">';
-    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekday\')">평일만</button>';
-    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekend\')">주말만</button>';
-    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'mid\')">미들만</button>';
-    html += '</div>';
-    html += '<button style="width:100%;' + patStyle + ';color:#a1a1a8" onclick="availReset()">초기화</button>';
+    html += '<button style="width:100%;' + patStyle + ';color:#a1a1a8" onclick="availReset()">전체 초기화</button>';
     html += '</div>';
 
     /* ── 요일 카드 ── */
@@ -399,10 +395,22 @@
   function openKinds(dayIdx) {
     return getAllActiveKinds(dayIdx).filter(function (k) { return !isGrpFull(dayIdx, k); });
   }
+  function getContractDays() { return (curUser && parseInt(curUser.contract_days, 10)) || 5; }
+  // 새 요일을 추가하려는데 근로일수를 이미 다 채웠으면 true
+  function dayLimitBlocked(dayIdx) {
+    var has = selected[dayIdx] && selected[dayIdx].size > 0;
+    if (has) return false; // 이미 고른 요일이면 제한 없음
+    return countSelectedDays() >= getContractDays();
+  }
 
   /* ── 전역 액션 함수들 ── */
   window.availToggleChip = function (dayIdx, groupId) {
     if (isGrpFull(dayIdx, groupId)) return; // 정원 찬 시간대는 선택 불가
+    var removing = selected[dayIdx] && selected[dayIdx].has(groupId);
+    if (!removing && dayLimitBlocked(dayIdx)) {
+      alert('근로일수(' + getContractDays() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
+      return;
+    }
     if (!selected[dayIdx]) selected[dayIdx] = new Set();
     if (selected[dayIdx].has(groupId)) selected[dayIdx].delete(groupId);
     else selected[dayIdx].add(groupId);
@@ -413,6 +421,10 @@
     var kinds = openKinds(dayIdx); // 정원 안 찬 시간대만
     var curKinds = getSelectedKinds(dayIdx);
     var allOn = kinds.length > 0 && kinds.every(function (k) { return curKinds.indexOf(k) > -1; });
+    if (!allOn && dayLimitBlocked(dayIdx)) {
+      alert('근로일수(' + getContractDays() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
+      return;
+    }
     selected[dayIdx] = allOn ? new Set() : new Set(kinds);
     renderAvailUI();
   };
@@ -446,10 +458,14 @@
       alert('주말 근무는 필수입니다.\n\n토요일 또는 일요일 중 가능한 날을 최소 하루 선택해야 신청이 완료됩니다.');
       return;
     }
+    // 마감(폐점) 미선택 시 부드러운 권장 확인 (차단 아님)
+    var hasClose = [0,1,2,3,4,5,6].some(function(di){ return getSelectedKinds(di).indexOf('n') > -1; });
+    if (!hasClose) {
+      if (!confirm('마감(폐점) 근무를 하나도 선택하지 않으셨어요.\n\n마감 인원이 늘 부족합니다. 가능한 날이 있다면 마감을 하나라도 선택해 주시면 큰 도움이 돼요.\n\n그래도 이대로 제출할까요?')) return;
+    }
     var notice = '📋 신청 전 확인\n\n'
       + "선택하신 요일은 '근무 희망'으로 접수됩니다.\n"
-      + '최종 근무는 매장 운영·인원 상황에 따라 조정될 수 있어요.\n'
-      + '가능한 요일을 넉넉히 선택하실수록 희망이 더 잘 반영됩니다.\n\n'
+      + '최종 근무는 매장 운영·인원 상황에 따라 조정될 수 있어요.\n\n'
       + '이대로 신청할까요?';
     if (!confirm(notice)) return;
     var btn = document.getElementById('avail-submit-btn');

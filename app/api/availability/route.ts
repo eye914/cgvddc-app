@@ -9,7 +9,7 @@ const DOW_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
 const GROUP_IDS = ['d', 'm', 'n'];       // 오픈, 미들, 마감
 const GROUP_NAMES = ['오픈', '미들', '마감'];
 // 기본 정원 [오픈, 미들, 마감] + 이벤트 시간대 보너스
-const DEFAULT_CAP = { weekday: [3, 3, 4], sat: [3, 4, 5], sun: [3, 4, 4], eventBonus: 1 };
+const DEFAULT_CAP = { weekday: [2, 3, 4], sat: [3, 4, 5], sun: [3, 4, 4], eventBonus: 1 };
 
 type CapConfig = { weekday: number[]; sat: number[]; sun: number[]; eventBonus: number };
 
@@ -287,6 +287,20 @@ export async function POST(req: NextRequest) {
     const info = await getOpenWeek();
     if (info.weekKey !== weekKey) {
       return NextResponse.json({ error: '현재 신청 가능한 주차가 아닙니다.' }, { status: 403 });
+    }
+
+    // 근로일수 초과 차단: 선택 요일 수 ≤ 본인 근로일수
+    {
+      const { data: misoRow } = await supabaseAdmin
+        .from('misojigi').select('contract_days').eq('name', name).maybeSingle();
+      const contractDays = Number(misoRow?.contract_days ?? 5);
+      const selDays = days.filter((d) => d.shiftCodes.length > 0).length;
+      if (selDays > contractDays) {
+        return NextResponse.json(
+          { error: `근로일수(${contractDays}일)보다 많은 요일을 선택할 수 없습니다. ${contractDays}일 이내로 선택해 주세요.` },
+          { status: 400 }
+        );
+      }
     }
 
     // 시간대별 정원 검사: 본인이 '새로' 추가하는 (요일×시간대)가 정원 초과면 거부 (선착순)
