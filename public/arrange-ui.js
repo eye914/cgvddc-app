@@ -204,6 +204,19 @@
       var av = (ST.data.availability[s.name] || {})[ST.day] || [];
       if (av.length > 0) availN++;
     });
+    // 이 요일 신청 인원의 포지션 구성 (편성 구멍 사전 인지용)
+    var comp = { tong: 0, floorOnly: 0, closeOk: 0, total: 0 };
+    (ST.data.staff || []).forEach(function (s) {
+      if (!submitted(s.name)) return;
+      var av = (ST.data.availability[s.name] || {})[ST.day] || [];
+      if (av.length === 0) return;
+      comp.total++;
+      var pos = s.pos || [];
+      var isTong = pos.indexOf('통합') > -1;
+      var isFloorOnly = !isTong && pos.indexOf('플로어') > -1 && pos.indexOf('매점') === -1;
+      if (isTong) comp.tong++; else if (isFloorOnly) comp.floorOnly++;
+      if (av.indexOf('n') > -1) comp.closeOk++;
+    });
     var dayEv = (ST.data.events || {})[ST.day], evBanner = '';
     if (dayEv) {
       var _gm = { d: '오픈', m: '미들', n: '마감' }, parts = [];
@@ -216,6 +229,9 @@
       '<div class="ar-pg-row"><div class="ar-pg-a">배정 ' + filled + '명 <span>· 미배정 가능 ' + availN + '명</span></div>' +
       '<div class="ar-pg-b link" onclick="arrangeShowStatus()">신청 ' + (ST.data.submitted || []).length + ' · 미제출 ' + ((ST.data.staff || []).length - (ST.data.submitted || []).length) + ' ›</div></div>' +
       '<div style="font-size:11px;font-weight:700;color:#8a8a90;margin-top:4px">오픈 ' + byGrp.d + '  ·  미들 ' + byGrp.m + '  ·  마감 ' + byGrp.n + '</div>' +
+      '<div style="font-size:11px;font-weight:700;margin-top:4px;color:#8a8a90">신청 구성: 통합 ' + comp.tong +
+        '  ·  <span style="color:' + (comp.floorOnly >= 3 ? '#c2410c' : '#8a8a90') + '">플로어전용 ' + comp.floorOnly + '</span>' +
+        '  ·  <span style="color:' + (comp.closeOk === 0 ? '#dc2626' : '#8a8a90') + '">마감가능 ' + comp.closeOk + '</span></div>' +
       evBanner +
       (filled > 0 ? '<button class="ar-clear" onclick="arrangeClearDay()">이 요일 배정 초기화 (' + filled + '칸)</button>' : '');
 
