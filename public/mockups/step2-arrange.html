@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>편성 시안</title>
+<style>
+  :root{
+    --ink:#2a2a2e; --ink2:#6c6c72; --ink3:#b2b2b8;
+    --bg:#f6f6f8; --card:#fff; --line:#ebebef;
+    --accent:#d8463a;
+    --mart:#b15644; --floor:#2f7d5c; --int:#615aa0;
+    --open:#cf9a45; --mid:#5a93bd; --close:#6d6daf;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{ margin:0; background:#cdcdd3; color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Malgun Gothic",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; letter-spacing:-.012em; }
+  .frame{ max-width:412px; margin:0 auto; min-height:100vh; background:var(--bg); position:relative; padding-bottom:88px; }
+
+  .hd{ background:rgba(248,248,250,.82); backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:.5px solid var(--line); padding:13px 18px 12px; position:sticky; top:0; z-index:20; }
+  .hd-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:13px; }
+  .hd-title{ font-size:21px; font-weight:800; letter-spacing:-.035em; }
+  .hd-sub{ font-size:11px; color:var(--ink3); font-weight:600; }
+  .hd-sub b{ color:var(--ink2); font-weight:700; }
+
+  .week{ display:flex; gap:6px; overflow-x:auto; padding:1px; scrollbar-width:none; }
+  .week::-webkit-scrollbar{ display:none; }
+  .wd{ flex:0 0 auto; width:44px; height:60px; border-radius:15px; background:#e9e9ee;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; transition:.15s; }
+  .wd .w{ font-size:10px; line-height:11px; font-weight:700; color:var(--ink3); }
+  .wd .d{ font-size:17px; line-height:19px; font-weight:800; letter-spacing:-.02em; color:var(--ink); }
+  .wd .ed{ width:5px; height:5px; border-radius:50%; background:transparent; }
+  .wd.ev .ed{ background:#d9b15f; }
+  .wd.sat .w,.wd.sat .d{ color:#5b8fd0; } .wd.sun .w,.wd.sun .d{ color:#d06b66; }
+  .wd.on{ background:#4587d6; box-shadow:0 4px 12px rgba(69,135,214,.3); }
+  .wd.on .w{ color:rgba(255,255,255,.72); } .wd.on .d{ color:#fff; } .wd.on .ed{ background:#fff; }
+
+  .evrow{ display:flex; gap:6px; margin-top:11px; flex-wrap:wrap; }
+  .ev{ font-size:11px; font-weight:700; padding:4px 11px; border-radius:9px; }
+  .ev-holi{ background:#f9ece9; color:#bf5848; } .ev-int{ background:#eeebf7; color:#6f63a8; }
+
+  .seg{ display:flex; gap:3px; margin:12px 18px 0; background:#e9e9ed; border-radius:12px; padding:3px; }
+  .seg button{ flex:1; border:none; background:transparent; padding:8px 0; border-radius:9px;
+    font-size:12.5px; font-weight:800; color:var(--ink2); letter-spacing:-.02em; }
+  .seg button.on{ background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+
+  .pg{ padding:13px 18px 2px; }
+  .pg-row{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .pg-a{ font-size:13px; font-weight:800; } .pg-a span{ color:var(--ink3); font-weight:600; font-size:11px; margin-left:5px; }
+  .pg-b{ font-size:11px; color:var(--ink3); font-weight:600; }
+  .pg-bar{ height:8px; border-radius:5px; background:#e8e8ec; overflow:hidden; }
+  .pg-bar > i{ display:block; height:100%; width:64%; border-radius:5px; background:#3f9d6e; }
+
+  /* 그리드 */
+  .colhead{ display:grid; grid-template-columns:58px 1fr 1fr 1fr; gap:7px; padding:16px 18px 2px; }
+  .colhead div{ font-size:11px; font-weight:700; color:var(--ink2); text-align:center; }
+  .gw{ padding:0 18px 16px; }
+  .gsec{ display:flex; align-items:center; gap:8px; margin:18px 2px 9px; }
+  .gsec .pd{ width:9px; height:9px; border-radius:3px; }
+  .gsec.open .pd{ background:var(--open); } .gsec.mid .pd{ background:var(--mid); } .gsec.close .pd{ background:var(--close); }
+  .gsec .lb{ font-size:13.5px; font-weight:800; letter-spacing:-.02em; }
+  .grow{ display:grid; grid-template-columns:58px 1fr 1fr 1fr; gap:7px; margin-bottom:7px; }
+  .cc{ display:flex; flex-direction:column; justify-content:center; align-items:center; border-radius:13px; padding:7px 2px; }
+  .cc.open{ background:#faf3e8; } .cc.mid{ background:#eef4f9; } .cc.close{ background:#f0eff8; }
+  .cc .code{ font-size:13px; font-weight:800; }
+  .cc.open .code{ color:#a9772f; } .cc.mid .code{ color:#447aa0; } .cc.close .code{ color:#56569a; }
+  .cc .t{ font-size:9px; color:var(--ink2); font-weight:600; margin-top:3px; opacity:.85; }
+  .slot{ min-height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; padding:5px; transition:transform .1s; }
+  .slot:active{ transform:scale(.96); }
+  .slot.e{ background:#fbfbfc; border:1px dashed #e4e4e9; } .slot.e .p{ font-size:18px; color:#d0d0d6; font-weight:300; }
+  .slot.f{ background:#fff; border:1.5px solid; }
+  .slot.f.mart{ border-color:#e6c6bf; } .slot.f.floor{ border-color:#c6e0d3; } .slot.f.int{ border-color:#d4cfea; }
+  .slot .nm{ font-size:13.5px; font-weight:800; letter-spacing:-.02em; line-height:1.15; }
+  .slot.f.mart .nm{ color:var(--mart); } .slot.f.floor .nm{ color:var(--floor); } .slot.f.int .nm{ color:var(--int); }
+  .slot .sub{ font-size:9px; color:var(--ink2); font-weight:700; margin-top:1px; }
+  .slot .col{ display:flex; flex-direction:column; align-items:center; }
+
+  /* 세로 타임라인 */
+  .tlwrap{ padding:10px 0 14px; }
+  .vhead{ display:flex; gap:6px; padding:0 18px 8px; }
+  .vh-g{ flex:0 0 36px; }
+  .vh-c{ flex:1; text-align:center; font-size:11.5px; font-weight:800; color:var(--ink2); }
+  .vbody{ position:relative; margin:0 18px; background:#fff; border:.5px solid #eeeef1; border-radius:12px; }
+  .vlines{ position:absolute; inset:0; }
+  .hl{ position:absolute; left:36px; right:0; height:0; border-top:1px solid #dcdce2; }
+  .hl.half{ border-top:1px dotted #cdcdd5; }
+  .hlab{ position:absolute; left:0; width:30px; text-align:right; transform:translateY(-50%);
+    font-size:9px; color:var(--ink3); font-weight:700; }
+  .vtrack{ position:absolute; top:0; bottom:0; left:36px; right:0; display:flex; }
+  .vcol{ flex:1; position:relative; border-right:1px dashed #dadae1; }
+  .vcol:last-child{ border-right:none; }
+  .vbar{ position:absolute; border-radius:9px; padding:5px 6px; overflow:hidden; border:1px solid transparent; }
+  .vbar.mart{ background:#f6e8e4; border-color:#ecd2cb; }
+  .vbar.floor{ background:#e3efe9; border-color:#cde4d7; }
+  .vbar.int{ background:#eae7f4; border-color:#dad4ed; }
+  .vbn{ display:block; font-size:10.5px; font-weight:800; letter-spacing:-.03em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .vbar.mart .vbn{ color:var(--mart); } .vbar.floor .vbn{ color:var(--floor); } .vbar.int .vbn{ color:var(--int); }
+  .vbt{ display:block; font-size:8.5px; font-weight:700; color:var(--ink2); margin-top:1px; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .pub{ position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:100%; max-width:412px;
+    background:rgba(248,248,250,.84); backdrop-filter:saturate(180%) blur(20px);
+    border-top:.5px solid var(--line); padding:11px 16px calc(14px + env(safe-area-inset-bottom)); display:flex; gap:9px; }
+  .btn{ border:none; border-radius:15px; padding:15px 0; font-size:13.5px; font-weight:800; letter-spacing:-.02em; }
+  .btn-g{ flex:0 0 36%; background:#ececef; color:var(--ink2); }
+  .btn-r{ flex:1; background:var(--accent); color:#fff; box-shadow:0 5px 14px rgba(216,70,58,.26); }
+
+  .ov{ position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:40; display:none; align-items:flex-end; justify-content:center; animation:fade .26s ease; }
+  .ov.show{ display:flex; } @keyframes fade{ from{opacity:0} to{opacity:1} }
+  .sheet{ width:100%; max-width:412px; background:var(--card); border-radius:24px 24px 0 0; padding:8px 18px calc(22px + env(safe-area-inset-bottom)); max-height:82vh; overflow:auto; animation:up .42s cubic-bezier(.32,.72,0,1); }
+  @keyframes up{ from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .grab{ width:38px; height:5px; border-radius:3px; background:#dedee2; margin:7px auto 14px; }
+  .sh-h{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px; }
+  .sh-t{ font-size:18px; font-weight:800; letter-spacing:-.03em; }
+  .sh-s{ font-size:12px; color:var(--ink2); font-weight:600; margin-top:4px; }
+  .sh-x{ font-size:14px; color:var(--ink2); background:#f0f0f2; border:none; width:30px; height:30px; border-radius:50%; }
+  .grp{ font-size:11px; font-weight:700; color:var(--ink3); margin:18px 2px 9px; display:flex; align-items:center; gap:7px; }
+  .gd{ width:7px; height:7px; border-radius:50%; display:inline-block; } .gd.s{ background:#3f9d6e; } .gd.n{ background:#c8c8ce; }
+  .pr{ display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:16px; margin-bottom:8px; border:.5px solid var(--line); background:#fff; }
+  .pr.s{ background:#f4faf6; border-color:#dbedE2; }
+  .av{ width:34px; height:34px; border-radius:50%; flex:0 0 34px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; }
+  .av.s{ background:#d9eee2; color:#2f7d58; } .av.n{ background:#ededf0; color:#8a8a90; }
+  .pr .nm{ font-size:15px; font-weight:800; flex:1; letter-spacing:-.02em; }
+  .tag{ font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:8px; background:#f0f0f2; color:var(--ink2); }
+  .cnt{ font-size:10.5px; font-weight:700; color:var(--ink); background:#ececef; padding:4px 9px; border-radius:9px; }
+  .cnt.over{ background:#f9ece9; color:#bf5848; }
+  .add{ font-size:12.5px; font-weight:800; color:#fff; background:var(--accent); border:none; border-radius:11px; padding:9px 15px; }
+  .hint{ font-size:10.5px; color:var(--ink3); text-align:center; margin:14px 0 2px; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <div class="hd">
+    <div class="hd-top"><div class="hd-title">스케줄 편성</div><div class="hd-sub">26년 6월 2주차 · 작성 <b>이경연</b></div></div>
+    <div class="week" id="week"></div>
+    <div class="evrow"><span class="ev ev-holi">근로자의날</span><span class="ev ev-int">통합모집일</span></div>
+  </div>
+
+  <div class="seg">
+    <button class="on" id="seg-g" onclick="view('g')">그리드</button>
+    <button id="seg-t" onclick="view('t')">타임라인</button>
+  </div>
+
+  <div class="pg">
+    <div class="pg-row"><div class="pg-a">배정 64% <span>9 / 14 슬롯</span></div><div class="pg-b">신청 9 · 미제출 7</div></div>
+    <div class="pg-bar"><i></i></div>
+  </div>
+
+  <div id="v-grid">
+    <div class="colhead"><div></div><div>매점</div><div>플로어</div><div>통합</div></div>
+    <div class="gw"><div id="grid"></div></div>
+  </div>
+
+  <div id="v-tl" style="display:none">
+    <div class="tlwrap"><div id="tl"></div>
+      <div class="hint">세로축 = 시간(30분 격자) · 열 = 포지션 · 막대 길이로 근무시간·겹침 표시</div>
+    </div>
+  </div>
+
+  <div class="pub">
+    <button class="btn btn-g">임시저장</button>
+    <button class="btn btn-r">시트로 배포</button>
+  </div>
+
+  <div class="ov" id="ov">
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="sh-h"><div><div class="sh-t" id="sh-t">D2 · 매점</div><div class="sh-s" id="sh-s">6/2(월) 09:30~15:00 · 가능 직원 선택</div></div><button class="sh-x" onclick="cls()">✕</button></div>
+      <div class="grp"><span class="gd s"></span>신청자</div>
+      <div class="pr s"><div class="av s">김</div><span class="nm">김한솔</span><span class="tag">매점·플로어</span><span class="cnt">2/5</span><button class="add">배정</button></div>
+      <div class="pr s"><div class="av s">신</div><span class="nm">신민경</span><span class="tag">통합</span><span class="cnt">3/5</span><button class="add">배정</button></div>
+      <div class="pr s"><div class="av s">윤</div><span class="nm">윤소은</span><span class="tag">매점</span><span class="cnt over">4/4</span><button class="add">배정</button></div>
+      <div class="grp"><span class="gd n"></span>미제출 · 전체 가능으로 간주</div>
+      <div class="pr"><div class="av n">이</div><span class="nm">이예빈</span><span class="tag">통합</span><span class="cnt">1/5</span><button class="add">배정</button></div>
+      <div class="pr"><div class="av n">조</div><span class="nm">조동우</span><span class="tag">통합</span><span class="cnt">0/5</span><button class="add">배정</button></div>
+      <div class="hint">신청자 먼저 · 미제출자는 회색 · 4/4(빨강)=계약일수 초과</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var WEEK=[['월',2,'',true],['화',3,'',false],['수',4,'',false],['목',5,'',false],['금',6,'',false],['토',7,'sat',true],['일',8,'sun',true]];
+  document.getElementById('week').innerHTML=WEEK.map(function(d,i){
+    return '<div class="wd '+d[2]+(i===0?' on':'')+(d[3]?' ev':'')+'"><div class="w">'+d[0]+'</div><div class="d">'+d[1]+'</div><div class="ed"></div></div>';
+  }).join('');
+
+  var SH={
+    open:[['D1','09:00~14:30'],['D2','09:30~15:00'],['D3','10:00~15:30'],['D4','10:30~16:00']],
+    mid:[['M1','11:30~17:00'],['M2','12:30~18:00'],['M4','13:30~19:00'],['M6','14:30~20:00'],['M8','16:30~22:00']],
+    close:[['N1','18:00~23:30'],['N2','19:00~24:30']]
+  };
+  var A={
+    'D1_매점':{n:'김한솔'},'D2_통합':{n:'신민경'},'D3_플로어':{n:'홍성현',s:'(~14:30)'},
+    'M4_플로어':{n:'손정현'},'M6_매점':{n:'송해인',s:'(~20:00)'},'M6_통합':{n:'조동우'},
+    'N1_매점':{n:'윤소은',s:'(19:00~)'},'N1_통합':{n:'이예빈',s:'(19:00~)'},'N2_플로어':{n:'김나은'}
+  };
+  var POS=[['매점','mart'],['플로어','floor'],['통합','int']];
+  var TM={}; ['open','mid','close'].forEach(function(g){ SH[g].forEach(function(r){ TM[r[0]]=r[1]; }); });
+
+  function sec(title,g,rows){
+    var h='<div class="gsec '+g+'"><span class="pd"></span><span class="lb">'+title+'</span></div>';
+    rows.forEach(function(r){
+      var code=r[0],time=r[1];
+      h+='<div class="grow"><div class="cc '+g+'"><span class="code">'+code+'</span><span class="t">'+time+'</span></div>';
+      POS.forEach(function(p){
+        var a=A[code+'_'+p[0]];
+        h+= a? '<div class="slot f '+p[1]+'" onclick="op(\''+code+'\',\''+p[0]+'\')"><div class="col"><span class="nm">'+a.n+'</span>'+(a.s?'<span class="sub">'+a.s+'</span>':'')+'</div></div>'
+             : '<div class="slot e" onclick="op(\''+code+'\',\''+p[0]+'\')"><span class="p">+</span></div>';
+      });
+      h+='</div>';
+    });
+    return h;
+  }
+  document.getElementById('grid').innerHTML=sec('오픈','open',SH.open)+sec('미들','mid',SH.mid)+sec('마감','close',SH.close);
+
+  // 세로 타임라인
+  function mn(t){ var p=t.split(':'); return +p[0]*60 + +p[1]; }
+  var START=540, END=1470, SPAN=END-START, HOURH=44, H=Math.round(SPAN/60*HOURH);
+  // 막대 폭을 열 단위로 통일: 그 열의 최대 동시인원 기준으로 모든 막대를 같은 너비로
+  function layoutV(items){
+    items.sort(function(a,b){return a.s-b.s || a.e-b.e;});
+    var i=0, maxCols=1;
+    while(i<items.length){
+      var cluster=[items[i]], maxEnd=items[i].e, j=i+1;
+      while(j<items.length && items[j].s < maxEnd){ cluster.push(items[j]); if(items[j].e>maxEnd) maxEnd=items[j].e; j++; }
+      var ends=[];
+      cluster.forEach(function(it){
+        var placed=false;
+        for(var k=0;k<ends.length;k++){ if(ends[k]<=it.s){ it.lane=k; ends[k]=it.e; placed=true; break; } }
+        if(!placed){ it.lane=ends.length; ends.push(it.e); }
+      });
+      if(ends.length>maxCols) maxCols=ends.length;
+      i=j;
+    }
+    items.forEach(function(it){ it.cols=maxCols; });
+  }
+  function buildTL(){
+    var lanes={'매점':[],'플로어':[],'통합':[]};
+    Object.keys(A).forEach(function(k){
+      var parts=k.split('_'), code=parts[0], pos=parts[1];
+      var tt=TM[code].split('~'); var s=mn(tt[0]), e=mn(tt[1]);
+      if(A[k].s){ var m=A[k].s.match(/(\d{1,2}:\d{2})/); if(m){ if(A[k].s.indexOf('~)')>-1) s=mn(m[1]); else e=mn(m[1]); } }
+      lanes[pos].push({n:A[k].n, s:s, e:e, sub:A[k].s, cls:({'매점':'mart','플로어':'floor','통합':'int'})[pos]});
+    });
+    var order=['매점','플로어','통합'];
+    var PAD=14;
+    var head='<div class="vhead"><div class="vh-g"></div>'+order.map(function(p){return '<div class="vh-c">'+p+'</div>';}).join('')+'</div>';
+    var lines='';
+    for(var h=9;h<=24;h++){ var top=PAD+(h-9)/15.5*H; lines+='<div class="hl" style="top:'+top+'px"></div><div class="hlab" style="top:'+top+'px">'+h+'시</div>'; }
+    for(var t=START+30;t<END;t+=60){ var tp=PAD+(t-START)/SPAN*H; lines+='<div class="hl half" style="top:'+tp+'px"></div>'; }
+    lines+='<div class="hl" style="top:'+(PAD+H)+'px"></div>';
+    var cols='';
+    order.forEach(function(pos){
+      var items=lanes[pos]; layoutV(items); var bars='';
+      items.forEach(function(it){
+        var top=PAD+(it.s-START)/SPAN*H, hgt=(it.e-it.s)/SPAN*H;
+        var w=100/it.cols, left=it.lane*w;
+        bars+='<div class="vbar '+it.cls+'" style="top:'+top+'px;height:'+(hgt-3)+'px;left:'+left+'%;width:calc('+w+'% - 3px)">'
+            +'<span class="vbn">'+it.n+'</span>'+(it.sub?'<span class="vbt">'+it.sub+'</span>':'')+'</div>';
+      });
+      cols+='<div class="vcol">'+bars+'</div>';
+    });
+    var body='<div class="vbody" style="height:'+(H+PAD*2)+'px"><div class="vlines">'+lines+'</div><div class="vtrack">'+cols+'</div></div>';
+    document.getElementById('tl').innerHTML=head+body;
+  }
+  buildTL();
+
+  function view(v){
+    document.getElementById('v-grid').style.display=v==='g'?'':'none';
+    document.getElementById('v-tl').style.display=v==='t'?'':'none';
+    document.getElementById('seg-g').classList.toggle('on', v==='g');
+    document.getElementById('seg-t').classList.toggle('on', v==='t');
+  }
+  function op(code,pos){
+    document.getElementById('sh-t').textContent=code+' · '+pos;
+    document.getElementById('sh-s').textContent='6/2(월) '+TM[code]+' · 가능 직원 선택';
+    document.getElementById('ov').classList.add('show');
+  }
+  function cls(){ document.getElementById('ov').classList.remove('show'); }
+  document.getElementById('ov').addEventListener('click',function(e){ if(e.target===this) cls(); });
+</script>
+</body>
+</html>

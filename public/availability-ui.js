@@ -17,10 +17,6 @@
   var ADMIN_INT  = [];        // 관리자 지정 통합 모집일 dayIdx
   var EVENT_LABEL = {};       // dayIdx → 이벤트명 (예: 현충일)
   var EVENT_INT_GROUPS = {};  // dayIdx → 통합모집 시간그룹 ['d','m','n'] (이벤트 통합모집일만)
-  // 7×3 행렬: [요일][시간대(0=오픈,1=미들,2=마감)]
-  var DAY_COUNTS = [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
-  var DAY_CAPS   = [[2,3,4],[2,3,4],[2,3,4],[2,3,4],[2,3,4],[3,4,5],[3,3,4]]; // 서버값으로 덮임
-  var GROUP_IDX  = { d: 0, m: 1, n: 2 };  // 시간대 → 행렬 열
 
   /* ── State ── */
   var selected   = {};        // dayIdx(0~6) → Set<'d'|'m'|'n'>
@@ -177,9 +173,6 @@
           if (footer) footer.style.display = 'none';
           return;
         }
-        if (Array.isArray(info.counts) && info.counts.length === 7) DAY_COUNTS = info.counts;
-        if (Array.isArray(info.caps) && info.caps.length === 7) DAY_CAPS = info.caps;
-
         /* 주차 세팅 */
         weekKey   = info.weekKey;
         var monday = new Date(weekKey + 'T00:00:00');
@@ -241,21 +234,19 @@
   /* ── 렌더 ── */
   function renderAvailUI() {
     var contractDays  = parseInt(curUser.contract_days, 10) || 5;
-    var applyLimit    = parseInt(curUser.apply_days, 10) || contractDays; // 신청 가능 일수(근로일수로 폴백)
     var selectedDays  = countSelectedDays();
     var hours         = parseFloat(curUser.hours) || 5.5;
-    var overLimit     = selectedDays > applyLimit;
     var weekendOk     = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
     var closeOk       = [0,1,2,3,4,5,6].some(function(di){ return getSelectedKinds(di).indexOf('n') > -1; });
 
     /* 진행 상태 텍스트 */
     var progressMsg;
-    if (selectedDays < applyLimit) {
-      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">신청 가능 ' + applyLimit + '일 중 ' + selectedDays + '일 선택</span>';
+    if (selectedDays < contractDays) {
+      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">근로일수 ' + contractDays + '일 — 가능한 요일을 넉넉히</span>';
     } else {
-      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">신청 가능 일수만큼 선택 완료!</span>';
+      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">좋아요! 많이 고를수록 반영이 잘 돼요</span>';
     }
-    var pct = Math.min(selectedDays / applyLimit * 100, 100);
+    var pct = Math.min(selectedDays / Math.max(contractDays, 1) * 100, 100);
 
     var html = '';
 
@@ -266,21 +257,27 @@
     html += '<span style="display:inline-block;padding:2px 8px;background:#eef4f9;color:#4a7fb5;border-radius:6px;font-size:10px;font-weight:800">' + hours + 'h</span>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
-    html += '<span style="font-size:11px;font-weight:700;color:#64748b">신청 가능 <b style="color:#0f172a">' + applyLimit + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
+    html += '<span style="font-size:11px;font-weight:700;color:#64748b">근로일수 <b style="color:#0f172a">' + contractDays + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
     html += progressMsg;
     html += '</div>';
     /* 진행 바 */
     html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
-    html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= applyLimit ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
+    html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= contractDays ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
-    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px"><b>최대 ' + applyLimit + '일</b>까지 요일을 선택할 수 있어요. 한 요일 안에서 가능한 시간대(오픈·미들·마감)는 여러 개 골라도 됩니다. 시간대마다 <b>선착순 정원</b>이 있어 차면 잠깁니다.</p>';
+    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px">근로일수(' + contractDays + '일)는 <b>최소</b>예요. <b>가능한 요일·시간대를 넉넉히</b> 골라주실수록 편성에 더 잘 반영됩니다. 한 요일에 오픈·미들·마감을 여러 개 골라도 됩니다.</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (weekendOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (weekendOk ? '주말 근무 선택 완료 (토·일 중 하루 이상)' : '주말 근무 필수 — 토·일 중 하루 이상 꼭 선택해야 신청이 완료됩니다.') + '</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (closeOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#9a6b00;background:#fdf6e3') + '">' + (closeOk ? '마감 근무 선택 완료 — 감사합니다!' : '마감(폐점) 가능하시면 하루라도 마감을 선택해 주세요. 마감 인원이 늘 부족해요.') + '</p>';
     html += '</div>';
 
-    /* ── 초기화 ── */
+    /* ── 빠른 패턴 (매일전부 / 평일·주말·미들 / 초기화) ── */
     var patStyle = 'padding:9px 0;border:1.5px solid #e6e6ec;background:white;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#4a4a52';
     html += '<div style="margin-bottom:12px">';
+    html += '<button style="width:100%;padding:9px 0;border:1.5px solid #d8463a;background:#fbeeec;border-radius:10px;font-size:11.5px;font-weight:800;cursor:pointer;color:#d8463a;margin-bottom:6px" onclick="availSelectAll()">매일 전부 가능</button>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:6px">';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekday\')">평일만</button>';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'weekend\')">주말만</button>';
+    html += '<button style="flex:1;' + patStyle + '" onclick="availSelectPattern(\'mid\')">미들만</button>';
+    html += '</div>';
     html += '<button style="width:100%;' + patStyle + ';color:#a1a1a8" onclick="availReset()">전체 초기화</button>';
     html += '</div>';
 
@@ -295,15 +292,9 @@
       var nameColor = isSat ? '#5b8fd0' : isSun || isHoliday ? '#cf6b62' : '#2a2a2e';
       var curKinds  = getSelectedKinds(dayIdx);
       var allKinds  = getAllActiveKinds(dayIdx);
-      var capG = DAY_CAPS[dayIdx] || [0,0,0];
-      var cntG = DAY_COUNTS[dayIdx] || [0,0,0];
-      // 시간대(gid) 정원 마감 여부 — 내가 이미 고른 시간대는 잠기지 않음
-      function grpFull(gid) { return isGrpFull(dayIdx, gid); }
-      var availKinds = allKinds.filter(function (k) { return !grpFull(k); });
-      var allOn   = availKinds.length > 0 && availKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
+      var allOn   = allKinds.length > 0 && allKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
       var picks   = new Set(curKinds).size;
       var isWk    = (dayIdx === 5 || dayIdx === 6);
-      var anyFull = ['d','m','n'].some(grpFull);
 
       /* 카드 */
       html += '<div style="background:white;border-radius:14px;border:1px solid #e2e8f0;padding:12px 14px;margin-bottom:8px">';
@@ -326,18 +317,6 @@
       html += '<button style="' + allBtnStyle + '" onclick="availToggleAll(' + dayIdx + ')">' + (allOn ? '✓ ' : '○ ') + '전부 가능</button>';
       html += '</div>';
 
-      /* 시간대별 정원 표시 행 */
-      html += '<div style="display:grid;grid-template-columns:42px 1fr 1fr 1fr;gap:6px;margin-bottom:8px">';
-      html += '<span></span>';
-      ['d','m','n'].forEach(function (gid) {
-        var gi = GROUP_IDX[gid], lbl = (gid === 'd' ? '오픈' : gid === 'm' ? '미들' : '마감');
-        var full = (cntG[gi] || 0) >= (capG[gi] || 0);
-        html += '<span style="text-align:center;font-size:9.5px;font-weight:800;border-radius:6px;padding:3px 1px;' +
-          (full ? 'color:#b91c1c;background:#fef2f2' : 'color:#475569;background:#f1f5f9') + '">' +
-          lbl + ' ' + (cntG[gi] || 0) + '/' + (capG[gi] || 0) + (full ? ' 마감' : '') + '</span>';
-      });
-      html += '</div>';
-
       /* 포지션별 칩 행 */
       var hasAnyCell = false;
       posRows.forEach(function (pos) {
@@ -357,11 +336,6 @@
         GROUPS.forEach(function (g) {
           if (!isCellActive(dayIdx, pos, g.id)) { html += '<span></span>'; return; }
           var on = curKinds.indexOf(g.id) > -1;
-          if (grpFull(g.id)) {
-            // 정원 마감 시간대 → 잠금 칩 (클릭 불가)
-            html += '<span style="display:flex;align-items:center;justify-content:center;gap:3px;width:100%;padding:7px 3px;border-radius:9px;font-size:11px;font-weight:800;border:1.5px solid #ececef;background:#f4f4f6;color:#b0b0b8;white-space:nowrap">' + g.label + '</span>';
-            return;
-          }
           var chipStyle = on
             ? 'display:flex;align-items:center;justify-content:center;gap:3px;width:100%;padding:7px 3px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #d8463a;background:#d8463a;color:white;white-space:nowrap'
             : 'display:flex;align-items:center;justify-content:center;gap:3px;width:100%;padding:7px 3px;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;border:1.5px solid #e6e6ec;background:white;color:#4a4a52;white-space:nowrap';
@@ -376,9 +350,6 @@
       if (!hasAnyCell) {
         html += '<p style="font-size:11px;color:#94a3b8;font-weight:700;padding:4px 2px">이 요일은 신청 가능한 포지션이 없습니다.</p>';
       }
-      if (anyFull) {
-        html += '<p style="font-size:10.5px;color:#dc2626;font-weight:700;line-height:1.5;padding:4px 2px;word-break:keep-all">정원이 찬 시간대는 잠겼어요. 다른 시간대를 선택해 주세요.</p>';
-      }
 
       html += '</div>'; /* /카드 */
     }
@@ -392,45 +363,8 @@
     if (fc) fc.textContent = contractDays;
   }
 
-  /* 시간대(gid) 정원 마감 여부 — 내가 이미 고른 시간대는 잠기지 않음 */
-  function isGrpFull(dayIdx, gid) {
-    var gi = GROUP_IDX[gid];
-    if (gi === undefined) return false;
-    if (getSelectedKinds(dayIdx).indexOf(gid) > -1) return false;
-    var capG = DAY_CAPS[dayIdx] || [0,0,0];
-    var cntG = DAY_COUNTS[dayIdx] || [0,0,0];
-    if ((cntG[gi] || 0) < (capG[gi] || 0)) return false;
-    // 주말 안전판: 아직 주말 요일을 하나도 못 골랐으면, 주말 시간대는 만석이어도 열어둠
-    //  → '주말 1일 필수'가 정원 만석으로 막혀 제출 불가가 되는 데드락 방지
-    if (dayIdx === 5 || dayIdx === 6) {
-      var hasWeekend = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
-      if (!hasWeekend) return false;
-    }
-    return true;
-  }
-  function openKinds(dayIdx) {
-    return getAllActiveKinds(dayIdx).filter(function (k) { return !isGrpFull(dayIdx, k); });
-  }
-  // 신청 가능 일수 = apply_days 설정값 우선, 없으면 근로일수
-  function getApplyLimit() {
-    if (!curUser) return 5;
-    return parseInt(curUser.apply_days, 10) || parseInt(curUser.contract_days, 10) || 5;
-  }
-  // 새 요일을 추가하려는데 신청 가능 일수를 이미 다 채웠으면 true
-  function dayLimitBlocked(dayIdx) {
-    var has = selected[dayIdx] && selected[dayIdx].size > 0;
-    if (has) return false; // 이미 고른 요일이면 제한 없음
-    return countSelectedDays() >= getApplyLimit();
-  }
-
   /* ── 전역 액션 함수들 ── */
   window.availToggleChip = function (dayIdx, groupId) {
-    if (isGrpFull(dayIdx, groupId)) return; // 정원 찬 시간대는 선택 불가
-    var removing = selected[dayIdx] && selected[dayIdx].has(groupId);
-    if (!removing && dayLimitBlocked(dayIdx)) {
-      alert('신청 가능 일수(' + getApplyLimit() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
-      return;
-    }
     if (!selected[dayIdx]) selected[dayIdx] = new Set();
     if (selected[dayIdx].has(groupId)) selected[dayIdx].delete(groupId);
     else selected[dayIdx].add(groupId);
@@ -438,26 +372,22 @@
   };
 
   window.availToggleAll = function (dayIdx) {
-    var kinds = openKinds(dayIdx); // 정원 안 찬 시간대만
+    var kinds = getAllActiveKinds(dayIdx);
     var curKinds = getSelectedKinds(dayIdx);
     var allOn = kinds.length > 0 && kinds.every(function (k) { return curKinds.indexOf(k) > -1; });
-    if (!allOn && dayLimitBlocked(dayIdx)) {
-      alert('신청 가능 일수(' + getApplyLimit() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
-      return;
-    }
     selected[dayIdx] = allOn ? new Set() : new Set(kinds);
     renderAvailUI();
   };
 
   window.availSelectAll = function () {
-    for (var i = 0; i < 7; i++) selected[i] = new Set(openKinds(i));
+    for (var i = 0; i < 7; i++) selected[i] = new Set(getAllActiveKinds(i));
     renderAvailUI();
   };
 
   window.availSelectPattern = function (pattern) {
     for (var i = 0; i < 7; i++) {
       selected[i] = new Set();
-      var activeKinds = openKinds(i); // 정원 안 찬 시간대만
+      var activeKinds = getAllActiveKinds(i);
       if (pattern === 'weekday' && i < 5)  selected[i] = new Set(activeKinds);
       if (pattern === 'weekend' && i >= 5) selected[i] = new Set(activeKinds);
       if (pattern === 'mid' && activeKinds.indexOf('m') > -1) selected[i].add('m');

@@ -2190,14 +2190,11 @@ function showKakaoModal(text, forced) {
                 var cdVal = parseInt(m.contract_days, 10) || 5;
                 var contractEditBtn = '<button data-miso-action="edit-contract" data-miso-name="' + m.name + '" data-miso-cd="' + cdVal + '" '
                     + 'class="' + BTN_N + '">근로일수 ' + cdVal + '일</button>';
-                var adVal = parseInt(m.apply_days, 10) || cdVal;
-                var applyEditBtn = '<button data-miso-action="edit-apply" data-miso-name="' + m.name + '" data-miso-ad="' + adVal + '" '
-                    + 'class="' + BTN_N + '">신청일수 ' + adVal + '일</button>';
                 var sid = 'mi' + misoIdx;
                 misoIdx++;
                 var isExp = !!_misoExpanded[m.name];
-                // 접힌 줄에서도 한눈에: 근로일수 · 신청일수
-                var daysBadge = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 ml-1 flex-shrink-0 whitespace-nowrap">근' + cdVal + '·신' + adVal + '</span>';
+                // 접힌 줄에서도 한눈에: 근로일수
+                var daysBadge = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 ml-1 flex-shrink-0 whitespace-nowrap">근로 ' + cdVal + '일</span>';
                 html += '<div id="ma-wrap-' + sid + '" class="rounded-xl border mb-1 overflow-hidden ' + (m.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60') + '">' +
                     '<div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none active:bg-slate-50" onclick="toggleMisoAdmin(\'' + m.name + '\',\'' + sid + '\')">' +
                         '<span class="font-black text-sm text-slate-800 flex-1 min-w-0 truncate">' + m.name + hoursBadge + daysBadge + '</span>' +
@@ -2224,7 +2221,6 @@ function showKakaoModal(text, forced) {
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-bold px-3 py-1.5 rounded-lg ' + toggleClass + '">' + toggleLabel + '</button>' +
                             hoursEditBtn +
                             contractEditBtn +
-                            applyEditBtn +
                             hardDeleteBtn +
                         '</div>' +
                     '</div>' +

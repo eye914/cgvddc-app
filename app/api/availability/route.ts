@@ -289,76 +289,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '현재 신청 가능한 주차가 아닙니다.' }, { status: 403 });
     }
 
-    // 근로일수 초과 차단: 선택 요일 수 ≤ 본인 근로일수
-    {
-      const { data: misoRow } = await supabaseAdmin
-        .from('misojigi').select('*').eq('name', name).maybeSingle();
-      const contractDays = Number(misoRow?.contract_days ?? 5);
-      // 신청 한도 = apply_days 설정값 우선, 없으면 근로일수
-      const applyLimit = Number((misoRow as any)?.apply_days ?? contractDays);
-      const selDays = days.filter((d) => d.shiftCodes.length > 0).length;
-      if (selDays > applyLimit) {
-        return NextResponse.json(
-          { error: `신청 가능 일수(${applyLimit}일)보다 많은 요일을 선택할 수 없습니다. ${applyLimit}일 이내로 선택해 주세요.` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 시간대별 정원 검사: 본인이 '새로' 추가하는 (요일×시간대)가 정원 초과면 거부 (선착순)
-    {
-      const cfg = await getCapConfig();
-      const events = await getEventsMap();
-      const capMatrix = buildCapMatrix(cfg, weekKey, events);
-      // 본인이 이미 신청한 (요일→시간대 Set)
-      const { data: prevRows } = await supabaseAdmin
-        .from('availability')
-        .select('day_of_week, shift_codes')
-        .eq('week_key', weekKey)
-        .eq('name', name);
-      const prevSelf: Record<number, Set<string>> = {};
-      (prevRows ?? []).forEach((r: any) => {
-        prevSelf[r.day_of_week] = new Set(r.shift_codes ?? []);
-      });
-      // 이번 주 전체 신청 1회 조회 → (요일×시간대) 인원(본인 제외) 메모리 집계
-      const { data: allRows } = await supabaseAdmin
-        .from('availability')
-        .select('name, day_of_week, shift_codes')
-        .eq('week_key', weekKey);
-      const othersSets: Record<string, Set<string>> = {};
-      (allRows ?? []).forEach((r: any) => {
-        if (r.name === name) return;
-        (r.shift_codes ?? []).forEach((g: string) => {
-          const key = r.day_of_week + ':' + g;
-          (othersSets[key] = othersSets[key] || new Set()).add(r.name);
-        });
-      });
-      // 이번 제출의 주말(토5·일6) 선택 요일 수 — 안전판 판정용
-      const weekendDayCount = new Set(
-        days.filter((d) => (d.dayOfWeek === 5 || d.dayOfWeek === 6) && d.shiftCodes.length > 0)
-            .map((d) => d.dayOfWeek)
-      ).size;
-      for (const d of days) {
-        const dow = d.dayOfWeek;
-        const isWeekend = dow === 5 || dow === 6;
-        for (const g of (d.shiftCodes || [])) {
-          const gi = GROUP_IDS.indexOf(g);
-          if (gi < 0) continue;
-          const had = prevSelf[dow] && prevSelf[dow].has(g);
-          if (had) continue; // 이미 신청한 시간대는 통과
-          const cap = capMatrix[dow][gi];
-          const cnt = othersSets[dow + ':' + g] ? othersSets[dow + ':' + g].size : 0;
-          if (cnt >= cap) {
-            // 주말 안전판: 주말 1일 필수를 위해, 이 주말 하루가 유일한 주말 선택이면 만석이어도 허용
-            if (isWeekend && weekendDayCount <= 1) continue;
-            return NextResponse.json(
-              { error: `${DOW_NAMES[dow]}요일 ${GROUP_NAMES[gi]} 정원(${cap}명)이 다 찼습니다. 다른 시간대를 선택해 주세요.` },
-              { status: 409 }
-            );
-          }
-        }
-      }
-    }
+    // ※ 정책: 신청은 풍부하게 받음 — 요일 수 제한·시간대 정원 제한 없음.
+    //   분산/주휴/마감 균형은 관리자가 편성 단계에서 수동 조정.
+    //   (주말 1일 필수는 클라이언트에서 안내, 마감은 권장)
 
     const toUpsert = days
       .filter((d) => d.shiftCodes.length > 0)
