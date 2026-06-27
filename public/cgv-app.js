@@ -2190,6 +2190,9 @@ function showKakaoModal(text, forced) {
                 var cdVal = parseInt(m.contract_days, 10) || 5;
                 var contractEditBtn = '<button data-miso-action="edit-contract" data-miso-name="' + m.name + '" data-miso-cd="' + cdVal + '" '
                     + 'class="' + BTN_N + '">근로일수 ' + cdVal + '일</button>';
+                var adVal = parseInt(m.apply_days, 10) || cdVal;
+                var applyEditBtn = '<button data-miso-action="edit-apply" data-miso-name="' + m.name + '" data-miso-ad="' + adVal + '" '
+                    + 'class="' + BTN_N + '">신청일수 ' + adVal + '일</button>';
                 var sid = 'mi' + misoIdx;
                 misoIdx++;
                 var isExp = !!_misoExpanded[m.name];
@@ -2219,6 +2222,7 @@ function showKakaoModal(text, forced) {
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-bold px-3 py-1.5 rounded-lg ' + toggleClass + '">' + toggleLabel + '</button>' +
                             hoursEditBtn +
                             contractEditBtn +
+                            applyEditBtn +
                             hardDeleteBtn +
                         '</div>' +
                     '</div>' +
@@ -2245,6 +2249,9 @@ function showKakaoModal(text, forced) {
                     } else if (action === 'edit-contract') {
                         var curCd = parseInt(this.getAttribute('data-miso-cd'), 10) || 5;
                         editMisojigiContract(name, curCd);
+                    } else if (action === 'edit-apply') {
+                        var curAd = parseInt(this.getAttribute('data-miso-ad'), 10) || 5;
+                        editMisojigiApplyDays(name, curAd);
                     } else if (action === 'hard-delete') {
                         deleteMisojigiHard(name);
                     }
@@ -2283,6 +2290,22 @@ function showKakaoModal(text, forced) {
                 })
                 .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
                 .updateMisojigi(name, { contract_days: v });
+        }
+        function editMisojigiApplyDays(name, cur) {
+            var input = prompt(name + ' 님의 신청 가능 일수(1~7)를 입력하세요.\n(근태 우수·주휴 희망자에게 근로일수보다 늘려줄 수 있어요)', String(cur || 5));
+            if (input === null) return;
+            var v = parseInt(input, 10);
+            if (isNaN(v) || v < 1 || v > 7) { alert('1~7 사이 숫자를 입력해주세요.'); return; }
+            google.script.run
+                .withSuccessHandler(function() {
+                    for (var i = 0; i < MISO_DATA.length; i++) {
+                        if (MISO_DATA[i].name === name) { MISO_DATA[i].apply_days = v; break; }
+                    }
+                    alert(name + ' 신청 가능 일수 ' + v + '일로 변경되었습니다.');
+                    loadMisojigiAdmin();
+                })
+                .withFailureHandler(function(e) { alert('저장 실패: ' + e); })
+                .updateMisojigi(name, { apply_days: v });
         }
         function showAddMisojigiForm() {
             var form = document.getElementById('miso-add-form');

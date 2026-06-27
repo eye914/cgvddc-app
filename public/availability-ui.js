@@ -228,20 +228,21 @@
   /* ── 렌더 ── */
   function renderAvailUI() {
     var contractDays  = parseInt(curUser.contract_days, 10) || 5;
+    var applyLimit    = parseInt(curUser.apply_days, 10) || contractDays; // 신청 가능 일수(근로일수로 폴백)
     var selectedDays  = countSelectedDays();
     var hours         = parseFloat(curUser.hours) || 5.5;
-    var overLimit     = selectedDays > contractDays;
+    var overLimit     = selectedDays > applyLimit;
     var weekendOk     = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
     var closeOk       = [0,1,2,3,4,5,6].some(function(di){ return getSelectedKinds(di).indexOf('n') > -1; });
 
     /* 진행 상태 텍스트 */
     var progressMsg;
-    if (selectedDays < contractDays) {
-      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">근로일수 ' + contractDays + '일 중 ' + selectedDays + '일 선택</span>';
+    if (selectedDays < applyLimit) {
+      progressMsg = '<span style="color:#64748b;font-weight:700;font-size:11px">신청 가능 ' + applyLimit + '일 중 ' + selectedDays + '일 선택</span>';
     } else {
-      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">근로일수만큼 선택 완료!</span>';
+      progressMsg = '<span style="color:#16a34a;font-weight:800;font-size:11px">신청 가능 일수만큼 선택 완료!</span>';
     }
-    var pct = Math.min(selectedDays / contractDays * 100, 100);
+    var pct = Math.min(selectedDays / applyLimit * 100, 100);
 
     var html = '';
 
@@ -252,14 +253,14 @@
     html += '<span style="display:inline-block;padding:2px 8px;background:#eef4f9;color:#4a7fb5;border-radius:6px;font-size:10px;font-weight:800">' + hours + 'h</span>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">';
-    html += '<span style="font-size:11px;font-weight:700;color:#64748b">근로일수 <b style="color:#0f172a">' + contractDays + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
+    html += '<span style="font-size:11px;font-weight:700;color:#64748b">신청 가능 <b style="color:#0f172a">' + applyLimit + '일</b> · 선택 <b style="color:#0f172a">' + selectedDays + '일</b></span>';
     html += progressMsg;
     html += '</div>';
     /* 진행 바 */
     html += '<div style="height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin-bottom:6px">';
-    html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= contractDays ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
+    html += '<div style="height:100%;border-radius:3px;background:' + (selectedDays >= applyLimit ? '#16a34a' : '#d8463a') + ';width:' + pct + '%;transition:width .3s"></div>';
     html += '</div>';
-    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px"><b>근로일수(' + contractDays + '일)만큼</b> 요일을 선택해 주세요. 한 요일 안에서 가능한 시간대(오픈·미들·마감)는 여러 개 골라도 됩니다. 시간대마다 <b>선착순 정원</b>이 있어 차면 잠깁니다.</p>';
+    html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px"><b>최대 ' + applyLimit + '일</b>까지 요일을 선택할 수 있어요. 한 요일 안에서 가능한 시간대(오픈·미들·마감)는 여러 개 골라도 됩니다. 시간대마다 <b>선착순 정원</b>이 있어 차면 잠깁니다.</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (weekendOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (weekendOk ? '주말 근무 선택 완료 (토·일 중 하루 이상)' : '주말 근무 필수 — 토·일 중 하루 이상 꼭 선택해야 신청이 완료됩니다.') + '</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (closeOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#9a6b00;background:#fdf6e3') + '">' + (closeOk ? '마감 근무 선택 완료 — 감사합니다!' : '마감(폐점) 가능하시면 하루라도 마감을 선택해 주세요. 마감 인원이 늘 부족해요.') + '</p>';
     html += '</div>';
@@ -395,12 +396,16 @@
   function openKinds(dayIdx) {
     return getAllActiveKinds(dayIdx).filter(function (k) { return !isGrpFull(dayIdx, k); });
   }
-  function getContractDays() { return (curUser && parseInt(curUser.contract_days, 10)) || 5; }
-  // 새 요일을 추가하려는데 근로일수를 이미 다 채웠으면 true
+  // 신청 가능 일수 = apply_days 설정값 우선, 없으면 근로일수
+  function getApplyLimit() {
+    if (!curUser) return 5;
+    return parseInt(curUser.apply_days, 10) || parseInt(curUser.contract_days, 10) || 5;
+  }
+  // 새 요일을 추가하려는데 신청 가능 일수를 이미 다 채웠으면 true
   function dayLimitBlocked(dayIdx) {
     var has = selected[dayIdx] && selected[dayIdx].size > 0;
     if (has) return false; // 이미 고른 요일이면 제한 없음
-    return countSelectedDays() >= getContractDays();
+    return countSelectedDays() >= getApplyLimit();
   }
 
   /* ── 전역 액션 함수들 ── */
@@ -408,7 +413,7 @@
     if (isGrpFull(dayIdx, groupId)) return; // 정원 찬 시간대는 선택 불가
     var removing = selected[dayIdx] && selected[dayIdx].has(groupId);
     if (!removing && dayLimitBlocked(dayIdx)) {
-      alert('근로일수(' + getContractDays() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
+      alert('신청 가능 일수(' + getApplyLimit() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
       return;
     }
     if (!selected[dayIdx]) selected[dayIdx] = new Set();
@@ -422,7 +427,7 @@
     var curKinds = getSelectedKinds(dayIdx);
     var allOn = kinds.length > 0 && kinds.every(function (k) { return curKinds.indexOf(k) > -1; });
     if (!allOn && dayLimitBlocked(dayIdx)) {
-      alert('근로일수(' + getContractDays() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
+      alert('신청 가능 일수(' + getApplyLimit() + '일)만큼만 선택할 수 있어요.\n선택한 다른 요일을 먼저 해제해 주세요.');
       return;
     }
     selected[dayIdx] = allOn ? new Set() : new Set(kinds);

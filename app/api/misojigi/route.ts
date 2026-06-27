@@ -45,6 +45,8 @@ export async function GET(req: NextRequest) {
       active: row.active,
       pin: row.pin ?? '00000',
       contract_days: row.contract_days ?? 5,
+      // 신청 가능 일수: 설정값 우선, 없으면 근로일수로 폴백
+      apply_days: row.apply_days ?? (row.contract_days ?? 5),
     }));
 
     return NextResponse.json(result);

@@ -292,12 +292,14 @@ export async function POST(req: NextRequest) {
     // 근로일수 초과 차단: 선택 요일 수 ≤ 본인 근로일수
     {
       const { data: misoRow } = await supabaseAdmin
-        .from('misojigi').select('contract_days').eq('name', name).maybeSingle();
+        .from('misojigi').select('*').eq('name', name).maybeSingle();
       const contractDays = Number(misoRow?.contract_days ?? 5);
+      // 신청 한도 = apply_days 설정값 우선, 없으면 근로일수
+      const applyLimit = Number((misoRow as any)?.apply_days ?? contractDays);
       const selDays = days.filter((d) => d.shiftCodes.length > 0).length;
-      if (selDays > contractDays) {
+      if (selDays > applyLimit) {
         return NextResponse.json(
-          { error: `근로일수(${contractDays}일)보다 많은 요일을 선택할 수 없습니다. ${contractDays}일 이내로 선택해 주세요.` },
+          { error: `신청 가능 일수(${applyLimit}일)보다 많은 요일을 선택할 수 없습니다. ${applyLimit}일 이내로 선택해 주세요.` },
           { status: 400 }
         );
       }
