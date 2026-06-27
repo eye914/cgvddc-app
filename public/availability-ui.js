@@ -298,12 +298,7 @@
       var capG = DAY_CAPS[dayIdx] || [0,0,0];
       var cntG = DAY_COUNTS[dayIdx] || [0,0,0];
       // 시간대(gid) 정원 마감 여부 — 내가 이미 고른 시간대는 잠기지 않음
-      function grpFull(gid) {
-        var gi = GROUP_IDX[gid];
-        if (gi === undefined) return false;
-        if (curKinds.indexOf(gid) > -1) return false;
-        return (cntG[gi] || 0) >= (capG[gi] || 0);
-      }
+      function grpFull(gid) { return isGrpFull(dayIdx, gid); }
       var availKinds = allKinds.filter(function (k) { return !grpFull(k); });
       var allOn   = availKinds.length > 0 && availKinds.every(function (k) { return curKinds.indexOf(k) > -1; });
       var picks   = new Set(curKinds).size;
@@ -404,7 +399,14 @@
     if (getSelectedKinds(dayIdx).indexOf(gid) > -1) return false;
     var capG = DAY_CAPS[dayIdx] || [0,0,0];
     var cntG = DAY_COUNTS[dayIdx] || [0,0,0];
-    return (cntG[gi] || 0) >= (capG[gi] || 0);
+    if ((cntG[gi] || 0) < (capG[gi] || 0)) return false;
+    // 주말 안전판: 아직 주말 요일을 하나도 못 골랐으면, 주말 시간대는 만석이어도 열어둠
+    //  → '주말 1일 필수'가 정원 만석으로 막혀 제출 불가가 되는 데드락 방지
+    if (dayIdx === 5 || dayIdx === 6) {
+      var hasWeekend = getSelectedKinds(5).length > 0 || getSelectedKinds(6).length > 0;
+      if (!hasWeekend) return false;
+    }
+    return true;
   }
   function openKinds(dayIdx) {
     return getAllActiveKinds(dayIdx).filter(function (k) { return !isGrpFull(dayIdx, k); });

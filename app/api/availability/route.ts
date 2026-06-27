@@ -333,8 +333,14 @@ export async function POST(req: NextRequest) {
           (othersSets[key] = othersSets[key] || new Set()).add(r.name);
         });
       });
+      // 이번 제출의 주말(토5·일6) 선택 요일 수 — 안전판 판정용
+      const weekendDayCount = new Set(
+        days.filter((d) => (d.dayOfWeek === 5 || d.dayOfWeek === 6) && d.shiftCodes.length > 0)
+            .map((d) => d.dayOfWeek)
+      ).size;
       for (const d of days) {
         const dow = d.dayOfWeek;
+        const isWeekend = dow === 5 || dow === 6;
         for (const g of (d.shiftCodes || [])) {
           const gi = GROUP_IDS.indexOf(g);
           if (gi < 0) continue;
@@ -343,6 +349,8 @@ export async function POST(req: NextRequest) {
           const cap = capMatrix[dow][gi];
           const cnt = othersSets[dow + ':' + g] ? othersSets[dow + ':' + g].size : 0;
           if (cnt >= cap) {
+            // 주말 안전판: 주말 1일 필수를 위해, 이 주말 하루가 유일한 주말 선택이면 만석이어도 허용
+            if (isWeekend && weekendDayCount <= 1) continue;
             return NextResponse.json(
               { error: `${DOW_NAMES[dow]}요일 ${GROUP_NAMES[gi]} 정원(${cap}명)이 다 찼습니다. 다른 시간대를 선택해 주세요.` },
               { status: 409 }
