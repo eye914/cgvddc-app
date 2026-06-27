@@ -46,10 +46,15 @@
   // (코드그룹, 요일, 포지션) 가능 직원: 신청자(그 그룹) + 미제출(전체가능) + 그 외(신청했지만 이 시간 미희망)
   function eligible(group, pos) {
     var subs = [], non = [], other = [];
-    // 이 포지션을 소화 가능한 사람만 후보 (통합은 매점·플로어 모두 가능)
+    // 이 포지션을 소화 가능한 사람만 후보
+    //  · 통합 보유자는 모든 포지션 가능
+    //  · 통합 슬롯은 '통합' 보유자 또는 매점·플로어를 모두 가진 사람(=통합 동등)도 가능
     function canPos(s) {
       var ps = s.pos || [];
-      return ps.indexOf(pos) > -1 || ps.indexOf('통합') > -1;
+      if (ps.indexOf('통합') > -1) return true;
+      if (ps.indexOf(pos) > -1) return true;
+      if (pos === '통합' && ps.indexOf('매점') > -1 && ps.indexOf('플로어') > -1) return true;
+      return false;
     }
     (ST.data.staff || []).forEach(function (s) {
       if (!canPos(s)) return; // 포지션 불가 → 후보에서 제외
