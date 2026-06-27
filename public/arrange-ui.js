@@ -46,7 +46,13 @@
   // (코드그룹, 요일, 포지션) 가능 직원: 신청자(그 그룹) + 미제출(전체가능) + 그 외(신청했지만 이 시간 미희망)
   function eligible(group, pos) {
     var subs = [], non = [], other = [];
+    // 이 포지션을 소화 가능한 사람만 후보 (통합은 매점·플로어 모두 가능)
+    function canPos(s) {
+      var ps = s.pos || [];
+      return ps.indexOf(pos) > -1 || ps.indexOf('통합') > -1;
+    }
     (ST.data.staff || []).forEach(function (s) {
+      if (!canPos(s)) return; // 포지션 불가 → 후보에서 제외
       if (!submitted(s.name)) { non.push(s); return; }
       var av = (ST.data.availability[s.name] || {})[ST.day] || [];
       if (av.indexOf(group) > -1) subs.push(s);
