@@ -148,7 +148,20 @@
     document.getElementById('avail-body').innerHTML =
       '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">불러오는 중...</div>';
 
-    fetch('/api/availability?mode=active')
+    // 신청일수·근로일수는 관리자가 바꿀 수 있으니 항상 최신값으로 갱신(캐시 우회) 후 로드
+    fetch('/api/misojigi')
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        if (Array.isArray(list)) {
+          var f = list.find(function(m) { return m.name === curUser.name; });
+          if (f) {
+            if (f.apply_days != null)    curUser.apply_days = f.apply_days;
+            if (f.contract_days != null) curUser.contract_days = f.contract_days;
+          }
+        }
+      })
+      .catch(function() {})
+      .then(function() { return fetch('/api/availability?mode=active'); })
       .then(function(r) { return r.json(); })
       .then(function(info) {
         if (!info.weekKey) {

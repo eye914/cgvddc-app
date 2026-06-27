@@ -2200,8 +2200,7 @@ function showKakaoModal(text, forced) {
                 var daysBadge = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 ml-1 flex-shrink-0 whitespace-nowrap">근' + cdVal + '·신' + adVal + '</span>';
                 html += '<div id="ma-wrap-' + sid + '" class="rounded-xl border mb-1 overflow-hidden ' + (m.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60') + '">' +
                     '<div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none active:bg-slate-50" onclick="toggleMisoAdmin(\'' + m.name + '\',\'' + sid + '\')">' +
-                        '<span class="font-black text-sm text-slate-800 flex-1 min-w-0 truncate">' + m.name + hoursBadge + '</span>' +
-                        daysBadge +
+                        '<span class="font-black text-sm text-slate-800 flex-1 min-w-0 truncate">' + m.name + hoursBadge + daysBadge + '</span>' +
                         statusBadge +
                         '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
