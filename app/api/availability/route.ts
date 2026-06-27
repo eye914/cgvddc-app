@@ -9,7 +9,7 @@ const DOW_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
 const GROUP_IDS = ['d', 'm', 'n'];       // 오픈, 미들, 마감
 const GROUP_NAMES = ['오픈', '미들', '마감'];
 // 기본 정원 [오픈, 미들, 마감] + 이벤트 시간대 보너스
-const DEFAULT_CAP = { weekday: [2, 3, 4], sat: [3, 4, 5], sun: [3, 4, 4], eventBonus: 1 };
+const DEFAULT_CAP = { weekday: [2, 3, 4], sat: [3, 4, 5], sun: [3, 3, 4], eventBonus: 1 };
 
 type CapConfig = { weekday: number[]; sat: number[]; sun: number[]; eventBonus: number };
 
