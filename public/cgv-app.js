@@ -2292,7 +2292,7 @@ function showKakaoModal(text, forced) {
                 .updateMisojigi(name, { contract_days: v });
         }
         function editMisojigiApplyDays(name, cur) {
-            var input = prompt(name + ' 님의 신청 가능 일수(1~7)를 입력하세요.\n(근태 우수·주휴 희망자에게 근로일수보다 늘려줄 수 있어요)', String(cur || 5));
+            var input = prompt(name + ' 님의 신청 가능 일수(1~7)를 입력하세요.\n(근로일수와 별개로, 더 많이 신청하게 허용할 인원에게 상향)', String(cur || 5));
             if (input === null) return;
             var v = parseInt(input, 10);
             if (isNaN(v) || v < 1 || v > 7) { alert('1~7 사이 숫자를 입력해주세요.'); return; }
