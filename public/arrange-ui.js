@@ -333,6 +333,9 @@
     var ov = document.getElementById('ar-ov');
     function row(s, isSub) {
       var ad = assignedDays(s.name), over = ad > s.contractDays;
+      // 최근 4주 토요일/마감 횟수 (균형 배정 참고용)
+      var fr = (ST.data.fairness || {})[s.name] || { sat: 0, close: 0 };
+      var frBadge = '<span style="font-size:9.5px;font-weight:800;color:#8a6d3b;background:#fbf3e2;border-radius:5px;padding:1px 5px;margin-left:3px;white-space:nowrap" title="최근 4주 토요일·마감 근무 횟수">토' + fr.sat + '·마' + fr.close + '</span>';
       // 같은 요일 다른 슬롯에 이미 배정된 경우 → 중복 배정 차단
       var dayAsg = (ST.data.assignments || []).find(function (a) { return a.dayOfWeek === ST.day && a.name === s.name; });
       var here = dayAsg && dayAsg.shiftCode === code && dayAsg.position === pcode;
@@ -344,6 +347,7 @@
         '<div class="ar-av ' + (isSub ? 's' : 'n') + '">' + s.name.charAt(0) + '</div>' +
         '<span class="pn">' + s.name + '</span>' +
         '<span class="ar-tag">' + (s.pos.join('·') || '-') + '</span>' +
+        frBadge +
         '<span class="ar-cnt ' + (over ? 'over' : '') + '">' + ad + '/' + s.contractDays + '</span>' +
         right + '</div>';
     }

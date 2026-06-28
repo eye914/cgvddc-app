@@ -84,6 +84,24 @@ export async function GET(req: NextRequest) {
       if (evMap[key]) events[di] = evMap[key];
     }
 
+    // ── 5) 공정성: 최근 4주 토요일/마감 배정 횟수 (관리자 균형 배정용) ──
+    const prevKeys: string[] = [];
+    for (let w = 1; w <= 4; w++) {
+      const d = new Date(mon); d.setDate(mon.getDate() - 7 * w);
+      prevKeys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    const fairness: Record<string, { sat: number; close: number }> = {};
+    const { data: histRows } = await supabaseAdmin
+      .from('schedule_assignments')
+      .select('name, day_of_week, shift_code')
+      .in('week_key', prevKeys);
+    (histRows ?? []).forEach((r: Record<string, any>) => {
+      const nm = String(r.name).trim();
+      if (!fairness[nm]) fairness[nm] = { sat: 0, close: 0 };
+      if (Number(r.day_of_week) === 5) fairness[nm].sat++;
+      if (String(r.shift_code || '').toUpperCase().charAt(0) === 'N') fairness[nm].close++;
+    });
+
     return NextResponse.json({
       weekKey,
       staff,
@@ -91,6 +109,7 @@ export async function GET(req: NextRequest) {
       submitted: Array.from(submittedSet),
       assignments,
       events,
+      fairness,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
