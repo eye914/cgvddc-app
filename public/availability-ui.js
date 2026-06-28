@@ -266,7 +266,7 @@
     html += '</div>';
     html += '<p style="font-size:10.5px;color:#8a6d3b;background:#fbf3e2;border-radius:9px;padding:9px 11px;font-weight:700;line-height:1.55;word-break:keep-all;margin-top:2px">근로일수(' + contractDays + '일)는 <b>최소</b>예요. <b>가능한 요일·시간대를 넉넉히</b> 골라주실수록 편성에 더 잘 반영됩니다. 한 요일에 오픈·미들·마감을 여러 개 골라도 됩니다.</p>';
     html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (weekendOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (weekendOk ? '주말 근무 선택 완료 (토·일 중 하루 이상)' : '주말 근무 필수 — 토·일 중 하루 이상 꼭 선택해야 신청이 완료됩니다.') + '</p>';
-    html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (closeOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#9a6b00;background:#fdf6e3') + '">' + (closeOk ? '마감 근무 선택 완료 — 감사합니다!' : '마감(폐점) 가능하시면 하루라도 마감을 선택해 주세요. 마감 인원이 늘 부족해요.') + '</p>';
+    html += '<p style="font-size:10.5px;font-weight:800;line-height:1.5;word-break:keep-all;margin-top:6px;border-radius:9px;padding:9px 11px;' + (closeOk ? 'color:#16a34a;background:#eaf7ef' : 'color:#dc2626;background:#fef2f2') + '">' + (closeOk ? '마감 근무 선택 완료 (1일 이상)' : '마감(폐점) 필수 — 7일 중 마감을 최소 하루 꼭 선택해야 신청이 완료됩니다.') + '</p>';
     html += '</div>';
 
     /* ── 빠른 패턴 (매일전부 / 평일·주말·미들 / 초기화) ── */
@@ -408,10 +408,11 @@
       alert('주말 근무는 필수입니다.\n\n토요일 또는 일요일 중 가능한 날을 최소 하루 선택해야 신청이 완료됩니다.');
       return;
     }
-    // 마감(폐점) 미선택 시 부드러운 권장 확인 (차단 아님)
+    // 마감(폐점) 1일 필수 — 미선택 시 제출 차단
     var hasClose = [0,1,2,3,4,5,6].some(function(di){ return getSelectedKinds(di).indexOf('n') > -1; });
     if (!hasClose) {
-      if (!confirm('마감(폐점) 근무를 하나도 선택하지 않으셨어요.\n\n마감 인원이 늘 부족합니다. 가능한 날이 있다면 마감을 하나라도 선택해 주시면 큰 도움이 돼요.\n\n그래도 이대로 제출할까요?')) return;
+      alert('마감(폐점) 근무는 필수입니다.\n\n7일 중 마감(🌙)이 가능한 날을 최소 하루 선택해야 신청이 완료됩니다.');
+      return;
     }
     var notice = '📋 신청 전 확인\n\n'
       + "선택하신 요일은 '근무 희망'으로 접수됩니다.\n"
