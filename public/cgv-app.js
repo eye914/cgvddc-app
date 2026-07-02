@@ -674,9 +674,8 @@ function showKakaoModal(text, forced) {
             updateHeaderDatetime();
             setInterval(updateHeaderDatetime, 60000);
             var now = new Date();
-            var tmr = new Date(now); tmr.setDate(now.getDate()+1);
             var ri = document.getElementById("req-date-input");
-            if (ri) ri.min = getLocalYYYYMMDD(tmr);
+            if (ri) ri.min = getLocalYYYYMMDD(now); // 당일(오늘) 대타도 신청 가능
             if (sessionStorage.getItem("cgv_auth") === "true") {
                 var ov = document.getElementById("auth-overlay");
                 if (ov) ov.style.display = "none";
@@ -738,7 +737,7 @@ function showKakaoModal(text, forced) {
             return target <= today;
         }
 
-        // 교대 전날 22:00 이후부터 만료
+        // 교대일이 '지난 날짜'일 때만 만료 (당일·미래는 신청 가능 — 당일 긴급대타 허용)
         function isExpired(shiftDateStr) {
             if (!shiftDateStr) return false;
             var clean = String(shiftDateStr).split("(")[0].split("/")[0].trim();
@@ -746,9 +745,8 @@ function showKakaoModal(text, forced) {
             if (parts.length < 3) return false;
             var shiftDay = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 0, 0, 0);
             if (isNaN(shiftDay.getTime())) return false;
-            // 전날 23:00 = 교대일 00:00 - 1시간
-            var expireAt = new Date(shiftDay.getTime() - 2 * 60 * 60 * 1000);
-            return new Date() >= expireAt;
+            var today = new Date(); today.setHours(0, 0, 0, 0);
+            return shiftDay.getTime() < today.getTime();
         }
 
         function getWeekKey(dateStr) {
@@ -1341,8 +1339,7 @@ function showKakaoModal(text, forced) {
             var reas = document.getElementById("reason-select").value;
             var rDay = document.getElementById("req-selected-day").value || (rDate ? DAYS[new Date(rDate).getDay()] : "");
             if (!rDate||!rCode||!rPos||!reas){ alert("\uBCF4\uB0BC \uADFC\uBB34(OUT) \uBC0F \uC0AC\uC720\uC758 \uBAA8\uB4E0 \uD544\uC218 \uD56D\uBAA9\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
-            if (isTodayOrPast(rDate)){ alert("\uB2F9\uC77C/\uACFC\uAC70 \uADFC\uBB34\uB294 \uC2E0\uCCAD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."); return; }
-            if (isExpired(rDate)){ alert("전날 22시 이후에는 신청할 수 없습니다."); return; }
+            if (isExpired(rDate)){ alert("지난 날짜는 신청할 수 없습니다."); return; }
             if (rCode.startsWith("N") && rPos === "\uB9E4\uC810"){ alert("\uB9C8\uAC10(N) \uC2DC\uAC04\uB300(OUT)\uC5D0\uB294 \uC77C\uBC18 \uB9E4\uC810\uC744 \uC120\uD0DD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."); return; }
 
             // \u2605 \uBCF4\uB0BC \uADFC\uBB34(OUT)\uAC00 \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uC640 \uC77C\uCE58\uD558\uB294\uC9C0 \uAC80\uC99D
