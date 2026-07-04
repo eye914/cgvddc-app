@@ -89,6 +89,22 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
 
+    // ── 이름 변경(rename) ─────────────────────────────────────────
+    //   동명이인 구분용. name(기존) → newName(신규). 다른 필드와 별개로 처리.
+    if (body.newName !== undefined) {
+      const oldName = String(body.name || '').trim();
+      const newName = String(body.newName).trim();
+      if (!oldName || !newName) return NextResponse.json({ error: '기존/새 이름 필요' }, { status: 400 });
+      // 중복 방지
+      const { data: dup } = await supabaseAdmin.from('misojigi').select('name').eq('name', newName).maybeSingle();
+      if (dup) return NextResponse.json({ error: '이미 존재하는 이름: ' + newName }, { status: 400 });
+      const { error: renErr } = await supabaseAdmin.from('misojigi').update({ name: newName }).eq('name', oldName);
+      if (renErr) return NextResponse.json({ error: renErr.message }, { status: 500 });
+      // GAS 미소지기DB 동기화 (이름 열 변경)
+      await callGAS('updateMisojigiInDB', [oldName, { name: newName }]);
+      return NextResponse.json({ ok: true });
+    }
+
     // ── 일반 PATCH ────────────────────────────────────────────────
     const { name, ...updates } = body as { name: string; [key: string]: any };
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });

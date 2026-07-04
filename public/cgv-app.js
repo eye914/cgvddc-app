@@ -323,6 +323,30 @@
             updatePushBanner(); // 기기 설정 변경 반영
         });
 
+        // ── 현황 실시간 갱신: 화면을 열어둔 채로도 새 지원·쌍방합의·승인을 반영 ──
+        //   로더 없이 트레이드만 조용히 다시 받아, 상태가 바뀐 경우에만 다시 그린다.
+        function _tradeSig(list) {
+            return (list||[]).map(function(t){ return t.id + ":" + t.status + ":" + (t.subName||""); }).sort().join("|");
+        }
+        var _lastTradeSig = "";
+        function silentRefreshTrades() {
+            if (document.visibilityState !== 'visible') return;
+            if (sessionStorage.getItem("cgv_auth") !== "true") return;
+            if (typeof google === "undefined" || !google.script) return;
+            google.script.run
+                .withSuccessHandler(function(data){
+                    var next = (data||[]).filter(function(t){ return t.id && t.reqName && String(t.id).startsWith("TRD"); });
+                    var sig = _tradeSig(next);
+                    if (sig === _lastTradeSig) return; // 변화 없으면 화면 손대지 않음(스크롤·조작 보존)
+                    _lastTradeSig = sig;
+                    trades = next;
+                    if (typeof renderList === 'function') renderList();
+                })
+                .withFailureHandler(function(){})
+                .getTradesFromDB();
+        }
+        setInterval(silentRefreshTrades, 15000);
+
                 function testPushNotification(name) {
             var n = name || getPushName();
             fetch('/api/push/test', {
@@ -1817,6 +1841,7 @@ function showKakaoModal(text, forced) {
                 google.script.run
                     .withSuccessHandler(function(data){
                         trades = (data||[]).filter(function(t){ return t.id && t.reqName && String(t.id).startsWith("TRD"); });
+                        _lastTradeSig = _tradeSig(trades); // 백그라운드 폴링 기준값 갱신
                         onAllLoaded();
                     })
                     .withFailureHandler(function(e){
@@ -2192,9 +2217,15 @@ function showKakaoModal(text, forced) {
                 var isExp = !!_misoExpanded[m.name];
                 // 접힌 줄에서도 한눈에: 근로일수
                 var daysBadge = '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 ml-1 flex-shrink-0 whitespace-nowrap">근로 ' + cdVal + '일</span>';
+                // PIN 상태: 초기값(00000)이면 미설정, 그 외는 설정됨
+                var pinSet = m.pin && String(m.pin) !== '00000';
+                var pinBadge = pinSet
+                    ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 ml-1 flex-shrink-0 whitespace-nowrap">PIN✓</span>'
+                    : '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700 ml-1 flex-shrink-0 whitespace-nowrap">PIN 초기</span>';
                 html += '<div id="ma-wrap-' + sid + '" class="rounded-xl border mb-1 overflow-hidden ' + (m.active ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50 opacity-60') + '">' +
                     '<div class="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none active:bg-slate-50" onclick="toggleMisoAdmin(\'' + m.name + '\',\'' + sid + '\')">' +
                         '<span class="font-black text-sm text-slate-800 flex-1 min-w-0 truncate">' + m.name + hoursBadge + daysBadge + '</span>' +
+                        pinBadge +
                         statusBadge +
                         '<span id="ma-a-' + sid + '" class="text-[10px] text-slate-400 ml-1 flex-shrink-0">' + (isExp ? '▲' : '▼') + '</span>' +
                     '</div>' +
@@ -2213,8 +2244,9 @@ function showKakaoModal(text, forced) {
                                     ? '<a href="tel:' + ph.tel + '" class="' + BTN_N + '">전화걸기</a>'
                                     : '';
                             })() +
+                            '<button data-miso-action="rename-miso" data-miso-name="' + m.name + '" class="' + BTN_N + '">이름수정</button>' +
                             '<button data-miso-action="edit-pos" data-miso-name="' + m.name + '" data-miso-pos=\'' + posJson + '\' class="' + BTN_N + '">근무포지션</button>' +
-                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="' + BTN_N + '">PIN 설정</button>' +
+                            '<button data-miso-action="reset-pin" data-miso-name="' + m.name + '" class="' + BTN_N + '">' + (pinSet ? 'PIN 변경' : 'PIN 설정(초기)') + '</button>' +
                             '<button data-miso-action="toggle-active" data-miso-name="' + m.name + '" data-miso-active="' + m.active + '" data-miso-wrap="ma-wrap-' + sid + '" class="text-xs font-bold px-3 py-1.5 rounded-lg ' + toggleClass + '">' + toggleLabel + '</button>' +
                             hoursEditBtn +
                             contractEditBtn +
@@ -2232,6 +2264,8 @@ function showKakaoModal(text, forced) {
                     if (action === 'edit-pos') {
                         var pos = JSON.parse(this.getAttribute('data-miso-pos') || '[]');
                         editMisojigiPos(name, pos);
+                    } else if (action === 'rename-miso') {
+                        renameMisojigi(name);
                     } else if (action === 'reset-pin') {
                         resetMisojigiPin(name);
                     } else if (action === 'toggle-active') {
@@ -2357,6 +2391,33 @@ function showKakaoModal(text, forced) {
                 .updateMisojigi(name, { pos: newPos });
         }
 
+
+        function renameMisojigi(oldName) {
+            var nn = prompt(oldName + ' 님의 새 이름을 입력하세요.\n(동명이인 구분용 — 예: ' + oldName + 'A)', oldName);
+            if (nn === null) return; // 취소
+            nn = nn.trim();
+            if (!nn) { alert('이름을 입력해주세요.'); return; }
+            if (nn === oldName) return;
+            if (_misoAdminData.some(function(m){ return m.name === nn; })) {
+                alert('이미 존재하는 이름입니다: ' + nn + '\n다른 이름(예: ' + oldName + 'A / ' + oldName + 'B)을 사용하세요.');
+                return;
+            }
+            if (!confirm(oldName + ' → ' + nn + ' 으로 이름을 변경할까요?\nPIN·근무시간·포지션은 그대로 유지됩니다.')) return;
+            // 이름 변경은 shim(updateMisojigi)으로는 lookup 키와 충돌하므로 직접 호출
+            fetch('/api/misojigi', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: oldName, newName: nn })
+            })
+                .then(function(r){ return r.json(); })
+                .then(function(j){
+                    if (j && j.error) { alert('오류: ' + j.error); return; }
+                    alert('이름이 ' + nn + ' 으로 변경되었습니다.');
+                    sessionStorage.removeItem('cgv_miso');
+                    loadMisojigiAdmin();
+                })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
 
         function resetMisojigiPin(name) {
             var newPin = prompt(name + ' 님의 새 PIN을 입력하세요.\n(숫자 ' + PIN_LENGTH_STAFF + '자리)');
@@ -2550,7 +2611,7 @@ function showKakaoModal(text, forced) {
                 var isExp = isExpired(safeDate);
                 var shiftTs = (function(){ var c=safeDate.split("(")[0].split("/")[0].trim(); var dt=new Date(c); return isNaN(dt.getTime())?999999:dt.getTime(); })();
                 var hoursLeft = (shiftTs - new Date().getTime()) / 3600000;
-                var isUrgent = isU && hoursLeft > -2 && hoursLeft <= 24;
+                var isUrgent = isU && !isExp && hoursLeft <= 24; // 당일(지나지 않은)도 긴급으로 표시
 
                 // 반려됨 카드 처리
                 if (isR) {
