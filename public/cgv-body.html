@@ -72,10 +72,12 @@
                         <span id="header-datetime" class="text-[10px] font-bold text-slate-400"></span>
                         <button id="push-subscribe-btn" style="font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
                     </div>
-                    <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-                        <button onclick="switchTab('trade')" id="tab-trade-btn" class="tab-btn active text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all">신청현황</button>
-                        <button onclick="switchTab('schedule')" id="tab-schedule-btn" class="tab-btn text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all text-slate-500">📅 근태</button>
-                        <button onclick="switchTab('manager')" id="tab-manager-btn" class="tab-btn text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all text-slate-500">관리자</button>
+                    <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner overflow-x-auto max-w-full">
+                        <button onclick="switchTab('trade')" id="tab-trade-btn" class="tab-btn active text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap flex-shrink-0">신청</button>
+                        <button onclick="switchTab('schedule')" id="tab-schedule-btn" class="tab-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all text-slate-500 whitespace-nowrap flex-shrink-0">📅 근태</button>
+                        <button onclick="switchTab('notice')" id="tab-notice-btn" class="tab-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all text-slate-500 whitespace-nowrap flex-shrink-0">📢 공지</button>
+                        <button onclick="switchTab('manual')" id="tab-manual-btn" class="tab-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all text-slate-500 whitespace-nowrap flex-shrink-0">📖 매뉴얼</button>
+                        <button onclick="switchTab('manager')" id="tab-manager-btn" class="tab-btn text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-all text-slate-500 whitespace-nowrap flex-shrink-0">관리자</button>
                     </div>
                 </div>
             </div>
@@ -294,6 +296,9 @@
             </div>
 
         </div>
+
+        <div id="view-notice" class="hidden pb-20 w-full max-w-3xl mx-auto"></div>
+        <div id="view-manual" class="hidden pb-20 w-full max-w-3xl mx-auto"></div>
 
         <div id="view-manager" class="hidden space-y-4 pb-20 w-full">
             <div class="max-w-3xl mx-auto px-5">

@@ -500,6 +500,8 @@
             ov.style.opacity = '0';
             setTimeout(function(){ ov.style.display = 'none'; }, 400);
             sessionStorage.setItem('cgv_auth','true');
+            if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
+            sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
             if (r.role === 'admin') {
                 isAdmin = true;
                 sessionStorage.setItem('cgv_admin','true');
@@ -1994,13 +1996,19 @@ function showKakaoModal(text, forced) {
             document.getElementById("view-trade").classList.toggle("hidden", tab !== "trade");
             document.getElementById("view-schedule").classList.toggle("hidden", tab !== "schedule");
             document.getElementById("view-manager").classList.toggle("hidden", tab !== "manager");
+            var vNotice = document.getElementById("view-notice"); if (vNotice) vNotice.classList.toggle("hidden", tab !== "notice");
+            var vManual = document.getElementById("view-manual"); if (vManual) vManual.classList.toggle("hidden", tab !== "manual");
             document.getElementById("tab-trade-btn").classList.toggle("active", tab === "trade");
             var schBtn = document.getElementById("tab-schedule-btn");
             if (schBtn) schBtn.classList.toggle("active", tab === "schedule");
+            var nBtn = document.getElementById("tab-notice-btn"); if (nBtn) nBtn.classList.toggle("active", tab === "notice");
+            var mBtn = document.getElementById("tab-manual-btn"); if (mBtn) mBtn.classList.toggle("active", tab === "manual");
             document.getElementById("tab-manager-btn").classList.toggle("active", tab === "manager");
             if (tab === "schedule" && typeof window.initScheduleTab === "function") {
                 window.initScheduleTab();
             }
+            if (tab === "notice" && window.NM && NM.renderNotices) NM.renderNotices();
+            if (tab === "manual" && window.NM && NM.renderManuals) NM.renderManuals();
             renderList();
         }
 

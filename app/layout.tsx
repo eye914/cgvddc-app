@@ -38,6 +38,7 @@ const ctrVer   = fileVer('contract-ui.js');
 const schVer   = fileVer('schedule-ui.js');
 const availVer = fileVer('availability-ui.js');
 const arrVer   = fileVer('arrange-ui.js');
+const nmVer    = fileVer('notice-manual-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src={`/schedule-ui.js?v=${schVer}`} defer />
         <script src={`/availability-ui.js?v=${availVer}`} defer />
         <script src={`/arrange-ui.js?v=${arrVer}`} defer />
+        <script src={`/notice-manual-ui.js?v=${nmVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}

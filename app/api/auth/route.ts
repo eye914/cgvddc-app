@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { signSession } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       if (!data) return NextResponse.json({ error: '관리자 PIN이 올바르지 않습니다.' }, { status: 401 });
 
-      return NextResponse.json({ ok: true, role: 'admin', name: data.name });
+      const token = signSession({ name: data.name, role: 'admin' });
+      return NextResponse.json({ ok: true, role: 'admin', name: data.name, token });
     }
 
     // ── 미소지기 PIN (5자리) ──
@@ -35,7 +37,9 @@ export async function POST(req: NextRequest) {
     const storedPin = data.pin || '00000';
     if (pin !== storedPin) return NextResponse.json({ error: 'PIN이 올바르지 않습니다.' }, { status: 401 });
 
-    return NextResponse.json({ ok: true, role: 'staff', name: data.name });
+    const pinDefault = storedPin === '00000';
+    const token = signSession({ name: data.name, role: 'staff', pd: pinDefault });
+    return NextResponse.json({ ok: true, role: 'staff', name: data.name, token, pinDefault });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
