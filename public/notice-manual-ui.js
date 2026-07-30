@@ -348,13 +348,14 @@
     ov.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center';
     ov.onclick = function (e) { if (e.target === ov) closeSheet(); };
     var wm = protectedContent ? watermarkLayer() : '';
-    ov.innerHTML = '<div id="nm-sheet" style="width:100%;max-width:460px;max-height:88vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));position:relative">'
+    ov.innerHTML = '<div id="nm-sheet" style="width:100%;max-width:460px;max-height:88vh;overflow:auto;overscroll-behavior:contain;touch-action:pan-y;background:#fff;border-radius:20px 20px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));position:relative">'
       + '<button onclick="NM.closeSheet()" style="position:absolute;top:12px;right:12px;border:none;background:#f1f5f9;width:30px;height:30px;border-radius:50%;font-size:17px;color:#64748b;z-index:5">×</button>'
       + wm + '<div style="position:relative;z-index:1;margin-top:6px">' + innerHtml + '</div></div>';
     document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden'; // 뒷배경 스크롤 잠금
     if (protectedContent) hardenProtected();
   }
-  function closeSheet() { var o = document.getElementById('nm-sheet-ov'); if (o) o.remove(); }
+  function closeSheet() { var o = document.getElementById('nm-sheet-ov'); if (o) o.remove(); if (!document.getElementById('nm-zoom')) document.body.style.overflow = ''; }
   NM.closeSheet = closeSheet;
 
   // 사진 전체화면 확대(라이트박스): 탭하면 확대/축소, 확대 시 스크롤로 이동. 워터마크 유지.
