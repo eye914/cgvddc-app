@@ -14,6 +14,42 @@
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function nl2br(s) { return esc(s).replace(/\n/g, '<br>'); }
+
+  // 간단 서식 렌더: "## 제목", "- 불릿", "1. 번호", "> 안내박스", "**굵게**", 빈 줄=간격
+  function inlineMd(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+  function renderMd(src) {
+    var lines = String(src == null ? '' : src).split('\n');
+    var html = '', inUl = false, inOl = false;
+    function close() { if (inUl) { html += '</ul>'; inUl = false; } if (inOl) { html += '</ol>'; inOl = false; } }
+    for (var i = 0; i < lines.length; i++) {
+      var ln = lines[i].replace(/\s+$/, '');
+      if (!ln.trim()) { close(); continue; }
+      if (/^##\s+/.test(ln)) { close(); html += '<div class="nm-h">' + inlineMd(ln.replace(/^##\s+/, '')) + '</div>'; continue; }
+      if (/^>\s+/.test(ln)) { close(); html += '<div class="nm-note">' + inlineMd(ln.replace(/^>\s+/, '')) + '</div>'; continue; }
+      var mo = ln.match(/^(\d+)\.\s+(.*)/);
+      if (mo) { if (!inOl) { close(); html += '<ol class="nm-ol">'; inOl = true; } html += '<li>' + inlineMd(mo[2]) + '</li>'; continue; }
+      if (/^[-·]\s+/.test(ln)) { if (!inUl) { close(); html += '<ul class="nm-ul">'; inUl = true; } html += '<li>' + inlineMd(ln.replace(/^[-·]\s+/, '')) + '</li>'; continue; }
+      close(); html += '<p class="nm-p">' + inlineMd(ln) + '</p>';
+    }
+    close();
+    return html;
+  }
+  function injectNMStyle() {
+    if (document.getElementById('nm-style')) return;
+    var css = '.nm-body{font-size:14px;line-height:1.55;color:#3f4652;font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif}'
+      + '.nm-body .nm-h{display:flex;align-items:center;gap:7px;margin:20px 0 9px;font-size:15px;font-weight:800;color:#1f2937;letter-spacing:-.01em}'
+      + '.nm-body .nm-h:first-child{margin-top:2px}'
+      + '.nm-body .nm-h:before{content:"";width:4px;height:15px;background:#e71a0f;border-radius:3px;flex:0 0 auto}'
+      + '.nm-body .nm-p{margin:0 0 8px}'
+      + '.nm-body .nm-ul{margin:0 0 8px;padding-left:2px;list-style:none}'
+      + '.nm-body .nm-ul>li{padding-left:15px;position:relative;margin-bottom:7px}'
+      + '.nm-body .nm-ul>li:before{content:"•";position:absolute;left:2px;color:#c0392b}'
+      + '.nm-body .nm-ol{margin:0 0 8px;padding-left:20px}'
+      + '.nm-body .nm-ol>li{margin-bottom:7px}'
+      + '.nm-body .nm-note{margin:8px 0;background:#fbf7ee;border:1px solid #f0e6d2;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.5;color:#8a6d3b}'
+      + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}';
+    var st = document.createElement('style'); st.id = 'nm-style'; st.textContent = css; document.head.appendChild(st);
+  }
   var N_CATS = ['전체', '매점', '매표', '플로어'];
   var M_CATS = ['매점', '매표', '플로어'];
   var M_TYPES = ['신입교육', '조리레시피', '일반'];
@@ -31,6 +67,7 @@
 
   /* ══════════════════════ 공지 ══════════════════════ */
   NM.renderNotices = function () {
+    injectNMStyle();
     var host = document.getElementById('view-notice'); if (!host) return;
     var g = gateMsg('공지'); if (g) { host.innerHTML = g; return; }
     host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
@@ -95,7 +132,7 @@
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
         + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">' + periodTxt(n) + ' · 관리자</div>'
-        + '<div class="nm-protected" style="font-size:14px;line-height:1.7;color:#333;border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + nl2br(n.body) + '</div>'
+        + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderMd(n.body) + '</div>'
         + sigArea + adminStatus + adminBtns;
       openSheet(html, true);
       if (isAdmin() && n.require_signature) loadSigStatus(id);
@@ -206,6 +243,7 @@
 
   /* ══════════════════════ 매뉴얼 ══════════════════════ */
   NM.renderManuals = function () {
+    injectNMStyle();
     var host = document.getElementById('view-manual'); if (!host) return;
     var g = gateMsg('매뉴얼'); if (g) { host.innerHTML = g; return; }
     host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
@@ -241,7 +279,7 @@
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
       + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(m.title) + '</div>'
-      + '<div class="nm-protected" style="font-size:14px;line-height:1.7;color:#333;border-top:1px solid #f0f0f0;padding-top:12px;margin-top:10px;position:relative">' + nl2br(m.body) + imgs + '</div>' + adminBtns;
+      + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:10px;position:relative">' + renderMd(m.body) + imgs + '</div>' + adminBtns;
     openSheet(html, true);
   };
   NM.delManual = function (id) {
