@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requireAdmin } from '@/lib/session';
 import { sendPushToAllExcept } from '@/lib/push';
+import { uploadImages } from '@/lib/storage';
 
 function todayStr(): string {
   const d = new Date();
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
     pinned: !!b.pinned,
     important: !!b.important,
     require_signature: !!b.require_signature,
+    images: await uploadImages(b.images || []),
   };
   const { data, error } = await supabaseAdmin.from('notices').insert(row).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -71,6 +73,7 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'id 필요' }, { status: 400 });
   if ('start_date' in updates) updates.start_date = updates.start_date || null;
   if ('end_date' in updates) updates.end_date = updates.end_date || null;
+  if (Array.isArray(updates.images)) updates.images = await uploadImages(updates.images);
 
   const { error } = await supabaseAdmin.from('notices').update(updates).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -126,13 +126,15 @@
         else sigArea = signaturePadHtml(id);
       }
       var adminStatus = isAdmin() && n.require_signature ? '<div id="nm-sigstat" style="margin-top:12px"></div>' : '';
+      var nImgs = (n.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in">'; }).join('')
+        + ((n.images && n.images.length) ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
         + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>' : '')
         + (n.require_signature ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>' : '')
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
         + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">' + periodTxt(n) + ' · 관리자</div>'
-        + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderMd(n.body) + '</div>'
+        + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderMd(n.body) + nImgs + '</div>'
         + sigArea + adminStatus + adminBtns;
       openSheet(html, true);
       if (isAdmin() && n.require_signature) loadSigStatus(id);
@@ -205,6 +207,7 @@
 
   NM.openNoticeForm = function (id) {
     var n = id ? _notices[id] : null;
+    _formImgs = n && n.images ? n.images.slice() : [];
     var catOpts = N_CATS.map(function (c) { return '<option ' + (n && n.category === c ? 'selected' : '') + '>' + c + '</option>'; }).join('');
     var v = function (x) { return n && n[x] != null ? esc(n[x]) : ''; };
     var ck = function (x) { return n && n[x] ? 'checked' : ''; };
@@ -218,9 +221,13 @@
       + '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px">비워두면 상시 노출</div>'
       + '<label style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:7px"><input type="checkbox" id="nf-pin" ' + ck('pinned') + '> 📌 상단 고정</label>'
       + '<label style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:7px"><input type="checkbox" id="nf-imp" ' + ck('important') + '> 🔴 중요 (작성 시 전체 푸시 알림)</label>'
-      + '<label style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:14px"><input type="checkbox" id="nf-sig" ' + ck('require_signature') + '> ✍ 서명 필요 (미소지기 확인 서명 강제)</label>'
+      + '<label style="display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:12px"><input type="checkbox" id="nf-sig" ' + ck('require_signature') + '> ✍ 서명 필요 (미소지기 확인 서명 강제)</label>'
+      + '<label style="font-size:12px;font-weight:700;color:#555">사진 첨부 (선택)</label>'
+      + '<input id="nf-imgs" type="file" accept="image/*" multiple onchange="NM.pickImgs(event)" style="' + inS + ';margin:5px 0 8px">'
+      + '<div id="mf-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>'
       + '<button onclick="NM.saveNotice(' + (id ? "'" + id + "'" : 'null') + ')" style="width:100%;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px">' + (id ? '수정 저장' : '공지 등록') + '</button>';
     openSheet(html, true);
+    renderImgPreview();
   };
   NM.saveNotice = function (id) {
     var body = {
@@ -231,7 +238,8 @@
       end_date: document.getElementById('nf-end').value || null,
       pinned: document.getElementById('nf-pin').checked,
       important: document.getElementById('nf-imp').checked,
-      require_signature: document.getElementById('nf-sig').checked
+      require_signature: document.getElementById('nf-sig').checked,
+      images: _formImgs
     };
     if (!body.title) { alert('제목을 입력해주세요.'); return; }
     var opt = id ? { method: 'PATCH', body: JSON.stringify(Object.assign({ id: id }, body)) } : { method: 'POST', body: JSON.stringify(body) };
