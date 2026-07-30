@@ -39,6 +39,16 @@ export async function POST(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: '관리자 권한이 필요합니다.' }, { status: 403 });
 
   const b = await req.json();
+
+  // 이미 등록된 공지를 지금 전체 푸시 (관리자 버튼)
+  if (b.action === 'notify' && b.id) {
+    const { data: n } = await supabaseAdmin.from('notices').select('title, require_signature').eq('id', b.id).single();
+    if (!n) return NextResponse.json({ error: '공지를 찾을 수 없습니다.' }, { status: 404 });
+    const sig = n.require_signature ? ' (확인 서명 필요)' : '';
+    await sendPushToAllExcept([], '📢 공지', n.title + sig);
+    return NextResponse.json({ ok: true });
+  }
+
   if (!b.title) return NextResponse.json({ error: '제목 필요' }, { status: 400 });
 
   const row = {
