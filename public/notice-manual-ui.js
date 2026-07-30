@@ -275,7 +275,8 @@
 
   NM.openManual = function (id) {
     var m = _manuals[id]; if (!m) return;
-    var imgs = (m.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" style="width:100%;border-radius:10px;margin-top:10px;pointer-events:none">'; }).join('');
+    var imgs = (m.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in">'; }).join('')
+      + (m.images && m.images.length ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
       + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(m.title) + '</div>'
@@ -355,6 +356,40 @@
   }
   function closeSheet() { var o = document.getElementById('nm-sheet-ov'); if (o) o.remove(); }
   NM.closeSheet = closeSheet;
+
+  // 사진 전체화면 확대(라이트박스): 탭하면 확대/축소, 확대 시 스크롤로 이동. 워터마크 유지.
+  NM.zoom = function (src) {
+    NM.closeZoom();
+    var mark = esc(me() || '미소지기') + ' · ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    var wm = '';
+    for (var i = 0; i < 24; i++) wm += '<span style="color:rgba(255,255,255,.13);font-size:12px;font-weight:800;transform:rotate(-24deg);white-space:nowrap">' + mark + '</span>';
+    var ov = document.createElement('div');
+    ov.id = 'nm-zoom';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.93);overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center';
+    ov.innerHTML =
+      '<div style="position:fixed;inset:0;z-index:1;pointer-events:none;display:flex;flex-wrap:wrap;gap:40px 28px;align-content:flex-start;padding:70px 12px;overflow:hidden">' + wm + '</div>'
+      + '<img id="nm-zoom-img" src="' + esc(src) + '" draggable="false" oncontextmenu="return false" style="max-width:100%;max-height:100%;position:relative;z-index:2;cursor:zoom-in">'
+      + '<button onclick="NM.closeZoom()" style="position:fixed;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:22px;z-index:3">×</button>'
+      + '<div style="position:fixed;bottom:16px;left:0;right:0;text-align:center;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;z-index:3;pointer-events:none">사진을 탭하면 확대 · 다시 탭하면 축소</div>';
+    document.body.appendChild(ov);
+    var img = document.getElementById('nm-zoom-img');
+    var zoomed = false;
+    img.addEventListener('click', function (e) {
+      e.stopPropagation();
+      zoomed = !zoomed;
+      if (zoomed) {
+        img.style.maxWidth = 'none'; img.style.maxHeight = 'none';
+        img.style.width = (ov.clientWidth * 2.6) + 'px'; img.style.cursor = 'zoom-out';
+        ov.style.alignItems = 'flex-start'; ov.style.justifyContent = 'flex-start';
+      } else {
+        img.style.maxWidth = '100%'; img.style.maxHeight = '100%'; img.style.width = ''; img.style.cursor = 'zoom-in';
+        ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
+        ov.scrollTo(0, 0);
+      }
+    });
+    ov.addEventListener('click', function (e) { if (e.target === ov) NM.closeZoom(); });
+  };
+  NM.closeZoom = function () { var z = document.getElementById('nm-zoom'); if (z) z.remove(); };
 
   function watermarkLayer() {
     var mark = esc(me() || '미소지기') + ' · ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
