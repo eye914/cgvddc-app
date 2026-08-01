@@ -110,13 +110,14 @@
     var mgrRows = _managers.map(function (m, i) {
       var cnt = (byMgr[m] || []).length, on = _selManager === m;
       return '<tr onclick="EV.selManager(\'' + esc(m) + '\')" style="cursor:pointer;background:' + (on ? '#eef2ff' : '#fff') + '">'
+        + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="checkbox" class="ev-mgr-chk" value="' + i + '" onclick="event.stopPropagation()"></td>'
         + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:' + (on ? '800' : '600') + '">' + (on ? '▶ ' : '') + esc(m) + '</td>'
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:11px;color:#9aa0a6">현재 ' + cnt + '</td>'
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="number" min="0" id="tgt_' + i + '" value="' + cnt + '" onclick="event.stopPropagation()" style="width:50px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-weight:800"></td></tr>';
     }).join('');
     var top = '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:6px">평가대상 ' + targets.length + '명 · 배정 ' + Object.keys(assignedAll).length + '명</div>'
       + '<div style="font-weight:800;font-size:13px;margin-bottom:6px">평가자 목록 (클릭해 선택 · 배정수 입력)</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:60px">현재</th><th style="padding:7px;width:70px">배정수</th></tr></thead><tbody>' + mgrRows + '</tbody></table>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;width:34px">균등</th><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:56px">현재</th><th style="padding:7px;width:66px">배정수</th></tr></thead><tbody>' + mgrRows + '</tbody></table>'
       + '<div style="display:flex;gap:8px;margin-top:8px"><button onclick="EV.fillEven()" style="flex:0 0 40%;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:9px;padding:9px;font-size:12px;font-weight:800">균등값 채우기</button>'
       + '<button onclick="EV.autoAssign()" style="flex:1;border:none;background:#0f172a;color:#fff;border-radius:9px;padding:9px;font-size:12px;font-weight:800">⚡ 배정수대로 자동배정</button></div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin:6px 0 2px;text-align:center">배정수를 입력하고 자동배정 → 명단 순서대로 그 수만큼 배분</div>';
@@ -146,9 +147,12 @@
     Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); })).then(function () { load(); });
   };
   EV.fillEven = function () {
-    var roster = (_data.targets || []).length, n = _managers.length; if (!n) return;
-    var base = Math.floor(roster / n), rem = roster % n;
-    _managers.forEach(function (m, i) { var el = document.getElementById('tgt_' + i); if (el) el.value = base + (i < rem ? 1 : 0); });
+    var total = (_data.targets || []).length;
+    var chosen = []; document.querySelectorAll('.ev-mgr-chk:checked').forEach(function (c) { chosen.push(+c.value); });
+    if (!chosen.length) chosen = _managers.map(function (m, i) { return i; }); // 체크 없으면 전체 균등
+    var n = chosen.length, base = Math.floor(total / n), rem = total % n;
+    _managers.forEach(function (m, i) { var el = document.getElementById('tgt_' + i); if (el) el.value = 0; });
+    chosen.forEach(function (idx, k) { var el = document.getElementById('tgt_' + idx); if (el) el.value = base + (k < rem ? 1 : 0); });
   };
   EV.autoAssign = function () {
     if (!_managers.length) { alert('평가자가 없습니다.'); return; }
