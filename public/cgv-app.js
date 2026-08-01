@@ -2812,6 +2812,7 @@ function showKakaoModal(text, forced) {
             });
             var now2 = new Date();
             var currMonthNum = now2.getFullYear() * 100 + (now2.getMonth() + 1);
+            var _curM = '', _pastM = '', _pastCnt = 0;
             sortMonthKeys(Object.keys(adminMonthGrouped)).forEach(function(monthKey) {
                 var mMatch = monthKey.match(/(\d{4})년\s+(\d+)월/);
                 var mNum = mMatch ? parseInt(mMatch[1]) * 100 + parseInt(mMatch[2]) : 0;
@@ -2847,8 +2848,16 @@ function showKakaoModal(text, forced) {
                     secMonth += secA;
                 });
                 secMonth += "</div></details>";
-                mgrBoard.innerHTML += secMonth;
+                if (isThisMonth) _curM += secMonth; else { _pastM += secMonth; _pastCnt++; }
             });
+            mgrBoard.innerHTML += _curM;
+            if (_pastM) {
+                mgrBoard.innerHTML += "<details class='mb-4'>"
+                    + "<summary class='flex justify-between items-center bg-slate-200 text-slate-700 px-5 py-3.5 rounded-[18px] cursor-pointer select-none font-black'>"
+                    + "<span class='text-[13px]'>📁 지난 달 기록</span>"
+                    + "<div class='flex items-center gap-2'><span class='fold-hint'></span><span class='bg-slate-400 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>" + _pastCnt + "개월</span></div>"
+                    + "</summary><div class='mt-2'>" + _pastM + "</div></details>";
+            }
 
             renderStaffStats();
             if (!active.length) mainBoard.innerHTML = "<div class='py-24 text-center font-black text-slate-300 uppercase tracking-widest text-xs bg-slate-50 rounded-3xl border border-dashed border-slate-200'>\uB4F1\uB85D\uB41C \uACF5\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4</div>";
