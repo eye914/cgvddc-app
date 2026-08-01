@@ -187,9 +187,17 @@
       var signed = r.signed || [], unsigned = r.unsigned || [];
       var total = signed.length + unsigned.length;
       var pct = total ? Math.round(signed.length / total * 100) : 0;
+      var signedHtml = signed.length ? '<div style="margin-bottom:6px"><div style="font-size:11px;color:#9a9aa0;font-weight:700;margin-bottom:4px">확인 완료 ' + signed.length + '명 (서명 탭하면 확대)</div>'
+        + signed.map(function (s) {
+          var t = s.signed_at ? new Date(s.signed_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+          return '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-top:1px solid #f3f3f3">'
+            + '<img src="' + esc(s.signature) + '" onclick="NM.zoom(this.src)" draggable="false" style="width:66px;height:34px;object-fit:contain;background:#fff;border:1px solid #e2e2e2;border-radius:6px;cursor:zoom-in;flex:0 0 auto">'
+            + '<div><div style="font-size:13px;font-weight:800;color:#0f172a">' + esc(s.name) + '</div><div style="font-size:10px;color:#9a9aa0">' + t + '</div></div></div>';
+        }).join('') + '</div>' : '';
       el.innerHTML = '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:13px">'
         + '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;color:#555;margin-bottom:8px"><span>👤 서명 현황</span><span style="color:#2f9e5f">' + signed.length + ' / ' + total + ' 확인</span></div>'
         + '<div style="height:9px;border-radius:5px;background:#eee;overflow:hidden;margin-bottom:9px"><div style="height:100%;background:#2f9e5f;width:' + pct + '%"></div></div>'
+        + signedHtml
         + (unsigned.length ? '<div style="font-size:11px;color:#9a9aa0;font-weight:700;margin-bottom:6px">미확인 ' + unsigned.length + '명</div><div style="display:flex;gap:6px;flex-wrap:wrap">' + unsigned.map(function (u) { return '<span style="font-size:11px;font-weight:700;padding:4px 9px;border-radius:14px;background:#fdeaea;color:#c0392b">' + esc(u) + '</span>'; }).join('') + '</div><button onclick="NM.remind(\'' + id + '\')" style="margin-top:10px;width:100%;border:none;background:#111;color:#fff;border-radius:11px;padding:10px;font-size:12px;font-weight:800">🔔 미확인자에게 확인 요청 푸시</button>' : '<div style="font-size:12px;font-weight:800;color:#1c7a43">✅ 전원 확인 완료</div>')
         + '</div>';
     });
