@@ -27,7 +27,7 @@
     if (kind === 'notice') return (c.noticeReq || 0) <= 0 ? 100 : Math.round((c.noticeSigned || 0) / c.noticeReq * 100);
     return 0;
   }
-  var _period, _data, _tab = 'assign', _managers = [];
+  var _period, _data, _tab = 'targets', _managers = [];
 
   EV.open = function () {
     if (!_period) { var d = new Date(); _period = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
@@ -67,17 +67,36 @@
       + '<input type="month" value="' + _period + '" onchange="EV.setPeriod(this.value)" style="flex:1;padding:9px;border:1px solid #e2e8f0;border-radius:9px;font-size:14px">' + stBadge + '</div>'
       + (_data.isSuper ? '<div style="display:flex;gap:8px;margin-bottom:10px">' + openBtn + '</div>' : '')
       + '<div style="display:flex;gap:6px;background:#ececef;border-radius:11px;padding:3px;margin-bottom:12px">'
-      + (_data.isSuper ? (tabBtn('assign', '배정') + tabBtn('mine', '내 평가') + tabBtn('rank', '순위/취합')) : tabBtn('mine', '내 평가')) + '</div>';
+      + (_data.isSuper ? (tabBtn('targets', '① 대상선정') + tabBtn('assign', '② 배정') + tabBtn('mine', '③ 평가') + tabBtn('rank', '순위')) : tabBtn('mine', '내 평가')) + '</div>';
   }
 
   function render() {
     var root = document.getElementById('ev-root'); if (!root) return;
     if (!_data.isSuper && _tab !== 'mine') _tab = 'mine';
-    var body = _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : '<div id="ev-rank">불러오는 중…</div>';
+    var body = _tab === 'targets' ? targetsView() : _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : '<div id="ev-rank">불러오는 중…</div>';
     root.innerHTML = header() + body;
   }
 
-  // ── 배정 (평가자 선택 → 좌우 이동) ──
+  // ── ① 대상선정 ──
+  function targetsView() {
+    var roster = _data.roster || [];
+    var tset = {}; (_data.targets || []).forEach(function (n) { tset[n] = 1; });
+    var rows = roster.map(function (n) {
+      return '<label style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:7px;font-size:14px;font-weight:700"><input type="checkbox" class="ev-tg" value="' + esc(n) + '" ' + (tset[n] ? 'checked' : '') + '>' + esc(n) + '</label>';
+    }).join('');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:#64748b;font-weight:700">평가할 미소지기 선택 (전체 ' + roster.length + '명)</div>'
+      + '<div style="display:flex;gap:6px"><button onclick="EV.tgAll(true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:800">전체</button><button onclick="EV.tgAll(false)" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:800">해제</button></div></div>'
+      + rows
+      + '<button onclick="EV.saveTargets()" style="width:100%;margin-top:8px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:12px;font-weight:800">평가대상 저장 → 배정으로</button>';
+  }
+  EV.tgAll = function (v) { document.querySelectorAll('.ev-tg').forEach(function (c) { c.checked = v; }); };
+  EV.saveTargets = function () {
+    var misos = []; document.querySelectorAll('.ev-tg:checked').forEach(function (c) { misos.push(c.value); });
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'setTargets', period: _period, misos: misos }) })
+      .then(function (j) { if (j && j.error) { alert(j.error); return; } _tab = 'assign'; load(); });
+  };
+
+  // ── ② 배정 (평가자 선택 → 좌우 이동) ──
   var _selManager = '';
   function assignView() {
     if (!_managers.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;color:#dc2626;font-weight:700;font-size:13px">평가자(관리자) 계정이 없습니다. Supabase admins 테이블에 관리자를 추가해주세요.</div>';
@@ -85,6 +104,8 @@
     var byMgr = {}, assignedAll = {};
     assignments.forEach(function (a) { (byMgr[a.manager_name] = byMgr[a.manager_name] || []).push(a.miso_name); assignedAll[a.miso_name] = a.manager_name; });
     if (_selManager && _managers.indexOf(_selManager) < 0) _selManager = '';
+    var targets = _data.targets || [];
+    if (!targets.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:18px;text-align:center;color:#dc2626;font-weight:700;font-size:13px">먼저 <b>① 대상선정</b>에서 평가할 미소지기를 선택하세요.</div>';
 
     var mgrRows = _managers.map(function (m, i) {
       var cnt = (byMgr[m] || []).length, on = _selManager === m;
@@ -93,14 +114,15 @@
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:11px;color:#9aa0a6">현재 ' + cnt + '</td>'
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="number" min="0" id="tgt_' + i + '" value="' + cnt + '" onclick="event.stopPropagation()" style="width:50px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-weight:800"></td></tr>';
     }).join('');
-    var top = '<div style="font-weight:800;font-size:13px;margin-bottom:6px">평가자 목록 (클릭해 선택 · 배정수 입력)</div>'
+    var top = '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:6px">평가대상 ' + targets.length + '명 · 배정 ' + Object.keys(assignedAll).length + '명</div>'
+      + '<div style="font-weight:800;font-size:13px;margin-bottom:6px">평가자 목록 (클릭해 선택 · 배정수 입력)</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:60px">현재</th><th style="padding:7px;width:70px">배정수</th></tr></thead><tbody>' + mgrRows + '</tbody></table>'
       + '<div style="display:flex;gap:8px;margin-top:8px"><button onclick="EV.fillEven()" style="flex:0 0 40%;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:9px;padding:9px;font-size:12px;font-weight:800">균등값 채우기</button>'
       + '<button onclick="EV.autoAssign()" style="flex:1;border:none;background:#0f172a;color:#fff;border-radius:9px;padding:9px;font-size:12px;font-weight:800">⚡ 배정수대로 자동배정</button></div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin:6px 0 2px;text-align:center">배정수를 입력하고 자동배정 → 명단 순서대로 그 수만큼 배분</div>';
 
     if (!_selManager) return top + '<div style="color:#94a3b8;text-align:center;padding:24px;font-weight:700;font-size:13px">위에서 평가자를 선택하면<br>미소지기를 배정할 수 있습니다.</div>';
-    var pool = (_data.roster || []).filter(function (n) { return !assignedAll[n]; });
+    var pool = targets.filter(function (n) { return !assignedAll[n]; });
     var mine = byMgr[_selManager] || [];
     var li = function (arr) { return arr.length ? arr.map(function (n) { return '<label style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #f3f3f3;font-size:13px"><input type="checkbox" value="' + esc(n) + '">' + esc(n) + '</label>'; }).join('') : '<div style="color:#b0b0b6;padding:14px;font-size:12px;text-align:center">없음</div>'; };
     var bottom = '<div style="display:flex;gap:6px;margin-top:12px;align-items:stretch">'
@@ -124,13 +146,13 @@
     Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); })).then(function () { load(); });
   };
   EV.fillEven = function () {
-    var roster = (_data.roster || []).length, n = _managers.length; if (!n) return;
+    var roster = (_data.targets || []).length, n = _managers.length; if (!n) return;
     var base = Math.floor(roster / n), rem = roster % n;
     _managers.forEach(function (m, i) { var el = document.getElementById('tgt_' + i); if (el) el.value = base + (i < rem ? 1 : 0); });
   };
   EV.autoAssign = function () {
     if (!_managers.length) { alert('평가자가 없습니다.'); return; }
-    var roster = _data.roster || [];
+    var roster = _data.targets || [];
     var targets = _managers.map(function (m, i) { var el = document.getElementById('tgt_' + i); return Math.max(0, parseInt(el && el.value, 10) || 0); });
     var totalT = targets.reduce(function (a, b) { return a + b; }, 0);
     if (!confirm('입력한 배정수대로 자동배정할까요?\n대상 ' + roster.length + '명 / 배정합계 ' + totalT + '명\n(기존 배정은 덮어씁니다)')) return;

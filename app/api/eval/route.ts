@@ -58,6 +58,7 @@ export async function GET(req: NextRequest) {
     const { data: asg } = await supabaseAdmin.from('eval_assignments').select('*').eq('period', period);
     const { data: sc } = await supabaseAdmin.from('eval_scores').select('*').eq('period', period);
     const { data: roster } = await supabaseAdmin.from('misojigi').select('name').eq('active', true).order('name');
+    const { data: tg } = await supabaseAdmin.from('eval_targets').select('miso_name').eq('period', period);
     const auto = await computeAuto(period);
     const autoByMiso: Record<string, any> = {};
     (asg ?? []).forEach((a: any) => { autoByMiso[a.miso_name] = ctxFor(a.miso_name, auto); });
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
       assignments: asg || [],
       scores: sc || [],
       roster: (roster ?? []).map((r: any) => r.name),
+      targets: (tg ?? []).map((t: any) => t.miso_name),
       auto: autoByMiso,
     });
   }
@@ -96,8 +98,18 @@ export async function POST(req: NextRequest) {
   const b = await req.json();
   const superAdmin = await isSuper(admin.name);
 
-  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign') {
+  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign' || b.action === 'setTargets') {
     if (!superAdmin) return NextResponse.json({ error: '최고관리자만 가능합니다.' }, { status: 403 });
+  }
+
+  if (b.action === 'setTargets') {
+    await supabaseAdmin.from('eval_targets').delete().eq('period', b.period);
+    const rows = (b.misos || []).map((n: string) => ({ period: b.period, miso_name: n }));
+    if (rows.length) {
+      const { error } = await supabaseAdmin.from('eval_targets').insert(rows);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   if (b.action === 'openPeriod') {
