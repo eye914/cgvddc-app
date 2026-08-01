@@ -77,24 +77,55 @@
     root.innerHTML = header() + body;
   }
 
-  // ── 배정 ──
+  // ── 배정 (평가자 선택 → 좌우 이동) ──
+  var _selManager = '';
   function assignView() {
-    var roster = _data.roster || [];
-    var amap = {}; (_data.assignments || []).forEach(function (a) { amap[a.miso_name] = a.manager_name; });
-    if (!_managers.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;color:#dc2626;font-weight:700;font-size:13px">관리자(평가자) 계정이 없습니다. Supabase admins 테이블에 관리자를 추가해주세요.</div>';
-    var rows = roster.map(function (n) {
-      var sel = '<select onchange="EV.assign(\'' + esc(n) + '\',this.value)" style="border:1px solid #cbd5e1;border-radius:8px;padding:6px 8px;font-size:13px;font-weight:700">'
-        + '<option value="">- 미배정 -</option>'
-        + _managers.map(function (m) { return '<option ' + (amap[n] === m ? 'selected' : '') + '>' + esc(m) + '</option>'; }).join('') + '</select>';
-      return '<div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eee;border-radius:11px;padding:10px 12px;margin-bottom:8px"><span style="font-weight:800;font-size:14px">' + esc(n) + '</span>' + sel + '</div>';
+    if (!_managers.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;color:#dc2626;font-weight:700;font-size:13px">평가자(관리자) 계정이 없습니다. Supabase admins 테이블에 관리자를 추가해주세요.</div>';
+    var assignments = _data.assignments || [];
+    var byMgr = {}, assignedAll = {};
+    assignments.forEach(function (a) { (byMgr[a.manager_name] = byMgr[a.manager_name] || []).push(a.miso_name); assignedAll[a.miso_name] = a.manager_name; });
+    if (_selManager && _managers.indexOf(_selManager) < 0) _selManager = '';
+
+    var mgrRows = _managers.map(function (m) {
+      var cnt = (byMgr[m] || []).length, on = _selManager === m;
+      return '<tr onclick="EV.selManager(\'' + esc(m) + '\')" style="cursor:pointer;background:' + (on ? '#eef2ff' : '#fff') + '">'
+        + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:' + (on ? '800' : '600') + '">' + (on ? '▶ ' : '') + esc(m) + '</td>'
+        + '<td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:800;color:#e71a0f">' + cnt + '명</td></tr>';
     }).join('');
-    var cnt = Object.keys(amap).length;
-    return '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:8px">미소지기 ' + roster.length + '명 · 배정 ' + cnt + '명 (관리자별로 나눠 배정하세요)</div>' + rows;
+    var top = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:800;font-size:13px">평가자 목록 (클릭해 선택)</div>'
+      + '<button onclick="EV.autoAssign()" style="border:none;background:#0f172a;color:#fff;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800">⚡ 자동배정(균등)</button></div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:80px">평가인원</th></tr></thead><tbody>' + mgrRows + '</tbody></table>';
+
+    if (!_selManager) return top + '<div style="color:#94a3b8;text-align:center;padding:24px;font-weight:700;font-size:13px">위에서 평가자를 선택하면<br>미소지기를 배정할 수 있습니다.</div>';
+    var pool = (_data.roster || []).filter(function (n) { return !assignedAll[n]; });
+    var mine = byMgr[_selManager] || [];
+    var li = function (arr) { return arr.length ? arr.map(function (n) { return '<label style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #f3f3f3;font-size:13px"><input type="checkbox" value="' + esc(n) + '">' + esc(n) + '</label>'; }).join('') : '<div style="color:#b0b0b6;padding:14px;font-size:12px;text-align:center">없음</div>'; };
+    var bottom = '<div style="display:flex;gap:6px;margin-top:12px;align-items:stretch">'
+      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#f1f5f9;font-size:11px;font-weight:800;padding:6px 8px">미배정 (' + pool.length + ')</div><div id="ev-pool" style="max-height:260px;overflow:auto">' + li(pool) + '</div></div>'
+      + '<div style="display:flex;flex-direction:column;justify-content:center;gap:8px">'
+      + '<button onclick="EV.moveRight()" title="배정" style="border:none;background:#e71a0f;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">›</button>'
+      + '<button onclick="EV.moveLeft()" title="해제" style="border:none;background:#64748b;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">‹</button></div>'
+      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#eef2ff;font-size:11px;font-weight:800;padding:6px 8px">' + esc(_selManager) + ' 배정 (' + mine.length + ')</div><div id="ev-mine" style="max-height:260px;overflow:auto">' + li(mine) + '</div></div></div>'
+      + '<div style="font-size:11px;color:#9aa0a6;margin-top:6px;text-align:center">체크 후 › 배정 / ‹ 해제 · 한 명은 한 평가자에게만</div>';
+    return top + bottom;
   }
-  EV.assign = function (miso, manager) {
-    var opt = manager ? { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, miso: miso, manager: manager }) }
-      : { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: miso }) };
-    api('/api/eval', opt).then(function () { load(); });
+  EV.selManager = function (m) { _selManager = m; render(); };
+  EV.moveRight = function () {
+    var names = []; document.querySelectorAll('#ev-pool input:checked').forEach(function (c) { names.push(c.value); });
+    if (!names.length) { alert('배정할 미소지기를 선택하세요.'); return; }
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: names.map(function (n) { return { miso_name: n, manager_name: _selManager }; }) }) }).then(function (j) { if (j && j.error) alert(j.error); load(); });
+  };
+  EV.moveLeft = function () {
+    var names = []; document.querySelectorAll('#ev-mine input:checked').forEach(function (c) { names.push(c.value); });
+    if (!names.length) { alert('해제할 미소지기를 선택하세요.'); return; }
+    Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); })).then(function () { load(); });
+  };
+  EV.autoAssign = function () {
+    if (!_managers.length) { alert('평가자가 없습니다.'); return; }
+    if (!confirm('전체 미소지기를 평가자 ' + _managers.length + '명에게 균등 자동배정할까요?\n(기존 배정은 덮어씁니다)')) return;
+    var roster = _data.roster || [], mg = _managers, payload = [];
+    roster.forEach(function (n, i) { payload.push({ miso_name: n, manager_name: mg[i % mg.length] }); });
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: payload }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } _selManager = mg[0]; load(); });
   };
 
   // ── 내 평가 ──
