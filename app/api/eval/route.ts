@@ -46,10 +46,8 @@ export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams;
   const action = sp.get('action');
 
-  // 리더보드: 로그인한 미소지기/관리자 모두 조회 (마감된 기간만, 담당자·세부점수 비공개)
+  // 리더보드: 공개(비로그인 포함) — 마감된 기간만, 순위+이름+총점만(담당자·세부점수 비공개)
   if (action === 'leaderboard') {
-    const sess = requireAuth(req);
-    if (!sess) return NextResponse.json({ error: '로그인 필요' }, { status: 401 });
     let period = sp.get('period') || '';
     if (!period) {
       const { data } = await supabaseAdmin.from('eval_periods').select('period').eq('status', 'closed').order('period', { ascending: false }).limit(1).maybeSingle();

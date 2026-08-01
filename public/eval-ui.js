@@ -339,10 +339,9 @@
 
   // 메인화면 리더보드 + 우수 미소지기(top3) 왕관
   EV.homeBoard = function () {
-    var tk = sessionStorage.getItem('cgv_token');
+    var tk = sessionStorage.getItem('cgv_token') || '';
     var el = document.getElementById('home-leaderboard');
-    if (!tk) { if (el) el.innerHTML = ''; return; }
-    fetch('/api/eval?action=leaderboard', { headers: { 'Authorization': 'Bearer ' + tk } })
+    fetch('/api/eval?action=leaderboard', { headers: tk ? { 'Authorization': 'Bearer ' + tk } : {} })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         var rows = (d && d.rows) || [];
@@ -355,8 +354,8 @@
         if (!rows.length) { el.innerHTML = ''; return; }
         var medal = function (r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; };
         var bg = function (r) { return r === 1 ? '#fdf6e3' : r === 2 ? '#f4f6f8' : r === 3 ? '#fbf0e8' : '#fff'; };
-        var prize = function (r) { return r === 1 ? '🎬 영화관람권 2매' : r === 2 ? '⭐ 마일리지 2,000점' : ''; };
-        var list = rows.slice(0, 5).map(function (r) {
+        var prize = function (r) { return r === 1 ? '🎬 영화관람권 2매' : r === 2 ? '⭐ 마일리지 2,000점' : r === 3 ? '⭐ 마일리지 1,000점' : ''; };
+        var list = rows.slice(0, 3).map(function (r) {
           var pz = prize(r.rank);
           return '<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:12px;background:' + bg(r.rank) + ';margin-bottom:6px">'
             + '<span style="width:30px;text-align:center;font-size:17px">' + medal(r.rank) + '</span>'
@@ -367,7 +366,7 @@
         el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:20px;padding:15px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)">'
           + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px"><span style="font-size:18px">🏆</span><span style="font-weight:800;font-size:15px;color:#0f172a">' + mm + ' 우수 미소지기</span></div>'
           + list
-          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) + ' · ' : '') + '마일리지 1,000점' + (d.rookie ? '' : ' (미지정)') + '</div>'
+          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) : '8월부터 시작') + '</div>'
           + '</div>';
       }).catch(function () {});
   };
@@ -383,4 +382,7 @@
   }
   function closeSheet() { var o = document.getElementById('ev-sheet-ov'); if (o) o.remove(); }
   EV.closeSheet = closeSheet;
+
+  // 시작 시 리더보드/메달 로드 (로그인 전에도 이름선택 메달 표시 · 리더보드 공개)
+  setTimeout(function () { try { EV.homeBoard(); } catch (e) {} }, 900);
 })();
