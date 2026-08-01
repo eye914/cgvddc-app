@@ -379,11 +379,30 @@
       + '<button onclick="NM.closeSheet()" style="position:absolute;top:12px;right:12px;border:none;background:#f1f5f9;width:30px;height:30px;border-radius:50%;font-size:17px;color:#64748b;z-index:5">×</button>'
       + wm + '<div style="position:relative;z-index:1;margin-top:6px">' + innerHtml + '</div></div>';
     document.body.appendChild(ov);
-    document.body.style.overflow = 'hidden'; // 뒷배경 스크롤 잠금
+    lockBody(); // 뒷배경 스크롤 견고 잠금(iOS 포함)
     if (protectedContent) hardenProtected();
   }
-  function closeSheet() { var o = document.getElementById('nm-sheet-ov'); if (o) o.remove(); if (!document.getElementById('nm-zoom')) document.body.style.overflow = ''; }
+  function closeSheet() {
+    var o = document.getElementById('nm-sheet-ov');
+    if (o) { o.remove(); if (!document.getElementById('nm-zoom')) unlockBody(); }
+  }
   NM.closeSheet = closeSheet;
+  // iOS 안전 스크롤 잠금 (overflow:hidden만으론 배경이 움직여서 position:fixed 방식 사용)
+  var _lockY = 0, _locked = false;
+  function lockBody() {
+    if (_locked) return;
+    _lockY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    var b = document.body.style;
+    b.position = 'fixed'; b.top = (-_lockY) + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+    _locked = true;
+  }
+  function unlockBody() {
+    if (!_locked) return;
+    var b = document.body.style;
+    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+    _locked = false;
+    window.scrollTo(0, _lockY);
+  }
 
   // 사진 전체화면 확대(라이트박스): 탭하면 확대/축소, 확대 시 스크롤로 이동. 워터마크 유지.
   NM.zoom = function (src) {
