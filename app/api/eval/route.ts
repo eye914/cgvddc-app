@@ -32,6 +32,10 @@ async function computeAuto(period: string) {
 function ctxFor(name: string, a: any) {
   return { lateN: a.lateMap[name] || 0, absentN: a.absentMap[name] || 0, noticeReq: a.noticeReq, noticeSigned: a.signedMap[name] || 0 };
 }
+// 동점 처리: 총점↓ → 결근↑(적은) → 지각↑(적은) → 공지서명률↓(높은) → 이름
+function tieCmp(x: any, y: any): number {
+  return (y.total - x.total) || (x._ab - y._ab) || (x._la - y._la) || (y._nr - x._nr) || String(x.miso).localeCompare(String(y.miso), 'ko');
+}
 // 최고관리자 여부 (admins.is_super)
 async function isSuper(name: string): Promise<boolean> {
   const { data } = await supabaseAdmin.from('admins').select('is_super').eq('name', name).maybeSingle();
@@ -58,10 +62,14 @@ export async function GET(req: NextRequest) {
     const { data: sc } = await supabaseAdmin.from('eval_scores').select('miso_name, grades').eq('period', period);
     const auto = await computeAuto(period);
     const scMap: Record<string, any> = {}; (sc ?? []).forEach((x: any) => { scMap[x.miso_name] = x.grades || {}; });
-    const rows: any[] = (asg ?? []).map((a: any) => ({ miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, ctxFor(a.miso_name, auto)) }));
-    rows.sort((x, y) => y.total - x.total);
+    const rows: any[] = (asg ?? []).map((a: any) => {
+      const c = ctxFor(a.miso_name, auto);
+      return { miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, c), _ab: c.absentN, _la: c.lateN, _nr: c.noticeReq ? c.noticeSigned / c.noticeReq : 1 };
+    });
+    rows.sort(tieCmp);
     rows.forEach((r, i) => { r.rank = i + 1; });
-    return NextResponse.json({ period, rows });
+    const { data: perR } = await supabaseAdmin.from('eval_periods').select('rookie').eq('period', period).maybeSingle();
+    return NextResponse.json({ period, rows: rows.map((r) => ({ rank: r.rank, miso: r.miso, total: r.total })), rookie: (perR as any)?.rookie || null });
   }
 
   const admin = requireAdmin(req);
@@ -107,9 +115,9 @@ export async function GET(req: NextRequest) {
     const scMap: Record<string, any> = {}; (sc ?? []).forEach((x: any) => { scMap[x.miso_name] = x.grades || {}; });
     const rows: any[] = (asg ?? []).map((a: any) => {
       const ctx = ctxFor(a.miso_name, auto);
-      return { miso: a.miso_name, manager: a.manager_name, total: totalScore(scMap[a.miso_name] || {}, ctx), scored: !!scMap[a.miso_name] };
+      return { miso: a.miso_name, manager: a.manager_name, total: totalScore(scMap[a.miso_name] || {}, ctx), scored: !!scMap[a.miso_name], _ab: ctx.absentN, _la: ctx.lateN, _nr: ctx.noticeReq ? ctx.noticeSigned / ctx.noticeReq : 1 };
     });
-    rows.sort((x, y) => y.total - x.total);
+    rows.sort(tieCmp);
     rows.forEach((r, i) => { r.rank = i + 1; });
     return NextResponse.json(rows);
   }
@@ -123,8 +131,13 @@ export async function POST(req: NextRequest) {
   const b = await req.json();
   const superAdmin = await isSuper(admin.name);
 
-  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign' || b.action === 'setTargets') {
+  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign' || b.action === 'setTargets' || b.action === 'setRookie') {
     if (!superAdmin) return NextResponse.json({ error: '최고관리자만 가능합니다.' }, { status: 403 });
+  }
+
+  if (b.action === 'setRookie') {
+    await supabaseAdmin.from('eval_periods').update({ rookie: b.miso || null }).eq('period', b.period);
+    return NextResponse.json({ ok: true });
   }
 
   if (b.action === 'setTargets') {
@@ -170,6 +183,8 @@ export async function POST(req: NextRequest) {
       if (!asg || asg.manager_name !== admin.name) return NextResponse.json({ error: '배정된 인원만 평가할 수 있습니다.' }, { status: 403 });
       const { data: existing } = await supabaseAdmin.from('eval_scores').select('id').eq('period', b.period).eq('miso_name', b.miso).maybeSingle();
       if (existing) return NextResponse.json({ error: '이미 평가가 저장되어 수정할 수 없습니다.' }, { status: 403 });
+      const { data: per } = await supabaseAdmin.from('eval_periods').select('status').eq('period', b.period).maybeSingle();
+      if (!per || per.status !== 'open') return NextResponse.json({ error: '평가가 오픈된 기간에만 저장할 수 있습니다.' }, { status: 403 });
     }
     const { error } = await supabaseAdmin.from('eval_scores').upsert(
       { period: b.period, miso_name: b.miso, manager_name: admin.name, grades: b.grades || {}, updated_at: new Date().toISOString() },

@@ -73,7 +73,7 @@
   function render() {
     var root = document.getElementById('ev-root'); if (!root) return;
     if (!_data.isSuper && _tab !== 'mine') _tab = 'mine';
-    var body = _tab === 'targets' ? targetsView() : _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : (progressHtml() + '<div id="ev-rank" style="margin-top:12px">불러오는 중…</div>');
+    var body = _tab === 'targets' ? targetsView() : _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : (progressHtml() + rookieView() + '<div id="ev-rank" style="margin-top:12px">불러오는 중…</div>');
     root.innerHTML = header() + body;
   }
 
@@ -187,6 +187,10 @@
 
   // ── 내 평가 ──
   function mineView() {
+    var st = (_data.period && _data.period.status) || 'none';
+    if (!_data.isSuper && st !== 'open' && st !== 'closed') {
+      return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:24px;text-align:center;color:#94a3b8;font-weight:700;line-height:1.6">⏳ 아직 평가가 오픈되지 않았습니다.<br><span style="font-size:12px">관리자가 평가를 오픈하면 배정된 미소지기를 평가할 수 있어요.</span></div>';
+    }
     var mine = (_data.assignments || []).filter(function (a) { return a.manager_name === _data.me; });
     if (!mine.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:20px;text-align:center;color:#94a3b8;font-weight:700">나에게 배정된 미소지기가 없습니다.</div>';
     var smap = {}; (_data.scores || []).forEach(function (s) { smap[s.miso_name] = s.grades || {}; });
@@ -271,6 +275,15 @@
     return '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:7px">📊 평가 진행 현황 ' + (allDone ? '<span style="color:#16a34a">· 전원 완료 ✅</span>' : '<span style="color:#dc2626">· 미완료 있음</span>') + '</div>' + rows;
   }
 
+  // ── 신인왕 지정 (최고관리자) ──
+  function rookieView() {
+    if (!_data.isSuper) return '';
+    var cur = (_data.period && _data.period.rookie) || '';
+    var opts = '<option value="">- 신인왕 미지정 -</option>' + (_data.targets || []).map(function (n) { return '<option ' + (cur === n ? 'selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+    return '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:12px;padding:11px 12px;margin:10px 0"><div style="font-size:12px;font-weight:800;color:#2563a8;margin-bottom:6px">🐣 신인왕 지정 (마일리지 1,000점)</div><select onchange="EV.setRookie(this.value)" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-weight:700">' + opts + '</select></div>';
+  }
+  EV.setRookie = function (m) { api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'setRookie', period: _period, miso: m }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } load(); }); };
+
   // ── 순위/취합 ──
   function loadRank() {
     api('/api/eval?action=result&period=' + _period).then(function (rows) {
@@ -337,7 +350,7 @@
         el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:20px;padding:15px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)">'
           + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px"><span style="font-size:18px">🏆</span><span style="font-weight:800;font-size:15px;color:#0f172a">' + mm + ' 우수 미소지기</span></div>'
           + list
-          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · 마일리지 1,000점 (별도 선정)</div>'
+          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) + ' · ' : '') + '마일리지 1,000점' + (d.rookie ? '' : ' (미지정)') + '</div>'
           + '</div>';
       }).catch(function () {});
   };
