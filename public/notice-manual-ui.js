@@ -122,7 +122,7 @@
       var adminBtns = isAdmin() ? '<button onclick="NM.notify(\'' + id + '\')" style="width:100%;margin-top:12px;padding:11px;background:#0f172a;color:#fff;border:none;border-radius:11px;font-weight:800;font-size:13px">🔔 전체 미소지기에게 알림 보내기</button>'
         + '<div style="display:flex;gap:8px;margin-top:8px"><button onclick="NM.openNoticeForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delNotice(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
       var sigArea = '';
-      if (n.require_signature) {
+      if (n.require_signature && !isAdmin()) { // 관리자는 서명 안 함 → 패드 미표시(스크롤 방해 방지)
         if (signed) sigArea = '<div style="margin-top:14px;background:#eaf7ef;border:1px solid #b8e6c9;border-radius:12px;padding:13px;font-weight:800;color:#1c7a43;text-align:center">✅ 확인 및 서명 완료</div>';
         else sigArea = signaturePadHtml(id);
       }
