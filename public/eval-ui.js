@@ -86,15 +86,18 @@
     assignments.forEach(function (a) { (byMgr[a.manager_name] = byMgr[a.manager_name] || []).push(a.miso_name); assignedAll[a.miso_name] = a.manager_name; });
     if (_selManager && _managers.indexOf(_selManager) < 0) _selManager = '';
 
-    var mgrRows = _managers.map(function (m) {
+    var mgrRows = _managers.map(function (m, i) {
       var cnt = (byMgr[m] || []).length, on = _selManager === m;
       return '<tr onclick="EV.selManager(\'' + esc(m) + '\')" style="cursor:pointer;background:' + (on ? '#eef2ff' : '#fff') + '">'
         + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:' + (on ? '800' : '600') + '">' + (on ? '▶ ' : '') + esc(m) + '</td>'
-        + '<td style="padding:8px 10px;border-bottom:1px solid #eee;text-align:center;font-weight:800;color:#e71a0f">' + cnt + '명</td></tr>';
+        + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:11px;color:#9aa0a6">현재 ' + cnt + '</td>'
+        + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="number" min="0" id="tgt_' + i + '" value="' + cnt + '" onclick="event.stopPropagation()" style="width:50px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-weight:800"></td></tr>';
     }).join('');
-    var top = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-weight:800;font-size:13px">평가자 목록 (클릭해 선택)</div>'
-      + '<button onclick="EV.autoAssign()" style="border:none;background:#0f172a;color:#fff;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800">⚡ 자동배정(균등)</button></div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:80px">평가인원</th></tr></thead><tbody>' + mgrRows + '</tbody></table>';
+    var top = '<div style="font-weight:800;font-size:13px;margin-bottom:6px">평가자 목록 (클릭해 선택 · 배정수 입력)</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden"><thead><tr style="background:#44546A;color:#fff"><th style="padding:7px;text-align:left">평가자</th><th style="padding:7px;width:60px">현재</th><th style="padding:7px;width:70px">배정수</th></tr></thead><tbody>' + mgrRows + '</tbody></table>'
+      + '<div style="display:flex;gap:8px;margin-top:8px"><button onclick="EV.fillEven()" style="flex:0 0 40%;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:9px;padding:9px;font-size:12px;font-weight:800">균등값 채우기</button>'
+      + '<button onclick="EV.autoAssign()" style="flex:1;border:none;background:#0f172a;color:#fff;border-radius:9px;padding:9px;font-size:12px;font-weight:800">⚡ 배정수대로 자동배정</button></div>'
+      + '<div style="font-size:11px;color:#9aa0a6;margin:6px 0 2px;text-align:center">배정수를 입력하고 자동배정 → 명단 순서대로 그 수만큼 배분</div>';
 
     if (!_selManager) return top + '<div style="color:#94a3b8;text-align:center;padding:24px;font-weight:700;font-size:13px">위에서 평가자를 선택하면<br>미소지기를 배정할 수 있습니다.</div>';
     var pool = (_data.roster || []).filter(function (n) { return !assignedAll[n]; });
@@ -120,12 +123,20 @@
     if (!names.length) { alert('해제할 미소지기를 선택하세요.'); return; }
     Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); })).then(function () { load(); });
   };
+  EV.fillEven = function () {
+    var roster = (_data.roster || []).length, n = _managers.length; if (!n) return;
+    var base = Math.floor(roster / n), rem = roster % n;
+    _managers.forEach(function (m, i) { var el = document.getElementById('tgt_' + i); if (el) el.value = base + (i < rem ? 1 : 0); });
+  };
   EV.autoAssign = function () {
     if (!_managers.length) { alert('평가자가 없습니다.'); return; }
-    if (!confirm('전체 미소지기를 평가자 ' + _managers.length + '명에게 균등 자동배정할까요?\n(기존 배정은 덮어씁니다)')) return;
-    var roster = _data.roster || [], mg = _managers, payload = [];
-    roster.forEach(function (n, i) { payload.push({ miso_name: n, manager_name: mg[i % mg.length] }); });
-    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: payload }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } _selManager = mg[0]; load(); });
+    var roster = _data.roster || [];
+    var targets = _managers.map(function (m, i) { var el = document.getElementById('tgt_' + i); return Math.max(0, parseInt(el && el.value, 10) || 0); });
+    var totalT = targets.reduce(function (a, b) { return a + b; }, 0);
+    if (!confirm('입력한 배정수대로 자동배정할까요?\n대상 ' + roster.length + '명 / 배정합계 ' + totalT + '명\n(기존 배정은 덮어씁니다)')) return;
+    var payload = [], idx = 0;
+    _managers.forEach(function (m, i) { for (var k = 0; k < targets[i] && idx < roster.length; k++) payload.push({ miso_name: roster[idx++], manager_name: m }); });
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: payload }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } _selManager = _managers[0]; load(); });
   };
 
   // ── 내 평가 ──
