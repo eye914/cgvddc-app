@@ -34,7 +34,7 @@
     var ov = document.getElementById('ev-ov');
     if (!ov) {
       ov = document.createElement('div'); ov.id = 'ev-ov';
-      ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:#f4f5f7;overflow:auto;font-family:Pretendard,-apple-system,\'Malgun Gothic\',sans-serif;color:#1f2937';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:#f4f5f7;overflow:auto;overscroll-behavior:contain;font-family:Pretendard,-apple-system,\'Malgun Gothic\',sans-serif;color:#1f2937';
       ov.innerHTML = '<div id="ev-root" style="max-width:520px;margin:0 auto;padding:14px 14px 70px"></div>';
       document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     }
@@ -128,11 +128,11 @@
     var mine = byMgr[_selManager] || [];
     var li = function (arr) { return arr.length ? arr.map(function (n) { return '<label style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #f3f3f3;font-size:13px"><input type="checkbox" value="' + esc(n) + '">' + esc(n) + '</label>'; }).join('') : '<div style="color:#b0b0b6;padding:14px;font-size:12px;text-align:center">없음</div>'; };
     var bottom = '<div style="display:flex;gap:6px;margin-top:12px;align-items:stretch">'
-      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#f1f5f9;font-size:11px;font-weight:800;padding:6px 8px">미배정 (' + pool.length + ')</div><div id="ev-pool" style="max-height:260px;overflow:auto">' + li(pool) + '</div></div>'
+      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#f1f5f9;font-size:11px;font-weight:800;padding:6px 8px">미배정 (' + pool.length + ')</div><div id="ev-pool" style="max-height:260px;overflow:auto;overscroll-behavior:contain;touch-action:pan-y">' + li(pool) + '</div></div>'
       + '<div style="display:flex;flex-direction:column;justify-content:center;gap:8px">'
       + '<button onclick="EV.moveRight()" title="배정" style="border:none;background:#e71a0f;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">›</button>'
       + '<button onclick="EV.moveLeft()" title="해제" style="border:none;background:#64748b;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">‹</button></div>'
-      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#eef2ff;font-size:11px;font-weight:800;padding:6px 8px">' + esc(_selManager) + ' 배정 (' + mine.length + ')</div><div id="ev-mine" style="max-height:260px;overflow:auto">' + li(mine) + '</div></div></div>'
+      + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#eef2ff;font-size:11px;font-weight:800;padding:6px 8px">' + esc(_selManager) + ' 배정 (' + mine.length + ')</div><div id="ev-mine" style="max-height:260px;overflow:auto;overscroll-behavior:contain;touch-action:pan-y">' + li(mine) + '</div></div></div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin-top:6px;text-align:center">체크 후 › 배정 / ‹ 해제 · 한 명은 한 평가자에게만</div>';
     return top + bottom;
   }
@@ -140,12 +140,20 @@
   EV.moveRight = function () {
     var names = []; document.querySelectorAll('#ev-pool input:checked').forEach(function (c) { names.push(c.value); });
     if (!names.length) { alert('배정할 미소지기를 선택하세요.'); return; }
-    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: names.map(function (n) { return { miso_name: n, manager_name: _selManager }; }) }) }).then(function (j) { if (j && j.error) alert(j.error); load(); });
+    // 화면 즉시 반영 (저장은 백그라운드)
+    _data.assignments = (_data.assignments || []).filter(function (a) { return names.indexOf(a.miso_name) < 0; });
+    names.forEach(function (n) { _data.assignments.push({ miso_name: n, manager_name: _selManager }); });
+    render();
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'assign', period: _period, assignments: names.map(function (n) { return { miso_name: n, manager_name: _selManager }; }) }) })
+      .then(function (j) { if (j && j.error) { alert('저장 실패: ' + j.error); load(); } });
   };
   EV.moveLeft = function () {
     var names = []; document.querySelectorAll('#ev-mine input:checked').forEach(function (c) { names.push(c.value); });
     if (!names.length) { alert('해제할 미소지기를 선택하세요.'); return; }
-    Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); })).then(function () { load(); });
+    _data.assignments = (_data.assignments || []).filter(function (a) { return names.indexOf(a.miso_name) < 0; });
+    render();
+    Promise.all(names.map(function (n) { return api('/api/eval', { method: 'DELETE', body: JSON.stringify({ action: 'assign', period: _period, miso: n }) }); }))
+      .catch(function () { load(); });
   };
   EV.fillEven = function () {
     var total = (_data.targets || []).length;
