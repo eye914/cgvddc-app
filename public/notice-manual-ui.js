@@ -127,7 +127,7 @@
         else sigArea = signaturePadHtml(id);
       }
       var adminStatus = isAdmin() && n.require_signature ? '<div id="nm-sigstat" style="margin-top:12px"></div>' : '';
-      var nImgs = (n.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in">'; }).join('')
+      var nImgs = (n.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in;transform:translateZ(0)">'; }).join('')
         + ((n.images && n.images.length) ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
         + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>' : '')
@@ -302,7 +302,7 @@
 
   NM.openManual = function (id) {
     var m = _manuals[id]; if (!m) return;
-    var imgs = (m.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in">'; }).join('')
+    var imgs = (m.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in;transform:translateZ(0)">'; }).join('')
       + (m.images && m.images.length ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
