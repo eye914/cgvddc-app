@@ -65,13 +65,14 @@
       + '<button onclick="EV.close()" style="border:none;background:#e9e9ee;width:32px;height:32px;border-radius:50%;font-size:17px;color:#64748b">×</button></div>'
       + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'
       + '<input type="month" value="' + _period + '" onchange="EV.setPeriod(this.value)" style="flex:1;padding:9px;border:1px solid #e2e8f0;border-radius:9px;font-size:14px">' + stBadge + '</div>'
-      + '<div style="display:flex;gap:8px;margin-bottom:10px">' + openBtn + '</div>'
+      + (_data.isSuper ? '<div style="display:flex;gap:8px;margin-bottom:10px">' + openBtn + '</div>' : '')
       + '<div style="display:flex;gap:6px;background:#ececef;border-radius:11px;padding:3px;margin-bottom:12px">'
-      + tabBtn('assign', '배정') + tabBtn('mine', '내 평가') + tabBtn('rank', '순위/취합') + '</div>';
+      + (_data.isSuper ? (tabBtn('assign', '배정') + tabBtn('mine', '내 평가') + tabBtn('rank', '순위/취합')) : tabBtn('mine', '내 평가')) + '</div>';
   }
 
   function render() {
     var root = document.getElementById('ev-root'); if (!root) return;
+    if (!_data.isSuper && _tab !== 'mine') _tab = 'mine';
     var body = _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : '<div id="ev-rank">불러오는 중…</div>';
     root.innerHTML = header() + body;
   }

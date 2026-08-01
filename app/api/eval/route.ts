@@ -32,6 +32,11 @@ async function computeAuto(period: string) {
 function ctxFor(name: string, a: any) {
   return { lateN: a.lateMap[name] || 0, absentN: a.absentMap[name] || 0, noticeReq: a.noticeReq, noticeSigned: a.signedMap[name] || 0 };
 }
+// 최고관리자 여부 (admins.is_super)
+async function isSuper(name: string): Promise<boolean> {
+  const { data } = await supabaseAdmin.from('admins').select('is_super').eq('name', name).maybeSingle();
+  return !!(data && data.is_super);
+}
 
 export async function GET(req: NextRequest) {
   const admin = requireAdmin(req);
@@ -40,6 +45,7 @@ export async function GET(req: NextRequest) {
   const action = sp.get('action');
 
   if (action === 'managers') {
+    if (!(await isSuper(admin.name))) return NextResponse.json({ error: '최고관리자만' }, { status: 403 });
     const { data } = await supabaseAdmin.from('admins').select('name').eq('active', true).order('name');
     return NextResponse.json((data ?? []).map((a: any) => a.name));
   }
@@ -57,6 +63,7 @@ export async function GET(req: NextRequest) {
     (asg ?? []).forEach((a: any) => { autoByMiso[a.miso_name] = ctxFor(a.miso_name, auto); });
     return NextResponse.json({
       me: admin.name,
+      isSuper: await isSuper(admin.name),
       period: per || { period, status: 'none' },
       assignments: asg || [],
       scores: sc || [],
@@ -66,6 +73,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (action === 'result') {
+    if (!(await isSuper(admin.name))) return NextResponse.json({ error: '최고관리자만' }, { status: 403 });
     const { data: asg } = await supabaseAdmin.from('eval_assignments').select('*').eq('period', period);
     const { data: sc } = await supabaseAdmin.from('eval_scores').select('*').eq('period', period);
     const auto = await computeAuto(period);
@@ -86,6 +94,11 @@ export async function POST(req: NextRequest) {
   const admin = requireAdmin(req);
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 });
   const b = await req.json();
+  const superAdmin = await isSuper(admin.name);
+
+  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign') {
+    if (!superAdmin) return NextResponse.json({ error: '최고관리자만 가능합니다.' }, { status: 403 });
+  }
 
   if (b.action === 'openPeriod') {
     await supabaseAdmin.from('eval_periods').upsert({ period: b.period, status: 'open', opened_at: new Date().toISOString(), closed_at: null }, { onConflict: 'period' });
@@ -107,6 +120,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
   if (b.action === 'score') {
+    if (!superAdmin) {
+      const { data: asg } = await supabaseAdmin.from('eval_assignments').select('manager_name').eq('period', b.period).eq('miso_name', b.miso).maybeSingle();
+      if (!asg || asg.manager_name !== admin.name) return NextResponse.json({ error: '배정된 인원만 평가할 수 있습니다.' }, { status: 403 });
+    }
     const { error } = await supabaseAdmin.from('eval_scores').upsert(
       { period: b.period, miso_name: b.miso, manager_name: admin.name, grades: b.grades || {}, updated_at: new Date().toISOString() },
       { onConflict: 'period,miso_name' });
@@ -121,6 +138,7 @@ export async function DELETE(req: NextRequest) {
   if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 });
   const b = await req.json();
   if (b.action === 'assign') {
+    if (!(await isSuper(admin.name))) return NextResponse.json({ error: '최고관리자만 가능합니다.' }, { status: 403 });
     await supabaseAdmin.from('eval_assignments').delete().eq('period', b.period).eq('miso_name', b.miso);
     return NextResponse.json({ ok: true });
   }
