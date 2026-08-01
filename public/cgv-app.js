@@ -2792,6 +2792,8 @@ function showKakaoModal(text, forced) {
             }
 
             var currWk = getWeekKey(getLocalYYYYMMDD(new Date()));
+            var _homeCurMonth = getMonthKeyFromWeekKey(currWk);
+            var _homeCur = '', _homePast = '', _homePastM = {};
             sortWeekKeys(Object.keys(grouped)).forEach(function(key){
                 var isThisWk = key === currWk;
                 var sec = "<details class='mb-8' "+(isThisWk?"open":"")+">"
@@ -2804,8 +2806,17 @@ function showKakaoModal(text, forced) {
                     + "</summary><div class='mt-4 px-1'>";
                 grouped[key].sort(function(a,b){ return (a.pri||5)-(b.pri||5) || a.date.localeCompare(b.date); }).forEach(function(item){ sec += item.html; });
                 sec += "</div></details>";
-                mainBoard.innerHTML += sec;
+                var _mk = getMonthKeyFromWeekKey(key);
+                if (_mk === _homeCurMonth) _homeCur += sec; else { _homePast += sec; _homePastM[_mk] = 1; }
             });
+            mainBoard.innerHTML += _homeCur;
+            if (_homePast) {
+                mainBoard.innerHTML += "<details class='mb-8'>"
+                    + "<summary class='flex justify-between items-center bg-slate-100 p-4 rounded-[24px] border-2 border-slate-200 cursor-pointer select-none font-black'>"
+                    + "<span class='text-slate-600 text-[14px]'>📁 지난 달 기록</span>"
+                    + "<span class='bg-slate-400 text-white text-[11px] px-3 py-1.5 rounded-lg font-black'>" + Object.keys(_homePastM).length + "개월</span>"
+                    + "</summary><div class='mt-4'>" + _homePast + "</div></details>";
+            }
 
             // 관리자 현황 — 월 → 주차 이중 접기
             var adminMonthGrouped = {};
