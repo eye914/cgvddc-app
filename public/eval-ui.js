@@ -140,6 +140,14 @@
   EV.moveRight = function () {
     var names = []; document.querySelectorAll('#ev-pool input:checked').forEach(function (c) { names.push(c.value); });
     if (!names.length) { alert('배정할 미소지기를 선택하세요.'); return; }
+    // 배정수 상한 체크
+    var cur = (_data.assignments || []).filter(function (a) { return a.manager_name === _selManager; }).length;
+    var idx = _managers.indexOf(_selManager);
+    var target = parseInt(_tgtVals.hasOwnProperty(_selManager) ? _tgtVals[_selManager] : ((document.getElementById('tgt_' + idx) || {}).value), 10);
+    if (isNaN(target)) target = cur;
+    var allowed = target - cur;
+    if (allowed <= 0) { alert(_selManager + ' 님은 이미 배정수(' + target + '명)를 채웠습니다.\n더 배정하려면 배정수를 늘리세요.'); return; }
+    if (names.length > allowed) { alert('배정수 ' + target + '명 초과 — 남은 자리 ' + allowed + '명뿐입니다. ' + allowed + '명만 옮깁니다.'); names = names.slice(0, allowed); }
     // 화면 즉시 반영 (저장은 백그라운드)
     _data.assignments = (_data.assignments || []).filter(function (a) { return names.indexOf(a.miso_name) < 0; });
     names.forEach(function (n) { _data.assignments.push({ miso_name: n, manager_name: _selManager }); });
@@ -197,29 +205,36 @@
     return Math.round(t);
   }
 
-  // ── 평가 입력 시트 ──
+  // ── 평가 입력 시트 (저장하면 잠금 · 지각/결근/공지는 항상 자동 최신) ──
   EV.input = function (miso) {
-    if (_data.period && _data.period.status === 'closed') { alert('마감된 평가는 수정할 수 없습니다.'); return; }
-    var grades = ((_data.scores || []).find(function (s) { return s.miso_name === miso; }) || {}).grades || {};
+    var scoreRow = (_data.scores || []).find(function (s) { return s.miso_name === miso; });
+    var closed = _data.period && _data.period.status === 'closed';
+    var locked = (!!scoreRow && !_data.isSuper) || closed;
+    var grades = (scoreRow || {}).grades || {};
     var ctx = (_data.auto || {})[miso] || { lateN: 0, absentN: 0, noticeReq: 0, noticeSigned: 0 };
     var rows = CRI.map(function (c) {
       if (c.kind === 'letter') {
-        var sel = '<select data-k="' + c.key + '" data-w="' + c.w + '" onchange="EV.calc()" style="border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;font-weight:800">'
-          + '<option value="">-</option>' + LETTERS.map(function (l) { return '<option ' + (grades[c.key] === l ? 'selected' : '') + '>' + l + '</option>'; }).join('') + '</select>';
-        return '<tr><td class="l">' + c.sub + '</td><td>' + sel + '</td><td id="s_' + c.key + '">0</td><td>' + c.w + '</td><td id="c_' + c.key + '">0</td></tr>';
+        var sc = LETTER[grades[c.key]] || 0;
+        var cell = locked
+          ? '<span style="font-weight:900;font-size:14px">' + (grades[c.key] || '-') + '</span>'
+          : '<select data-k="' + c.key + '" data-w="' + c.w + '" onchange="EV.calc()" style="border:1px solid #cbd5e1;border-radius:7px;padding:5px 7px;font-weight:800"><option value="">-</option>' + LETTERS.map(function (l) { return '<option ' + (grades[c.key] === l ? 'selected' : '') + '>' + l + '</option>'; }).join('') + '</select>';
+        return '<tr><td class="l">' + c.sub + '</td><td>' + cell + '</td><td id="s_' + c.key + '">' + (locked ? sc : 0) + '</td><td>' + c.w + '</td><td id="c_' + c.key + '">' + (locked ? Math.round(sc * c.w / 100) : 0) + '</td></tr>';
       }
       var as = autoS(c.kind, ctx);
       var note = c.kind === 'late' ? ('지각 ' + (ctx.lateN || 0) + '회') : c.kind === 'absent' ? ('결근 ' + (ctx.absentN || 0) + '회') : ('서명 ' + (ctx.noticeSigned || 0) + '/' + (ctx.noticeReq || 0));
       return '<tr><td class="l">' + c.sub + '<div style="font-size:10px;color:#93a">' + note + '</div></td><td style="color:#2563a8;font-weight:800">자동</td><td class="au" data-k="' + c.key + '" data-w="' + c.w + '">' + as + '</td><td>' + c.w + '</td><td class="ac" id="c_' + c.key + '">' + Math.round(as * c.w / 100) + '</td></tr>';
     }).join('');
     var css = '#ev-in table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden}#ev-in th{background:#44546A;color:#fff;padding:8px 4px}#ev-in td{border-bottom:1px solid #eee;padding:8px 5px;text-align:center}#ev-in td.l{text-align:left;font-weight:700}';
-    var html = '<div style="font-size:16px;font-weight:800;margin-bottom:4px">' + esc(miso) + ' 평가</div>'
-      + '<div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">' + _period + ' · 평가자 ' + esc(me()) + '</div>'
+    var foot = locked
+      ? '<div style="margin-top:12px;text-align:center;font-size:12px;font-weight:800;color:#16a34a">✅ 평가 완료 · 수정 불가' + (closed ? ' (마감)' : '') + '<div style="font-size:11px;color:#9aa0a6;font-weight:600;margin-top:2px">지각·결근·공지 점수는 근태 변동에 따라 자동 갱신됩니다</div></div>'
+      : '<button onclick="EV.saveScore(\'' + esc(miso) + '\')" style="width:100%;margin-top:12px;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:15px">평가 저장 (저장 후 수정 불가)</button>';
+    var html = '<div style="font-size:16px;font-weight:800;margin-bottom:4px">' + esc(miso) + ' 평가' + (locked ? ' <span style="font-size:11px;color:#16a34a">🔒 완료</span>' : '') + '</div>'
+      + '<div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">' + _period + ' · 평가자 ' + esc((scoreRow && scoreRow.manager_name) || me()) + '</div>'
       + '<style>' + css + '</style><table><thead><tr><th style="width:36%">소구분</th><th>평가</th><th>점수</th><th>가중</th><th>환산</th></tr></thead><tbody>' + rows
-      + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점</td><td id="ev-tot">0</td></tr></tbody></table>'
-      + '<button onclick="EV.saveScore(\'' + esc(miso) + '\')" style="width:100%;margin-top:12px;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:15px">평가 저장</button>';
+      + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점</td><td id="ev-tot">' + (locked ? calcTotal(grades, ctx) : 0) + '</td></tr></tbody></table>'
+      + foot;
     openSheet(html);
-    EV.calc();
+    if (!locked) EV.calc();
   };
   EV.calc = function () {
     var box = document.getElementById('ev-in'); if (!box) return;

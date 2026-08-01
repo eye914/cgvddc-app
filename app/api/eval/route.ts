@@ -137,6 +137,8 @@ export async function POST(req: NextRequest) {
     if (!superAdmin) {
       const { data: asg } = await supabaseAdmin.from('eval_assignments').select('manager_name').eq('period', b.period).eq('miso_name', b.miso).maybeSingle();
       if (!asg || asg.manager_name !== admin.name) return NextResponse.json({ error: '배정된 인원만 평가할 수 있습니다.' }, { status: 403 });
+      const { data: existing } = await supabaseAdmin.from('eval_scores').select('id').eq('period', b.period).eq('miso_name', b.miso).maybeSingle();
+      if (existing) return NextResponse.json({ error: '이미 평가가 저장되어 수정할 수 없습니다.' }, { status: 403 });
     }
     const { error } = await supabaseAdmin.from('eval_scores').upsert(
       { period: b.period, miso_name: b.miso, manager_name: admin.name, grades: b.grades || {}, updated_at: new Date().toISOString() },
