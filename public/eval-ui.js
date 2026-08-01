@@ -9,8 +9,8 @@
     return fetch(url, opts).then(function (r) { return r.json(); });
   }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  var LETTERS = ['S', 'A', 'B', 'C', 'D'];
-  var LETTER = { S: 100, A: 90, B: 80, C: 70, D: 60 };
+  var LETTERS = ['S', 'A', 'B', 'C', 'D', 'F'];
+  var LETTER = { S: 100, A: 90, B: 80, C: 70, D: 60, F: 50 };
   var CRI = [
     { key: 'notice', sub: '이벤트·공지사항 숙지', w: 10, kind: 'notice' },
     { key: 'kakao', sub: '카톡공지 숙지', w: 10, kind: 'letter' },

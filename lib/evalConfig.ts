@@ -1,6 +1,6 @@
 // 월말평가 설정 (본사 기준). 점수·가중치는 여기서 조정 가능.
-export const LETTER: Record<string, number> = { S: 100, A: 90, B: 80, C: 70, D: 60 };
-export const LETTERS = ['S', 'A', 'B', 'C', 'D'];
+export const LETTER: Record<string, number> = { S: 100, A: 90, B: 80, C: 70, D: 60, F: 50 };
+export const LETTERS = ['S', 'A', 'B', 'C', 'D', 'F'];
 
 export type CriKind = 'letter' | 'notice' | 'late' | 'absent';
 export interface Criterion { key: string; mid: string; sub: string; weight: number; kind: CriKind; }
