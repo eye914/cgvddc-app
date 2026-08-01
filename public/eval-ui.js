@@ -47,7 +47,7 @@
   function load() {
     var root = document.getElementById('ev-root'); if (root) root.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px">불러오는 중…</div>';
     Promise.all([api('/api/eval?action=managers'), api('/api/eval?action=overview&period=' + _period)])
-      .then(function (r) { _managers = Array.isArray(r[0]) ? r[0] : []; _data = r[1] || {}; render(); if (_tab === 'rank') loadRank(); })
+      .then(function (r) { _managers = Array.isArray(r[0]) ? r[0] : []; _data = r[1] || {}; _tgtVals = {}; render(); if (_tab === 'rank') loadRank(); })
       .catch(function () { if (root) root.innerHTML = '<div style="color:#dc2626;text-align:center;padding:40px">불러오기 실패</div>'; });
   }
 
@@ -97,7 +97,8 @@
   };
 
   // ── ② 배정 (평가자 선택 → 좌우 이동) ──
-  var _selManager = '';
+  var _selManager = '', _tgtVals = {};
+  EV.setTgt = function (m, v) { _tgtVals[m] = v; };
   function assignView() {
     if (!_managers.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;color:#dc2626;font-weight:700;font-size:13px">평가자(관리자) 계정이 없습니다. Supabase admins 테이블에 관리자를 추가해주세요.</div>';
     var assignments = _data.assignments || [];
@@ -113,7 +114,7 @@
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="checkbox" class="ev-mgr-chk" value="' + i + '" onclick="event.stopPropagation()"></td>'
         + '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-weight:' + (on ? '800' : '600') + '">' + (on ? '▶ ' : '') + esc(m) + '</td>'
         + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center;font-size:11px;color:#9aa0a6">현재 ' + cnt + '</td>'
-        + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="number" min="0" id="tgt_' + i + '" value="' + cnt + '" onclick="event.stopPropagation()" style="width:50px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-weight:800"></td></tr>';
+        + '<td style="padding:6px;border-bottom:1px solid #eee;text-align:center"><input type="number" min="0" id="tgt_' + i + '" value="' + (_tgtVals.hasOwnProperty(m) ? _tgtVals[m] : cnt) + '" oninput="EV.setTgt(\'' + esc(m) + '\',this.value)" onclick="event.stopPropagation()" style="width:50px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-weight:800"></td></tr>';
     }).join('');
     var top = '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:6px">평가대상 ' + targets.length + '명 · 배정 ' + Object.keys(assignedAll).length + '명</div>'
       + '<div style="font-weight:800;font-size:13px;margin-bottom:6px">평가자 목록 (클릭해 선택 · 배정수 입력)</div>'
@@ -148,16 +149,19 @@
   };
   EV.fillEven = function () {
     var total = (_data.targets || []).length;
-    var chosen = []; document.querySelectorAll('.ev-mgr-chk:checked').forEach(function (c) { chosen.push(+c.value); });
-    if (!chosen.length) chosen = _managers.map(function (m, i) { return i; }); // 체크 없으면 전체 균등
+    var chosen = []; document.querySelectorAll('.ev-mgr-chk:checked').forEach(function (c) { chosen.push(_managers[+c.value]); });
+    if (!chosen.length) chosen = _managers.slice(); // 체크 없으면 전체 균등
+    // 나머지 인원 랜덤 분배 → 누를 때마다 다르게
+    for (var i = chosen.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = chosen[i]; chosen[i] = chosen[j]; chosen[j] = t; }
     var n = chosen.length, base = Math.floor(total / n), rem = total % n;
-    _managers.forEach(function (m, i) { var el = document.getElementById('tgt_' + i); if (el) el.value = 0; });
-    chosen.forEach(function (idx, k) { var el = document.getElementById('tgt_' + idx); if (el) el.value = base + (k < rem ? 1 : 0); });
+    _managers.forEach(function (m) { _tgtVals[m] = 0; });
+    chosen.forEach(function (m, k) { _tgtVals[m] = base + (k < rem ? 1 : 0); });
+    render();
   };
   EV.autoAssign = function () {
     if (!_managers.length) { alert('평가자가 없습니다.'); return; }
     var roster = _data.targets || [];
-    var targets = _managers.map(function (m, i) { var el = document.getElementById('tgt_' + i); return Math.max(0, parseInt(el && el.value, 10) || 0); });
+    var targets = _managers.map(function (m, i) { var v = _tgtVals.hasOwnProperty(m) ? _tgtVals[m] : ((document.getElementById('tgt_' + i) || {}).value); return Math.max(0, parseInt(v, 10) || 0); });
     var totalT = targets.reduce(function (a, b) { return a + b; }, 0);
     if (!confirm('입력한 배정수대로 자동배정할까요?\n대상 ' + roster.length + '명 / 배정합계 ' + totalT + '명\n(기존 배정은 덮어씁니다)')) return;
     var payload = [], idx = 0;

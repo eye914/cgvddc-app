@@ -46,8 +46,10 @@ export async function GET(req: NextRequest) {
 
   if (action === 'managers') {
     if (!(await isSuper(admin.name))) return NextResponse.json({ error: '최고관리자만' }, { status: 403 });
-    const { data } = await supabaseAdmin.from('admins').select('name').eq('active', true).order('name');
-    return NextResponse.json((data ?? []).map((a: any) => a.name));
+    const { data } = await supabaseAdmin.from('admins').select('*').eq('active', true);
+    const rows = (data ?? []).slice().sort((a: any, b: any) =>
+      ((a.sort ?? 100) - (b.sort ?? 100)) || String(a.name).localeCompare(String(b.name), 'ko'));
+    return NextResponse.json(rows.map((a: any) => a.name));
   }
 
   const period = sp.get('period');
