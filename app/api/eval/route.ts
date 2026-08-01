@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { requireAdmin } from '@/lib/session';
+import { requireAuth, requireAdmin } from '@/lib/session';
 import { sendPushToAdmins } from '@/lib/push';
 import { weekInPeriod, totalScore } from '@/lib/evalConfig';
 
@@ -39,10 +39,33 @@ async function isSuper(name: string): Promise<boolean> {
 }
 
 export async function GET(req: NextRequest) {
-  const admin = requireAdmin(req);
-  if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 });
   const sp = new URL(req.url).searchParams;
   const action = sp.get('action');
+
+  // 리더보드: 로그인한 미소지기/관리자 모두 조회 (마감된 기간만, 담당자·세부점수 비공개)
+  if (action === 'leaderboard') {
+    const sess = requireAuth(req);
+    if (!sess) return NextResponse.json({ error: '로그인 필요' }, { status: 401 });
+    let period = sp.get('period') || '';
+    if (!period) {
+      const { data } = await supabaseAdmin.from('eval_periods').select('period').eq('status', 'closed').order('period', { ascending: false }).limit(1).maybeSingle();
+      period = data?.period || '';
+    }
+    if (!period) return NextResponse.json({ period: null, rows: [] });
+    const { data: per } = await supabaseAdmin.from('eval_periods').select('status').eq('period', period).maybeSingle();
+    if (!per || per.status !== 'closed') return NextResponse.json({ period, rows: [] });
+    const { data: asg } = await supabaseAdmin.from('eval_assignments').select('miso_name').eq('period', period);
+    const { data: sc } = await supabaseAdmin.from('eval_scores').select('miso_name, grades').eq('period', period);
+    const auto = await computeAuto(period);
+    const scMap: Record<string, any> = {}; (sc ?? []).forEach((x: any) => { scMap[x.miso_name] = x.grades || {}; });
+    const rows: any[] = (asg ?? []).map((a: any) => ({ miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, ctxFor(a.miso_name, auto)) }));
+    rows.sort((x, y) => y.total - x.total);
+    rows.forEach((r, i) => { r.rank = i + 1; });
+    return NextResponse.json({ period, rows });
+  }
+
+  const admin = requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: '관리자 권한 필요' }, { status: 403 });
 
   if (action === 'managers') {
     if (!(await isSuper(admin.name))) return NextResponse.json({ error: '최고관리자만' }, { status: 403 });
@@ -115,6 +138,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (b.action === 'openPeriod') {
+    // 배정 완료 검증: 모든 평가대상이 배정돼야 오픈 가능
+    const { data: tg } = await supabaseAdmin.from('eval_targets').select('miso_name').eq('period', b.period);
+    const { data: asg2 } = await supabaseAdmin.from('eval_assignments').select('miso_name').eq('period', b.period);
+    const tgs = (tg ?? []).map((t: any) => t.miso_name);
+    if (!tgs.length) return NextResponse.json({ error: '평가대상 선정과 배정을 먼저 완료하세요.' }, { status: 400 });
+    const aset = new Set((asg2 ?? []).map((a: any) => a.miso_name));
+    const un = tgs.filter((n: string) => !aset.has(n));
+    if (un.length) return NextResponse.json({ error: '미배정 ' + un.length + '명이 있습니다. 배정을 완료해야 오픈할 수 있습니다.' }, { status: 400 });
     await supabaseAdmin.from('eval_periods').upsert({ period: b.period, status: 'open', opened_at: new Date().toISOString(), closed_at: null }, { onConflict: 'period' });
     const [y, m] = b.period.split('-');
     await sendPushToAdmins('📋 월말평가 시작', `${y}년 ${+m}월 평가가 오픈됐습니다. 배정된 미소지기를 평가해주세요.`);

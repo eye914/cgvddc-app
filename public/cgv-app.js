@@ -379,8 +379,9 @@
             }
             grid.innerHTML = quickBtn + sorted.map(function(m) {
                 var isSaved = m.name === savedName;
+                var med = (window.__EV_TOP3 && window.__EV_TOP3[m.name]) ? (window.__EV_TOP3[m.name] === 1 ? ' 👑' : window.__EV_TOP3[m.name] === 2 ? ' 🥈' : ' 🥉') : '';
                 return '<button onclick="selectAuthName(\'' + m.name + '\')" class="p-3 rounded-2xl border-2 font-black text-sm bg-white active:bg-red-50 active:border-red-400 transition-all active:scale-95 '
-                    + (isSaved ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-700') + '">' + m.name + '</button>';
+                    + (isSaved ? 'border-red-200 text-red-600' : 'border-slate-200 text-slate-700') + '">' + m.name + med + '</button>';
             }).join('');
         }
         function loadMisoForAuth() {
@@ -513,6 +514,7 @@
                 selectUser(authSelectedName);
             }
             fetchData();
+            if (window.EV && EV.homeBoard) EV.homeBoard();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
             if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
             setTimeout(function() { checkAndShowPushBanner(_pName); }, 600);
@@ -859,7 +861,8 @@ function showKakaoModal(text, forced) {
                     var btn = document.createElement("button");
                     var isFull = FULL_HOUR_NAMES.indexOf(m.name) > -1;
                     btn.className = "py-3.5 bg-white border-2 rounded-[16px] font-bold text-[15px] shadow-sm active:scale-95 " + (isFull ? "border-red-400 text-red-800" : "border-blue-300 text-blue-800");
-                    btn.innerText = m.name;
+                    var _med = (window.__EV_TOP3 && window.__EV_TOP3[m.name]) ? (window.__EV_TOP3[m.name] === 1 ? ' 👑' : window.__EV_TOP3[m.name] === 2 ? ' 🥈' : ' 🥉') : '';
+                    btn.innerText = m.name + _med;
                     btn.onclick = function(){ selectUser(m.name); };
                     grid.appendChild(btn);
                 });
@@ -2009,6 +2012,7 @@ function showKakaoModal(text, forced) {
             }
             if (tab === "notice" && window.NM && NM.renderNotices) NM.renderNotices();
             if (tab === "manual" && window.NM && NM.renderManuals) NM.renderManuals();
+            if (tab === "trade" && window.EV && EV.homeBoard) EV.homeBoard();
             renderList();
         }
 

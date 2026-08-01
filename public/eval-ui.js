@@ -73,7 +73,7 @@
   function render() {
     var root = document.getElementById('ev-root'); if (!root) return;
     if (!_data.isSuper && _tab !== 'mine') _tab = 'mine';
-    var body = _tab === 'targets' ? targetsView() : _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : '<div id="ev-rank">불러오는 중…</div>';
+    var body = _tab === 'targets' ? targetsView() : _tab === 'assign' ? assignView() : _tab === 'mine' ? mineView() : (progressHtml() + '<div id="ev-rank" style="margin-top:12px">불러오는 중…</div>');
     root.innerHTML = header() + body;
   }
 
@@ -254,6 +254,23 @@
       .then(function (j) { if (j && j.error) { alert(j.error); return; } closeSheet(); load(); });
   };
 
+  // ── 평가 진행 현황 (관리자별 완료 여부) ──
+  function progressHtml() {
+    var byMgr = {}, scored = {};
+    (_data.assignments || []).forEach(function (a) { (byMgr[a.manager_name] = byMgr[a.manager_name] || []).push(a.miso_name); });
+    (_data.scores || []).forEach(function (s) { scored[s.miso_name] = 1; });
+    var rows = _managers.map(function (m) {
+      var arr = byMgr[m] || [], done = arr.filter(function (n) { return scored[n]; }).length, all = arr.length, ok = all > 0 && done === all;
+      return '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #eee;border-radius:10px;padding:9px 11px;margin-bottom:6px">'
+        + '<span style="width:9px;height:9px;border-radius:50%;background:' + (ok ? '#16a34a' : all === 0 ? '#cbd5e1' : '#f59e0b') + '"></span>'
+        + '<span style="flex:1;font-weight:800;font-size:13px">' + esc(m) + '</span>'
+        + '<span style="font-size:12px;font-weight:800;color:' + (ok ? '#16a34a' : all === 0 ? '#94a3b8' : '#dc2626') + '">' + done + ' / ' + all + ' ' + (all === 0 ? '배정없음' : ok ? '완료' : '진행중') + '</span></div>';
+    }).join('');
+    var asg = _data.assignments || [];
+    var allDone = asg.length > 0 && asg.every(function (a) { return scored[a.miso_name]; });
+    return '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:7px">📊 평가 진행 현황 ' + (allDone ? '<span style="color:#16a34a">· 전원 완료 ✅</span>' : '<span style="color:#dc2626">· 미완료 있음</span>') + '</div>' + rows;
+  }
+
   // ── 순위/취합 ──
   function loadRank() {
     api('/api/eval?action=result&period=' + _period).then(function (rows) {
@@ -273,12 +290,56 @@
 
   // 기간 오픈/마감
   EV.open_ = function () {
+    var targets = _data.targets || [], assigned = {};
+    (_data.assignments || []).forEach(function (a) { assigned[a.miso_name] = 1; });
+    if (!targets.length) { alert('먼저 ① 대상선정과 ② 배정을 완료하세요.'); return; }
+    var un = targets.filter(function (n) { return !assigned[n]; });
+    if (un.length) { alert('미배정 ' + un.length + '명이 있습니다.\n배정을 완료해야 오픈할 수 있습니다.'); return; }
     if (!confirm(_period + ' 평가를 오픈할까요?\n관리자 전원에게 알림이 발송됩니다.')) return;
-    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'openPeriod', period: _period }) }).then(function () { load(); });
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'openPeriod', period: _period }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } load(); });
   };
   EV.close_ = function () {
-    if (!confirm(_period + ' 평가를 마감할까요?\n순위가 확정되고 관리자 전원에게 알림이 발송됩니다.')) return;
+    var scored = {}; (_data.scores || []).forEach(function (s) { scored[s.miso_name] = 1; });
+    var un = (_data.assignments || []).filter(function (a) { return !scored[a.miso_name]; });
+    var msg = _period + ' 평가를 마감할까요?\n순위가 확정되고 관리자 전원에게 알림이 발송됩니다.';
+    if (un.length) msg = '⚠️ 아직 평가 안 된 미소지기 ' + un.length + '명이 있습니다.\n\n' + msg;
+    if (!confirm(msg)) return;
     api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'closePeriod', period: _period }) }).then(function () { load(); });
+  };
+
+  // 메인화면 리더보드 + 우수 미소지기(top3) 왕관
+  EV.homeBoard = function () {
+    var tk = sessionStorage.getItem('cgv_token');
+    var el = document.getElementById('home-leaderboard');
+    if (!tk) { if (el) el.innerHTML = ''; return; }
+    fetch('/api/eval?action=leaderboard', { headers: { 'Authorization': 'Bearer ' + tk } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var rows = (d && d.rows) || [];
+        var mm = d && d.period ? (parseInt(d.period.split('-')[1], 10) + '월') : '';
+        var top = {}; rows.forEach(function (r) { if (r.rank <= 3) top[r.miso] = r.rank; });
+        window.__EV_TOP3 = top; window.__EV_TOP3_MONTH = mm;
+        if (typeof buildAuthNameGrid === 'function') try { buildAuthNameGrid(); } catch (e) {}
+        if (typeof buildUserGrid === 'function') try { buildUserGrid(); } catch (e) {}
+        if (!el) return;
+        if (!rows.length) { el.innerHTML = ''; return; }
+        var medal = function (r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; };
+        var bg = function (r) { return r === 1 ? '#fdf6e3' : r === 2 ? '#f4f6f8' : r === 3 ? '#fbf0e8' : '#fff'; };
+        var prize = function (r) { return r === 1 ? '🎬 영화관람권 2매' : r === 2 ? '⭐ 마일리지 2,000점' : ''; };
+        var list = rows.slice(0, 5).map(function (r) {
+          var pz = prize(r.rank);
+          return '<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:12px;background:' + bg(r.rank) + ';margin-bottom:6px">'
+            + '<span style="width:30px;text-align:center;font-size:17px">' + medal(r.rank) + '</span>'
+            + '<span style="flex:1;min-width:0"><span style="font-weight:800;font-size:14.5px;color:#0f172a">' + esc(r.miso) + '</span>'
+            + (pz ? '<div style="font-size:11px;color:#a16207;font-weight:700;margin-top:1px">' + pz + '</div>' : '') + '</span>'
+            + '<span style="font-weight:900;color:#e11d48;font-size:15px">' + r.total + '<span style="font-size:11px;color:#94a3b8;font-weight:700">점</span></span></div>';
+        }).join('');
+        el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:20px;padding:15px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)">'
+          + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px"><span style="font-size:18px">🏆</span><span style="font-weight:800;font-size:15px;color:#0f172a">' + mm + ' 우수 미소지기</span></div>'
+          + list
+          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · 마일리지 1,000점 (별도 선정)</div>'
+          + '</div>';
+      }).catch(function () {});
   };
 
   // 공통 시트
