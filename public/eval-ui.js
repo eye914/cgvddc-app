@@ -275,23 +275,40 @@
     return '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:7px">📊 평가 진행 현황 ' + (allDone ? '<span style="color:#16a34a">· 전원 완료 ✅</span>' : '<span style="color:#dc2626">· 미완료 있음</span>') + '</div>' + rows;
   }
 
-  // ── 신인왕 지정 (최고관리자) ──
+  // ── 신인왕 후보 선정 (최고관리자) · 후보 중 최고점 자동 신인왕 ──
   function rookieView() {
     if (!_data.isSuper) return '';
-    var cur = (_data.period && _data.period.rookie) || '';
-    var opts = '<option value="">- 신인왕 미지정 -</option>' + (_data.targets || []).map(function (n) { return '<option ' + (cur === n ? 'selected' : '') + '>' + esc(n) + '</option>'; }).join('');
-    return '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:12px;padding:11px 12px;margin:10px 0"><div style="font-size:12px;font-weight:800;color:#2563a8;margin-bottom:6px">🐣 신인왕 지정 (마일리지 1,000점)</div><select onchange="EV.setRookie(this.value)" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-weight:700">' + opts + '</select></div>';
+    var cand = _data.rookieCandidates || [];
+    return '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:12px;padding:11px 12px;margin:10px 0">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:12px;font-weight:800;color:#2563a8">🐣 신인왕 후보 ' + cand.length + '명</div>'
+      + '<button onclick="EV.editRookies()" style="border:1px solid #93c5fd;background:#fff;color:#2563a8;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:800">후보 편집</button></div>'
+      + '<div style="font-size:11px;color:#64748b;margin-top:4px">신입을 후보로 등록하면, 후보 중 최고점이 자동으로 신인왕이 됩니다.</div></div>';
   }
-  EV.setRookie = function (m) { api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'setRookie', period: _period, miso: m }) }).then(function (j) { if (j && j.error) { alert(j.error); return; } load(); }); };
+  EV.editRookies = function () {
+    var cand = {}; (_data.rookieCandidates || []).forEach(function (n) { cand[n] = 1; });
+    var rows = (_data.targets || []).map(function (n) {
+      return '<label style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:7px;font-size:14px;font-weight:700"><input type="checkbox" class="ev-rk" value="' + esc(n) + '" ' + (cand[n] ? 'checked' : '') + '>' + esc(n) + '</label>';
+    }).join('');
+    if (!(_data.targets || []).length) rows = '<div style="text-align:center;color:#94a3b8;padding:16px;font-weight:700">먼저 ① 대상선정을 하세요.</div>';
+    openSheet('<div style="font-size:16px;font-weight:800;margin-bottom:4px">🐣 신인왕 후보 선정</div><div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">신입 미소지기를 후보로 체크하세요. 후보 중 최고점이 신인왕.</div>' + rows + '<button onclick="EV.saveRookies()" style="width:100%;margin-top:8px;padding:13px;background:#2563a8;color:#fff;border:none;border-radius:12px;font-weight:800">후보 저장</button>');
+  };
+  EV.saveRookies = function () {
+    var misos = []; document.querySelectorAll('.ev-rk:checked').forEach(function (c) { misos.push(c.value); });
+    api('/api/eval', { method: 'POST', body: JSON.stringify({ action: 'setRookieCandidates', period: _period, misos: misos }) })
+      .then(function (j) { if (j && j.error) { alert(j.error); return; } closeSheet(); load(); });
+  };
 
   // ── 순위/취합 ──
   function loadRank() {
-    api('/api/eval?action=result&period=' + _period).then(function (rows) {
+    api('/api/eval?action=result&period=' + _period).then(function (res) {
       var el = document.getElementById('ev-rank'); if (!el) return;
-      if (!rows || !rows.length) { el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">배정·평가 내역이 없습니다.</div>'; return; }
+      var rows = (res && res.rows) || [];
+      var rookie = res && res.rookie;
+      if (!rows.length) { el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">배정·평가 내역이 없습니다.</div>'; return; }
       var closed = _data.period && _data.period.status === 'closed';
       var medal = function (r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; };
       el.innerHTML = '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:8px">' + (closed ? '최종 순위 (마감됨)' : '중간 집계 (마감 전)') + '</div>'
+        + (rookie ? '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px;font-weight:800;color:#2563a8">🐣 신인왕: ' + esc(rookie) + '</div>' : '')
         + rows.map(function (r) {
           return '<div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid ' + (r.rank <= 3 && closed ? '#fbbf24' : '#eee') + ';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
             + '<div style="width:38px;text-align:center;font-size:16px;font-weight:900">' + (closed ? medal(r.rank) : r.rank + '위') + '</div>'

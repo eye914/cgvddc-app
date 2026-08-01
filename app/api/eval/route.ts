@@ -68,8 +68,10 @@ export async function GET(req: NextRequest) {
     });
     rows.sort(tieCmp);
     rows.forEach((r, i) => { r.rank = i + 1; });
-    const { data: perR } = await supabaseAdmin.from('eval_periods').select('rookie').eq('period', period).maybeSingle();
-    return NextResponse.json({ period, rows: rows.map((r) => ({ rank: r.rank, miso: r.miso, total: r.total })), rookie: (perR as any)?.rookie || null });
+    const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', period);
+    const cand = new Set((rc ?? []).map((r: any) => r.miso_name));
+    const rookieRow = rows.find((r: any) => cand.has(r.miso));
+    return NextResponse.json({ period, rows: rows.map((r: any) => ({ rank: r.rank, miso: r.miso, total: r.total })), rookie: rookieRow ? rookieRow.miso : null });
   }
 
   const admin = requireAdmin(req);
@@ -92,6 +94,7 @@ export async function GET(req: NextRequest) {
     const { data: sc } = await supabaseAdmin.from('eval_scores').select('*').eq('period', period);
     const { data: roster } = await supabaseAdmin.from('misojigi').select('name').eq('active', true).order('name');
     const { data: tg } = await supabaseAdmin.from('eval_targets').select('miso_name').eq('period', period);
+    const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', period);
     const auto = await computeAuto(period);
     const autoByMiso: Record<string, any> = {};
     (asg ?? []).forEach((a: any) => { autoByMiso[a.miso_name] = ctxFor(a.miso_name, auto); });
@@ -103,6 +106,7 @@ export async function GET(req: NextRequest) {
       scores: sc || [],
       roster: (roster ?? []).map((r: any) => r.name),
       targets: (tg ?? []).map((t: any) => t.miso_name),
+      rookieCandidates: (rc ?? []).map((r: any) => r.miso_name),
       auto: autoByMiso,
     });
   }
@@ -119,7 +123,10 @@ export async function GET(req: NextRequest) {
     });
     rows.sort(tieCmp);
     rows.forEach((r, i) => { r.rank = i + 1; });
-    return NextResponse.json(rows);
+    const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', period);
+    const cand = new Set((rc ?? []).map((r: any) => r.miso_name));
+    const rookieRow = rows.find((r: any) => cand.has(r.miso));
+    return NextResponse.json({ rows, rookie: rookieRow ? rookieRow.miso : null });
   }
 
   return NextResponse.json({ error: 'action?' }, { status: 400 });
@@ -131,12 +138,17 @@ export async function POST(req: NextRequest) {
   const b = await req.json();
   const superAdmin = await isSuper(admin.name);
 
-  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign' || b.action === 'setTargets' || b.action === 'setRookie') {
+  if (b.action === 'openPeriod' || b.action === 'closePeriod' || b.action === 'assign' || b.action === 'setTargets' || b.action === 'setRookieCandidates') {
     if (!superAdmin) return NextResponse.json({ error: '최고관리자만 가능합니다.' }, { status: 403 });
   }
 
-  if (b.action === 'setRookie') {
-    await supabaseAdmin.from('eval_periods').update({ rookie: b.miso || null }).eq('period', b.period);
+  if (b.action === 'setRookieCandidates') {
+    await supabaseAdmin.from('eval_rookies').delete().eq('period', b.period);
+    const rows = (b.misos || []).map((n: string) => ({ period: b.period, miso_name: n }));
+    if (rows.length) {
+      const { error } = await supabaseAdmin.from('eval_rookies').insert(rows);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -166,8 +178,22 @@ export async function POST(req: NextRequest) {
   }
   if (b.action === 'closePeriod') {
     await supabaseAdmin.from('eval_periods').upsert({ period: b.period, status: 'closed', closed_at: new Date().toISOString() }, { onConflict: 'period' });
-    const [y, m] = b.period.split('-');
-    await sendPushToAdmins('✅ 월말평가 마감', `${y}년 ${+m}월 평가가 마감됐습니다. 순위가 확정됐습니다.`);
+    const [, m] = b.period.split('-');
+    // 순위 산정 → 전체 미소지기에게 우수자 발표 푸시
+    const { data: asg } = await supabaseAdmin.from('eval_assignments').select('miso_name').eq('period', b.period);
+    const { data: sc } = await supabaseAdmin.from('eval_scores').select('miso_name, grades').eq('period', b.period);
+    const autoC = await computeAuto(b.period);
+    const scMap: Record<string, any> = {}; (sc ?? []).forEach((x: any) => { scMap[x.miso_name] = x.grades || {}; });
+    const rows: any[] = (asg ?? []).map((a: any) => { const c = ctxFor(a.miso_name, autoC); return { miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, c), _ab: c.absentN, _la: c.lateN, _nr: c.noticeReq ? c.noticeSigned / c.noticeReq : 1 }; });
+    rows.sort(tieCmp);
+    const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', b.period);
+    const cand = new Set((rc ?? []).map((r: any) => r.miso_name));
+    const rookie = rows.find((r: any) => cand.has(r.miso));
+    let body = `${+m}월 우수 미소지기 발표! `;
+    if (rows[0]) body += `🥇${rows[0].miso}`;
+    if (rows[1]) body += ` 🥈${rows[1].miso}`;
+    if (rookie) body += ` 🐣신인왕 ${rookie.miso}`;
+    await sendPushToAllExcept([], '🏆 월말평가 결과', body);
     return NextResponse.json({ ok: true });
   }
   if (b.action === 'assign') {
