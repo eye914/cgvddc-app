@@ -24,11 +24,15 @@ export function noticeScore(required: number, signed: number): number {
   return Math.round((signed / required) * 100);
 }
 
-// 근태 주차키("2026년 4/27(월) ~ 5/3(일) 주간")가 해당 period(YYYY-MM)에 속하는지 (목요일=과반 달 기준)
+// 근태 주차키를 period(YYYY-MM)에 매칭 (목요일=과반 달 기준). 두 형식 모두 지원:
+//  · "2026년 4/27(월) ~ 5/3(일) 주간"
+//  · "2026년 7월 3주차 (7/13(월)~7/19(일))"
 export function weekInPeriod(weekKey: string, period: string): boolean {
-  const m = String(weekKey).match(/(\d{4})년\s*(\d{1,2})\/(\d{1,2})/);
-  if (!m) return false;
-  const thu = new Date(+m[1], +m[2] - 1, +m[3] + 3);
+  const s = String(weekKey);
+  const ym = s.match(/(\d{4})\s*년/);          // 연도
+  const md = s.match(/(\d{1,2})\s*\/\s*(\d{1,2})/); // 첫 M/D = 그 주 시작일(월요일)
+  if (!ym || !md) return false;
+  const thu = new Date(+ym[1], +md[1] - 1, +md[2] + 3); // 월+3 = 목요일
   const p = thu.getFullYear() + '-' + String(thu.getMonth() + 1).padStart(2, '0');
   return p === period;
 }
