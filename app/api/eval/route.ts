@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requireAdmin } from '@/lib/session';
-import { sendPushToAdmins } from '@/lib/push';
+import { sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
 import { weekInPeriod, totalScore } from '@/lib/evalConfig';
 
 function monthRange(period: string): [string, string] {
