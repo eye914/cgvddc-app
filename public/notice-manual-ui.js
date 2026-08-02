@@ -58,6 +58,20 @@
       + '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;display:block;cursor:zoom-in">'
       + '<div style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;gap:34px 22px;align-content:flex-start;padding:22px 8px;overflow:hidden">' + wm + '</div></div>';
   }
+  // 본문 + 사진. 본문 안에 [사진1],[사진2]… 를 쓰면 그 위치에 해당 순번 사진이 들어가고,
+  // 지정하지 않은 사진은 맨 아래에 순서대로 붙는다.
+  function renderBody(body, images) {
+    images = images || [];
+    var used = {};
+    function repl(_, n) { var i = +n - 1; if (i < 0 || i >= images.length) return ''; used[i] = 1; return protectedImg(images[i]); }
+    var html = renderMd(body)
+      .replace(/<p class="nm-p">\s*\[\s*사진\s*(\d+)\s*\]\s*<\/p>/g, repl) // 한 줄에 사진만 있을 때 <p> 제거
+      .replace(/\[\s*사진\s*(\d+)\s*\]/g, repl);                          // 문장 중간
+    var rest = '';
+    for (var k = 0; k < images.length; k++) if (!used[k]) rest += protectedImg(images[k]);
+    var hint = images.length ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '';
+    return html + rest + hint;
+  }
   var N_CATS = ['전체', '미소지기', '매점', '매표', '플로어', '프로모션', '이벤트'];
   var M_CATS = ['매점', '매표', '청소'];
   var M_TYPES = ['일반', '신입', '조리매뉴얼'];
@@ -135,15 +149,13 @@
         else sigArea = signaturePadHtml(id);
       }
       var adminStatus = isAdmin() && n.require_signature ? '<div id="nm-sigstat" style="margin-top:12px"></div>' : '';
-      var nImgs = (n.images || []).map(protectedImg).join('')
-        + ((n.images && n.images.length) ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
         + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>' : '')
         + (n.require_signature ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>' : '')
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
         + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">' + periodTxt(n) + ' · 관리자</div>'
-        + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderMd(n.body) + nImgs + '</div>'
+        + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderBody(n.body, n.images) + '</div>'
         + sigArea + adminStatus + adminBtns;
       openSheet(html, true);
       if (isAdmin() && n.require_signature) loadSigStatus(id);
@@ -241,7 +253,8 @@
     var inS = 'width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;box-sizing:border-box';
     var html = '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (id ? '공지 수정' : '새 공지 작성') + '</div>'
       + '<input id="nf-title" placeholder="제목" value="' + v('title') + '" style="' + inS + ';margin-bottom:8px">'
-      + '<textarea id="nf-body" placeholder="내용" style="' + inS + ';margin-bottom:8px;min-height:120px;resize:vertical">' + (n ? esc(n.body) : '') + '</textarea>'
+      + '<textarea id="nf-body" placeholder="내용" style="' + inS + ';margin-bottom:4px;min-height:120px;resize:vertical">' + (n ? esc(n.body) : '') + '</textarea>'
+      + '<div style="font-size:11px;color:#94a3b8;margin:0 0 10px">💡 본문에 <b>[사진1]</b> <b>[사진2]</b> … 를 넣으면 그 위치에 사진이 표시됩니다. (미지정 사진은 맨 아래에 순서대로)</div>'
       + '<label style="font-size:12px;font-weight:700;color:#555">카테고리</label><select id="nf-cat" style="' + inS + ';margin:4px 0 10px">' + catOpts + '</select>'
       + '<div style="display:flex;gap:8px;margin-bottom:10px"><div style="flex:1"><label style="font-size:12px;font-weight:700;color:#555">노출 시작</label><input id="nf-start" type="date" value="' + v('start_date') + '" style="' + inS + '"></div>'
       + '<div style="flex:1"><label style="font-size:12px;font-weight:700;color:#555">노출 종료</label><input id="nf-end" type="date" value="' + v('end_date') + '" style="' + inS + '"></div></div>'
@@ -310,12 +323,10 @@
 
   NM.openManual = function (id) {
     var m = _manuals[id]; if (!m) return;
-    var imgs = (m.images || []).map(protectedImg).join('')
-      + (m.images && m.images.length ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
       + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(m.title) + '</div>'
-      + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:10px;position:relative">' + renderMd(m.body) + imgs + '</div>' + adminBtns;
+      + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:10px;position:relative">' + renderBody(m.body, m.images) + '</div>' + adminBtns;
     openSheet(html, true);
   };
   NM.delManual = function (id) {
@@ -334,7 +345,8 @@
     var html = '<div style="font-size:16px;font-weight:800;margin-bottom:12px">' + (id ? '매뉴얼 수정' : '새 매뉴얼 작성') + '</div>'
       + '<input id="mf-title" placeholder="제목" value="' + (m ? esc(m.title) : '') + '" style="' + inS + ';margin-bottom:8px">'
       + '<div style="display:flex;gap:8px;margin-bottom:8px"><select id="mf-type" style="' + inS + '">' + typeOpts + '</select><select id="mf-cat" style="' + inS + '">' + catOpts + '</select></div>'
-      + '<textarea id="mf-body" placeholder="본문 내용" style="' + inS + ';margin-bottom:10px;min-height:140px;resize:vertical">' + (m ? esc(m.body) : '') + '</textarea>'
+      + '<textarea id="mf-body" placeholder="본문 내용" style="' + inS + ';margin-bottom:4px;min-height:140px;resize:vertical">' + (m ? esc(m.body) : '') + '</textarea>'
+      + '<div style="font-size:11px;color:#94a3b8;margin:0 0 10px">💡 본문에 <b>[사진1]</b> <b>[사진2]</b> … 를 넣으면 그 위치에 사진이 표시됩니다. (미지정 사진은 맨 아래에 순서대로)</div>'
       + '<label style="font-size:12px;font-weight:700;color:#555">사진 첨부</label>'
       + '<input id="mf-imgs" type="file" accept="image/*" multiple onchange="NM.pickImgs(event)" style="' + inS + ';margin:5px 0 8px">'
       + '<div id="mf-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>'
