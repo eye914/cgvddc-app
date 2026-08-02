@@ -53,7 +53,7 @@
   // 이미지에 도난방지 워터마크를 직접 얹어 렌더 (스크롤·위치와 무관하게 모든 이미지에 표시)
   function protectedImg(u) {
     var mark = esc(me() || '미소지기') + ' · ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-    var wm = ''; for (var i = 0; i < 18; i++) wm += '<span style="color:rgba(255,255,255,.42);font-size:12px;font-weight:800;transform:rotate(-24deg);white-space:nowrap;text-shadow:0 0 3px rgba(0,0,0,.4)">' + mark + '</span>';
+    var wm = ''; for (var i = 0; i < 18; i++) wm += '<span style="color:rgba(120,124,132,.20);font-size:12px;font-weight:700;transform:rotate(-24deg);white-space:nowrap">' + mark + '</span>';
     return '<div style="position:relative;margin-top:10px;border:1px solid #eee;border-radius:10px;overflow:hidden;transform:translateZ(0)">'
       + '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;display:block;cursor:zoom-in">'
       + '<div style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;gap:34px 22px;align-content:flex-start;padding:22px 8px;overflow:hidden">' + wm + '</div></div>';
@@ -417,15 +417,15 @@
     NM.closeZoom();
     var mark = esc(me() || '미소지기') + ' · ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
     var wm = '';
-    for (var i = 0; i < 24; i++) wm += '<span style="color:rgba(255,255,255,.13);font-size:12px;font-weight:800;transform:rotate(-24deg);white-space:nowrap">' + mark + '</span>';
+    for (var i = 0; i < 24; i++) wm += '<span style="color:rgba(150,154,162,.22);font-size:12px;font-weight:700;transform:rotate(-24deg);white-space:nowrap">' + mark + '</span>';
     var ov = document.createElement('div');
     ov.id = 'nm-zoom';
     ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.93);overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center';
     ov.innerHTML =
-      '<div style="position:fixed;inset:0;z-index:1;pointer-events:none;display:flex;flex-wrap:wrap;gap:40px 28px;align-content:flex-start;padding:70px 12px;overflow:hidden">' + wm + '</div>'
-      + '<img id="nm-zoom-img" src="' + esc(src) + '" draggable="false" oncontextmenu="return false" style="max-width:100%;max-height:100%;position:relative;z-index:2;cursor:zoom-in">'
-      + '<button onclick="NM.closeZoom()" style="position:fixed;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:22px;z-index:3">×</button>'
-      + '<div style="position:fixed;bottom:16px;left:0;right:0;text-align:center;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;z-index:3;pointer-events:none">사진을 탭하면 확대 · 다시 탭하면 축소</div>';
+      '<img id="nm-zoom-img" src="' + esc(src) + '" draggable="false" oncontextmenu="return false" style="max-width:100%;max-height:100%;position:relative;z-index:2;cursor:zoom-in">'
+      + '<div style="position:fixed;inset:0;z-index:5;pointer-events:none;display:flex;flex-wrap:wrap;gap:40px 28px;align-content:flex-start;padding:70px 12px;overflow:hidden">' + wm + '</div>'
+      + '<button onclick="NM.closeZoom()" style="position:fixed;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:22px;z-index:6">×</button>'
+      + '<div style="position:fixed;bottom:16px;left:0;right:0;text-align:center;color:rgba(255,255,255,.7);font-size:12px;font-weight:700;z-index:6;pointer-events:none">사진을 탭하면 확대 · 다시 탭하면 축소</div>';
     document.body.appendChild(ov);
     var img = document.getElementById('nm-zoom-img');
     var zoomed = false;
