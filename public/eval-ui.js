@@ -348,6 +348,7 @@
         var mm = d && d.period ? (parseInt(d.period.split('-')[1], 10) + '월') : '';
         var top = {}; rows.forEach(function (r) { if (r.rank <= 3) top[r.miso] = r.rank; });
         window.__EV_TOP3 = top; window.__EV_TOP3_MONTH = mm;
+        try { localStorage.setItem('cgv_ev_top3', JSON.stringify({ top: top, month: mm })); } catch (e) {}
         if (typeof buildAuthNameGrid === 'function') try { buildAuthNameGrid(); } catch (e) {}
         if (typeof buildUserGrid === 'function') try { buildUserGrid(); } catch (e) {}
         if (!el) return;
@@ -383,6 +384,14 @@
   function closeSheet() { var o = document.getElementById('ev-sheet-ov'); if (o) o.remove(); }
   EV.closeSheet = closeSheet;
 
-  // 시작 시 리더보드/메달 로드 (로그인 전에도 이름선택 메달 표시 · 리더보드 공개)
-  setTimeout(function () { try { EV.homeBoard(); } catch (e) {} }, 900);
+  // 캐시된 top3로 즉시 왕관 표시(지연 제거) → 그다음 백그라운드 새로고침
+  try {
+    var _c = JSON.parse(localStorage.getItem('cgv_ev_top3') || 'null');
+    if (_c && _c.top) {
+      window.__EV_TOP3 = _c.top; window.__EV_TOP3_MONTH = _c.month || '';
+      if (typeof buildAuthNameGrid === 'function') try { buildAuthNameGrid(); } catch (e) {}
+      if (typeof buildUserGrid === 'function') try { buildUserGrid(); } catch (e) {}
+    }
+  } catch (e) {}
+  setTimeout(function () { try { EV.homeBoard(); } catch (e) {} }, 300);
 })();
