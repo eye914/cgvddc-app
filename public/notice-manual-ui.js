@@ -50,11 +50,19 @@
       + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}';
     var st = document.createElement('style'); st.id = 'nm-style'; st.textContent = css; document.head.appendChild(st);
   }
+  // 이미지에 도난방지 워터마크를 직접 얹어 렌더 (스크롤·위치와 무관하게 모든 이미지에 표시)
+  function protectedImg(u) {
+    var mark = esc(me() || '미소지기') + ' · ' + new Date().toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    var wm = ''; for (var i = 0; i < 18; i++) wm += '<span style="color:rgba(255,255,255,.42);font-size:12px;font-weight:800;transform:rotate(-24deg);white-space:nowrap;text-shadow:0 0 3px rgba(0,0,0,.4)">' + mark + '</span>';
+    return '<div style="position:relative;margin-top:10px;border:1px solid #eee;border-radius:10px;overflow:hidden;transform:translateZ(0)">'
+      + '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;display:block;cursor:zoom-in">'
+      + '<div style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;gap:34px 22px;align-content:flex-start;padding:22px 8px;overflow:hidden">' + wm + '</div></div>';
+  }
   var N_CATS = ['전체', '미소지기', '매점', '매표', '플로어', '프로모션', '이벤트'];
-  var M_CATS = ['매점', '매표', '플로어'];
-  var M_TYPES = ['신입교육', '조리레시피', '일반'];
+  var M_CATS = ['매점', '매표'];
+  var M_TYPES = ['일반', '신입', '조리매뉴얼'];
   var catCls = { '전체': 'background:#eef0f2;color:#555', '미소지기': 'background:#f3e8ff;color:#7c3aed', '매점': 'background:#fbe6df;color:#b15644', '매표': 'background:#e3effb;color:#2563a8', '플로어': 'background:#e2f3ea;color:#2f7d5c', '프로모션': 'background:#fff3d6;color:#a5761a', '이벤트': 'background:#fde7f0;color:#be185d' };
-  var typeCls = { '신입교육': 'background:#e7f0ff;color:#2563a8', '조리레시피': 'background:#fff3d6;color:#a5761a', '일반': 'background:#eef0f2;color:#555' };
+  var typeCls = { '일반': 'background:#eef0f2;color:#555', '신입': 'background:#e7f0ff;color:#2563a8', '조리매뉴얼': 'background:#fff3d6;color:#a5761a', '신입교육': 'background:#e7f0ff;color:#2563a8', '조리레시피': 'background:#fff3d6;color:#a5761a' };
 
   var _nFilter = '전체', _mFilter = '전체';
   var _mySigned = [];
@@ -127,7 +135,7 @@
         else sigArea = signaturePadHtml(id);
       }
       var adminStatus = isAdmin() && n.require_signature ? '<div id="nm-sigstat" style="margin-top:12px"></div>' : '';
-      var nImgs = (n.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in;transform:translateZ(0)">'; }).join('')
+      var nImgs = (n.images || []).map(protectedImg).join('')
         + ((n.images && n.images.length) ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
         + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>' : '')
@@ -276,7 +284,7 @@
     host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
     api('/api/manuals').then(function (list) {
       list = Array.isArray(list) ? list : [];
-      var filters = ['전체'].concat(M_TYPES).concat(M_CATS);
+      var filters = M_TYPES.concat(M_CATS);
       var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + filters.map(function (c) {
         var on = _mFilter === c;
         return '<button onclick="NM.setMFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
@@ -287,7 +295,7 @@
       host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
     }).catch(function () { host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px">불러오기 실패</div>'; });
   };
-  NM.setMFilter = function (c) { _mFilter = c; NM.renderManuals(); };
+  NM.setMFilter = function (c) { _mFilter = (_mFilter === c ? '전체' : c); NM.renderManuals(); }; // 같은 칩 다시 누르면 전체
 
   var _manuals = {};
   function manualCard(m) {
@@ -302,7 +310,7 @@
 
   NM.openManual = function (id) {
     var m = _manuals[id]; if (!m) return;
-    var imgs = (m.images || []).map(function (u) { return '<img src="' + esc(u) + '" draggable="false" oncontextmenu="return false" onclick="NM.zoom(this.src)" style="width:100%;border-radius:10px;margin-top:10px;cursor:zoom-in;transform:translateZ(0)">'; }).join('')
+    var imgs = (m.images || []).map(protectedImg).join('')
       + (m.images && m.images.length ? '<div style="text-align:center;font-size:11px;color:#b0b0b6;margin-top:6px">사진을 탭하면 확대됩니다</div>' : '');
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
