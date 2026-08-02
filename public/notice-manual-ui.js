@@ -59,9 +59,9 @@
       + '<div style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;gap:34px 22px;align-content:flex-start;padding:22px 8px;overflow:hidden">' + wm + '</div></div>';
   }
   var N_CATS = ['전체', '미소지기', '매점', '매표', '플로어', '프로모션', '이벤트'];
-  var M_CATS = ['매점', '매표'];
+  var M_CATS = ['매점', '매표', '청소'];
   var M_TYPES = ['일반', '신입', '조리매뉴얼'];
-  var catCls = { '전체': 'background:#eef0f2;color:#555', '미소지기': 'background:#f3e8ff;color:#7c3aed', '매점': 'background:#fbe6df;color:#b15644', '매표': 'background:#e3effb;color:#2563a8', '플로어': 'background:#e2f3ea;color:#2f7d5c', '프로모션': 'background:#fff3d6;color:#a5761a', '이벤트': 'background:#fde7f0;color:#be185d' };
+  var catCls = { '전체': 'background:#eef0f2;color:#555', '미소지기': 'background:#f3e8ff;color:#7c3aed', '매점': 'background:#fbe6df;color:#b15644', '매표': 'background:#e3effb;color:#2563a8', '플로어': 'background:#e2f3ea;color:#2f7d5c', '프로모션': 'background:#fff3d6;color:#a5761a', '이벤트': 'background:#fde7f0;color:#be185d', '청소': 'background:#e0f2fe;color:#0369a1' };
   var typeCls = { '일반': 'background:#eef0f2;color:#555', '신입': 'background:#e7f0ff;color:#2563a8', '조리매뉴얼': 'background:#fff3d6;color:#a5761a', '신입교육': 'background:#e7f0ff;color:#2563a8', '조리레시피': 'background:#fff3d6;color:#a5761a' };
 
   var _nFilter = '전체', _mFilter = '전체';
