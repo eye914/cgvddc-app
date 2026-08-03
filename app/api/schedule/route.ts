@@ -1,5 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+
+// 조회 응답 캐시(app_settings). GAS(시트) 콜드스타트를 사용자에게서 분리한다.
+//  · 캐시가 있으면 즉시 반환하고, 오래됐으면 백그라운드로 갱신(stale-while-revalidate)
+//  · fresh=1 이면 캐시를 건너뛰고 강제 갱신
+const SCHED_SOFT_TTL = 90_000; // 90초 지나면 백그라운드 갱신
+async function getSchedCache(key: string): Promise<{ ts: number; data: any } | null> {
+  const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', key).maybeSingle();
+  const v = data?.value as any;
+  return v && typeof v.ts === 'number' ? v : null;
+}
+async function setSchedCache(key: string, payload: any) {
+  await supabaseAdmin.from('app_settings').upsert({ key, value: { ts: Date.now(), data: payload } }, { onConflict: 'key' });
+}
+async function serveCached(key: string, fresh: boolean, compute: () => Promise<any>) {
+  if (!fresh) {
+    const cached = await getSchedCache(key);
+    if (cached) {
+      if (Date.now() - cached.ts > SCHED_SOFT_TTL) {
+        after(async () => { try { const r = await compute(); await setSchedCache(key, r); } catch { /* 백그라운드 갱신 실패 무시 */ } });
+      }
+      return NextResponse.json(cached.data);
+    }
+  }
+  try {
+    const res = await compute();
+    await setSchedCache(key, res);
+    return NextResponse.json(res);
+  } catch (e: any) {
+    const cached = await getSchedCache(key); // GAS 실패 시 오래된 캐시라도 제공
+    if (cached) return NextResponse.json(cached.data);
+    throw e;
+  }
+}
 
 async function callGAS(action: string, params: any[] = []) {
   const GAS_URL = process.env.GAS_URL;
@@ -32,26 +66,31 @@ export async function GET(req: NextRequest) {
     }
     if (mode === 'week') {
       const weekKey = searchParams.get('weekKey');
+      const fresh = searchParams.get('fresh') === '1';
       if (!weekKey) return NextResponse.json({ error: 'weekKey 필수' }, { status: 400 });
-      const schedule = await callGAS('getScheduleByWeek', [weekKey]);
-      return NextResponse.json({ schedule });
+      const key = 'sched_week:' + weekKey;
+      const compute = async () => ({ schedule: await callGAS('getScheduleByWeek', [weekKey]) });
+      return serveCached(key, fresh, compute);
     }
     if (mode === 'today') {
       const date = searchParams.get('date');
       const fresh = searchParams.get('fresh') === '1';
       if (!date) return NextResponse.json({ error: 'date 필수' }, { status: 400 });
-      try {
-        const res = await callGAS('getScheduleForDate', [date, fresh]);
-        return NextResponse.json(res);
-      } catch (e: any) {
-        if (e.message && e.message.indexOf('알 수 없는 action') > -1) {
-          const weekKey = await callGAS('findWeekByDate', [date]);
-          if (!weekKey) return NextResponse.json({ weekKey: null, schedule: [] });
-          const schedule = await callGAS('getScheduleByWeek', [weekKey, fresh]);
-          return NextResponse.json({ weekKey, schedule });
+      const key = 'sched_today:' + date;
+      const compute = async () => {
+        try {
+          return await callGAS('getScheduleForDate', [date, fresh]);
+        } catch (e: any) {
+          if (e.message && e.message.indexOf('알 수 없는 action') > -1) {
+            const weekKey = await callGAS('findWeekByDate', [date]);
+            if (!weekKey) return { weekKey: null, schedule: [] };
+            const schedule = await callGAS('getScheduleByWeek', [weekKey, fresh]);
+            return { weekKey, schedule };
+          }
+          throw e;
         }
-        throw e;
-      }
+      };
+      return serveCached(key, fresh, compute);
     }
     if (mode === 'debug') {
       const weekKey = searchParams.get('weekKey');
