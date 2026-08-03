@@ -1,41 +1,72 @@
-/* 근태 → 전체 근무표(시트 스냅샷) UI — window.RO
-   편성은 구글시트에서 하고, 시트 버튼(GAS)이 /api/roster 로 등록.
-   여러 주 누적: { weeks:[ {week_label, first_date, days:[{date,dow,rows:[{slot,time,매점,플로어,통합}]}]} ] } */
+/* 근태 → 전체 근무표(그리드) — window.RO
+   근태가 읽는 (맞교대) 스케줄(/api/schedule)을 슬롯×포지션 그리드로 자동 변환.
+   시트 버튼/수동등록 없이 항상 최신 맞교대 데이터로 표시. */
 (function () {
   var RO = (window.RO = window.RO || {});
-  function tok() { return sessionStorage.getItem('cgv_token') || ''; }
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
   var CC = { '매점': '#185FA5', '플로어': '#2f7d1f', '통합': '#993556' };
   var BG = { '매점': '#E6F1FB', '플로어': '#EAF3DE', '통합': '#FBEAF0' };
   var POS = ['매점', '플로어', '통합'];
+  var SHIFT_ORDER = ['D1', 'D2', 'D3', 'D4', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'N1', 'N2'];
+  var SHIFT_IDX = {}; SHIFT_ORDER.forEach(function (s, i) { SHIFT_IDX[s] = i; });
 
   var _weeks = null, _wsel = 0, _dsel = 0, _loaded = false;
+
+  function fmt(dt) { return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0'); }
+  function addDays(dt, n) { var d = new Date(dt); d.setDate(d.getDate() + n); return d; }
+  function mdNum(md) { var m = String(md).match(/(\d{1,2})\s*\/\s*(\d{1,2})/); return m ? (+m[1]) * 100 + (+m[2]) : 0; }
+  function prettyWk(key) { var m = String(key).match(/(\d+)월\s*(\d+)주차/); return m ? (m[1] + '월 ' + m[2] + '주차') : String(key).replace(/\s*\(맞교대\)\s*/, ''); }
+  function todayMD() { var n = new Date(); return (n.getMonth() + 1) + '/' + n.getDate(); }
+
+  // 스케줄 배열 → [{date,dow,rows:[{slot,time,매점,플로어,통합}]}]
+  function buildDays(schedule) {
+    var byDate = {};
+    schedule.forEach(function (r) {
+      var m = String(r.date).match(/(\d{1,2})\s*\/\s*(\d{1,2})/); if (!m) return;
+      var md = (+m[1]) + '/' + (+m[2]);
+      var dw = (String(r.date).match(/\(([월화수목금토일])\)/) || [])[1] || '';
+      var pos = r.position; if (POS.indexOf(pos) < 0) return;
+      var d = byDate[md] || (byDate[md] = { dow: dw, ord: mdNum(md), slots: {} });
+      var cell = d.slots[r.shiftCode] || (d.slots[r.shiftCode] = { slot: r.shiftCode, time: r.time || '' });
+      var label = String(r.name || '').trim() + (r.note ? (' ' + String(r.note).trim()) : '');
+      cell[pos] = cell[pos] ? (cell[pos] + ', ' + label) : label;
+    });
+    return Object.keys(byDate).sort(function (a, b) { return byDate[a].ord - byDate[b].ord; }).map(function (md) {
+      var d = byDate[md];
+      var rows = Object.keys(d.slots).sort(function (a, b) { return (SHIFT_IDX[a] == null ? 99 : SHIFT_IDX[a]) - (SHIFT_IDX[b] == null ? 99 : SHIFT_IDX[b]); }).map(function (sc) { return d.slots[sc]; });
+      return { date: md, dow: d.dow, rows: rows, ord: d.ord };
+    });
+  }
 
   RO.render = function (force) {
     var host = document.getElementById('roster-body'); if (!host) return;
     if (_loaded && !force) { paint(); return; }
-    host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:34px;font-size:13px;font-weight:700">불러오는 중…</div>';
-    fetch('/api/roster', { headers: { 'Authorization': 'Bearer ' + tok() } })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        _loaded = true;
-        _weeks = (d && Array.isArray(d.weeks)) ? d.weeks.filter(function (w) { return w && Array.isArray(w.days) && w.days.length; }) : [];
-        _wsel = pickTodayWeek(_weeks);
-        _dsel = _weeks[_wsel] ? pickTodayDay(_weeks[_wsel].days) : 0;
-        paint();
-      })
-      .catch(function () { host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px;font-weight:700">불러오기 실패</div>'; });
+    if (!_weeks) host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:34px;font-size:13px;font-weight:700">불러오는 중…</div>';
+    var base = new Date();
+    var probes = [-7, 0, 7, 14].map(function (o) { return fmt(addDays(base, o)); });
+    Promise.all(probes.map(function (dt) {
+      return fetch('/api/schedule?mode=today&date=' + encodeURIComponent(dt)).then(function (r) { return r.json(); }).catch(function () { return null; });
+    })).then(function (results) {
+      var seen = {}, weeks = [];
+      results.forEach(function (t) {
+        if (!t || !t.weekKey || !Array.isArray(t.schedule) || !t.schedule.length) return;
+        if (seen[t.weekKey]) return; seen[t.weekKey] = 1;
+        var days = buildDays(t.schedule);
+        if (days.length) weeks.push({ key: t.weekKey, label: prettyWk(t.weekKey), days: days, ord: days[0].ord });
+      });
+      weeks.sort(function (a, b) { return a.ord - b.ord; });
+      _loaded = true; _weeks = weeks;
+      _wsel = pickTodayWeek(weeks);
+      _dsel = weeks[_wsel] ? pickTodayDay(weeks[_wsel].days) : 0;
+      paint();
+    }).catch(function () { if (!_weeks) host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px;font-weight:700">불러오기 실패</div>'; });
   };
 
-  function todayMD() { var n = new Date(); return (n.getMonth() + 1) + '/' + n.getDate(); }
-  // 오늘이 포함된 주를 기본 선택, 없으면 마지막(최신) 주
   function pickTodayWeek(weeks) {
     var md = todayMD();
-    for (var i = 0; i < weeks.length; i++) {
-      if (weeks[i].days.some(function (d) { return String(d.date) === md; })) return i;
-    }
-    return weeks.length ? weeks.length - 1 : 0;
+    for (var i = 0; i < weeks.length; i++) { if (weeks[i].days.some(function (d) { return String(d.date) === md; })) return i; }
+    return weeks.length ? 0 : 0;
   }
   function pickTodayDay(days) {
     var md = todayMD();
@@ -46,27 +77,23 @@
   function paint() {
     var host = document.getElementById('roster-body'); if (!host) return;
     if (!_weeks || !_weeks.length) {
-      host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 20px;font-weight:700;background:#f8fafc;border-radius:14px">아직 등록된 근무표가 없습니다.<div style="font-size:12px;color:#b8b8be;margin-top:6px;font-weight:600">편성 후 시트의 [앱에 근무표 등록] 버튼을 눌러주세요.</div></div>';
+      host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 20px;font-weight:700;background:#f8fafc;border-radius:14px">표시할 근무표가 없습니다.<div style="font-size:12px;color:#b8b8be;margin-top:6px;font-weight:600">해당 주차가 아직 공개되지 않았을 수 있어요.</div></div>';
       return;
     }
-    if (_wsel >= _weeks.length) _wsel = _weeks.length - 1;
+    if (_wsel >= _weeks.length) _wsel = 0;
     var wk = _weeks[_wsel];
     if (_dsel >= wk.days.length) _dsel = 0;
 
-    // 주차 선택 (2주 이상일 때만)
     var weekSel = '';
     if (_weeks.length > 1) {
       weekSel = '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px">' + _weeks.map(function (w, i) {
         var on = i === _wsel;
-        var lbl = w.week_label || (w.days[0] && w.days[0].date + '~' + w.days[w.days.length - 1].date) || ('주 ' + (i + 1));
-        return '<button onclick="RO.pickWeek(' + i + ')" style="flex:0 0 auto;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800;border:1px solid ' + (on ? '#0f172a' : '#e2e2e2') + ';background:' + (on ? '#0f172a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(lbl) + '</button>';
+        return '<button onclick="RO.pickWeek(' + i + ')" style="flex:0 0 auto;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800;border:1px solid ' + (on ? '#0f172a' : '#e2e2e2') + ';background:' + (on ? '#0f172a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(w.label) + '</button>';
       }).join('') + '</div>';
     } else {
-      var lbl0 = wk.week_label || '';
-      if (lbl0) weekSel = '<div style="font-size:12px;color:#94a3b8;font-weight:700;margin:2px 0 8px">' + esc(lbl0) + '</div>';
+      weekSel = '<div style="font-size:12px;color:#94a3b8;font-weight:700;margin:2px 0 8px">' + esc(wk.label) + '</div>';
     }
 
-    // 요일 선택
     var dayPick = '<div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:8px">' + wk.days.map(function (d, i) {
       var on = i === _dsel;
       return '<button onclick="RO.pickDay(' + i + ')" style="flex:0 0 auto;padding:6px 11px;border-radius:9px;font-size:12px;font-weight:700;border:1px solid ' + (on ? '#d8463a' : '#e2e2e2') + ';background:' + (on ? '#d8463a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(d.dow) + ' ' + esc(d.date) + '</button>';
@@ -100,7 +127,6 @@
   RO.pickWeek = function (i) { _wsel = i; _dsel = pickTodayDay(_weeks[i].days); paint(); };
   RO.pickDay = function (i) { _dsel = i; paint(); };
 
-  // 현재 요일 그리드를 PNG로 저장 (html2canvas 지연 로드)
   RO.saveImg = function () {
     var node = document.getElementById('roster-capture'); if (!node) return;
     function shoot() {
