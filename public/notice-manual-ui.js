@@ -407,19 +407,44 @@
     if (o) { o.remove(); if (!document.getElementById('nm-zoom')) unlockBody(); }
   }
   NM.closeSheet = closeSheet;
-  // iOS 안전 스크롤 잠금 (overflow:hidden만으론 배경이 움직여서 position:fixed 방식 사용)
-  var _lockY = 0, _locked = false;
+  // 배경 스크롤 잠금.
+  //  · 실제 스크롤러는 <body>가 아니라 앱 카드 div일 수도 있어, body 고정 + html/overflow 잠금 + 배경 터치 차단을 모두 적용한다.
+  //  · 시트(#nm-sheet)·확대(#nm-zoom) 내부 스크롤은 허용하되, 경계 밖으로 넘치는(오버스크롤) 제스처만 막아 배경으로 새지 않게 한다.
+  var _lockY = 0, _locked = false, _tsY = 0;
+  function _scroller(t) { // 터치 지점이 시트/확대 스크롤 영역 안이면 그 요소, 아니면 null
+    for (var el = t; el && el !== document.body; el = el.parentNode) {
+      if (el.id === 'nm-sheet' || el.id === 'nm-zoom') return el;
+    }
+    return null;
+  }
+  function _onTouchStart(e) { if (e.touches && e.touches[0]) _tsY = e.touches[0].clientY; }
+  function _onTouchMove(e) {
+    if (!e.cancelable) return;
+    var s = _scroller(e.target);
+    if (!s) { e.preventDefault(); return; }              // 시트 밖(어두운 배경) → 무조건 차단
+    if (s.scrollHeight <= s.clientHeight) { e.preventDefault(); return; } // 스크롤 필요 없는 시트 → 배경 새는 것 차단
+    var dy = e.touches[0].clientY - _tsY;                 // +아래로 당김(위로 스크롤), -위로
+    var atTop = s.scrollTop <= 0;
+    var atBottom = s.scrollTop + s.clientHeight >= s.scrollHeight - 1;
+    if ((atTop && dy > 0) || (atBottom && dy < 0)) e.preventDefault(); // 경계 넘침만 차단
+  }
   function lockBody() {
     if (_locked) return;
-    _lockY = window.pageYOffset || document.documentElement.scrollTop || 0;
-    var b = document.body.style;
-    b.position = 'fixed'; b.top = (-_lockY) + 'px'; b.left = '0'; b.right = '0'; b.width = '100%';
+    _lockY = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    var b = document.body.style, h = document.documentElement.style;
+    h.overflow = 'hidden';
+    b.position = 'fixed'; b.top = (-_lockY) + 'px'; b.left = '0'; b.right = '0'; b.width = '100%'; b.overflow = 'hidden';
+    document.addEventListener('touchstart', _onTouchStart, { passive: true });
+    document.addEventListener('touchmove', _onTouchMove, { passive: false });
     _locked = true;
   }
   function unlockBody() {
     if (!_locked) return;
-    var b = document.body.style;
-    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = '';
+    document.removeEventListener('touchstart', _onTouchStart, { passive: true });
+    document.removeEventListener('touchmove', _onTouchMove, { passive: false });
+    var b = document.body.style, h = document.documentElement.style;
+    h.overflow = '';
+    b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.width = ''; b.overflow = '';
     _locked = false;
     window.scrollTo(0, _lockY);
   }
