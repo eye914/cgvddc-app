@@ -362,7 +362,7 @@
             var grid = document.getElementById('auth-name-grid');
             if (!grid) return;
             if (!MISO_DATA.length) {
-                grid.innerHTML = '<div class="col-span-3 text-center py-4 text-red-500 text-xs font-bold">로드 실패. 새로고침해주세요.</div>';
+                grid.innerHTML = '<div class="col-span-3 text-center py-4 text-slate-400 text-xs font-bold">명단 불러오는 중…</div>';
                 return;
             }
             var savedName = '';
@@ -386,6 +386,12 @@
         }
         function loadMisoForAuth() {
             var CACHE_TTL = 60 * 60 * 1000; // 1시간
+            // 1) 지난 세션의 명단(localStorage)이 있으면 즉시 표시 → 콜드/네트워크 지연에도 '로드 실패' 안 뜸
+            try {
+                var lsList = JSON.parse(localStorage.getItem('cgv_miso_list') || 'null');
+                if (Array.isArray(lsList) && lsList.length) { MISO_DATA = lsList; buildAuthNameGrid(); }
+            } catch (e) {}
+            // 2) 이번 세션의 신선 캐시가 있으면 그대로 사용
             var cached = sessionStorage.getItem('cgv_miso');
             if (cached) {
                 try {
@@ -395,28 +401,27 @@
                     if (p && p.length && (Date.now() - ts) < CACHE_TTL) {
                         MISO_DATA = p; buildAuthNameGrid(); return;
                     }
-                } catch(e) {}
+                } catch (e) {}
             }
-            var done = false;
-            var timeoutId = setTimeout(function() {
-                if (!done) { done = true; buildAuthNameGrid(); }
-            }, 7000);
-            fetch('/api/misojigi')
-                .then(function(r) { return r.json(); })
-                .then(function(list) {
-                    if (done) return;
-                    done = true; clearTimeout(timeoutId);
-                    if (Array.isArray(list) && list.length) {
-                        MISO_DATA = list;
-                        sessionStorage.setItem('cgv_miso', JSON.stringify({ data: list, ts: Date.now() }));
-                    }
-                    buildAuthNameGrid();
-                })
-                .catch(function() {
-                    if (done) return;
-                    done = true; clearTimeout(timeoutId);
-                    buildAuthNameGrid();
-                });
+            // 3) 네트워크 갱신 (실패 시 조용히 재시도, 위에서 띄운 명단은 유지)
+            (function fetchMiso(attempt) {
+                fetch('/api/misojigi')
+                    .then(function (r) { return r.json(); })
+                    .then(function (list) {
+                        if (Array.isArray(list) && list.length) {
+                            MISO_DATA = list;
+                            sessionStorage.setItem('cgv_miso', JSON.stringify({ data: list, ts: Date.now() }));
+                            try { localStorage.setItem('cgv_miso_list', JSON.stringify(list)); } catch (e) {}
+                            buildAuthNameGrid();
+                        } else if (attempt < 2) {
+                            setTimeout(function () { fetchMiso(attempt + 1); }, 800);
+                        } else { buildAuthNameGrid(); }
+                    })
+                    .catch(function () {
+                        if (attempt < 2) setTimeout(function () { fetchMiso(attempt + 1); }, 800);
+                        else buildAuthNameGrid();
+                    });
+            })(0);
         }
         function selectAuthName(name) {
             authSelectedName = name; authIsAdmin = false;

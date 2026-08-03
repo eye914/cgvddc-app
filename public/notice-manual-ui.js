@@ -88,28 +88,35 @@
   }
 
   /* ══════════════════════ 공지 ══════════════════════ */
+  var _noteCache = null; // 직전 목록 캐시 → 탭 전환 시 즉시 렌더(로딩 깜빡임 제거)
+  function paintNotices(host) {
+    if (!_noteCache) return;
+    var list = _noteCache;
+    var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + N_CATS.map(function (c) {
+      var on = _nFilter === c;
+      return '<button onclick="NM.setNFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
+    }).join('') + '</div>';
+    var items = list.filter(function (n) { return _nFilter === '전체' || n.category === _nFilter; });
+    var body = items.length ? items.map(noticeCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">공지가 없습니다.</div>';
+    var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
+    host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
+  }
   NM.renderNotices = function () {
     injectNMStyle();
     var host = document.getElementById('view-notice'); if (!host) return;
     var g = gateMsg('공지'); if (g) { host.innerHTML = g; return; }
-    host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
+    if (_noteCache) paintNotices(host);   // 캐시 즉시 렌더
+    else host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
     Promise.all([
       api('/api/notices' + (isAdmin() ? '?all=1' : '')),
       api('/api/notice-signatures?mine=1')
     ]).then(function (res) {
-      var list = Array.isArray(res[0]) ? res[0] : [];
+      _noteCache = Array.isArray(res[0]) ? res[0] : [];
       _mySigned = Array.isArray(res[1]) ? res[1] : [];
-      var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + N_CATS.map(function (c) {
-        var on = _nFilter === c;
-        return '<button onclick="NM.setNFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-      }).join('') + '</div>';
-      var items = list.filter(function (n) { return _nFilter === '전체' || n.category === _nFilter; });
-      var body = items.length ? items.map(noticeCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">공지가 없습니다.</div>';
-      var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
-      host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
-    }).catch(function () { host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px">불러오기 실패</div>'; });
+      paintNotices(host);
+    }).catch(function () { if (!_noteCache) host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px">불러오기 실패</div>'; });
   };
-  NM.setNFilter = function (c) { _nFilter = c; NM.renderNotices(); };
+  NM.setNFilter = function (c) { _nFilter = c; var h = document.getElementById('view-notice'); if (h && _noteCache) paintNotices(h); else NM.renderNotices(); };
 
   function todayISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function periodTxt(n) {
@@ -290,25 +297,32 @@
   };
 
   /* ══════════════════════ 매뉴얼 ══════════════════════ */
+  var _manualCache = null; // 직전 목록 캐시 → 탭 전환 즉시 렌더
+  function paintManuals(host) {
+    if (!_manualCache) return;
+    var list = _manualCache;
+    var filters = M_TYPES.concat(M_CATS);
+    var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + filters.map(function (c) {
+      var on = _mFilter === c;
+      return '<button onclick="NM.setMFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
+    }).join('') + '</div>';
+    var items = list.filter(function (m) { return _mFilter === '전체' || m.category === _mFilter || m.type === _mFilter; });
+    var body = items.length ? items.map(manualCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">매뉴얼이 없습니다.</div>';
+    var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';
+    host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
+  }
   NM.renderManuals = function () {
     injectNMStyle();
     var host = document.getElementById('view-manual'); if (!host) return;
     var g = gateMsg('매뉴얼'); if (g) { host.innerHTML = g; return; }
-    host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
+    if (_manualCache) paintManuals(host);
+    else host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:30px">불러오는 중…</div>';
     api('/api/manuals').then(function (list) {
-      list = Array.isArray(list) ? list : [];
-      var filters = M_TYPES.concat(M_CATS);
-      var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + filters.map(function (c) {
-        var on = _mFilter === c;
-        return '<button onclick="NM.setMFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-      }).join('') + '</div>';
-      var items = list.filter(function (m) { return _mFilter === '전체' || m.category === _mFilter || m.type === _mFilter; });
-      var body = items.length ? items.map(manualCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">매뉴얼이 없습니다.</div>';
-      var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';
-      host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
-    }).catch(function () { host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px">불러오기 실패</div>'; });
+      _manualCache = Array.isArray(list) ? list : [];
+      paintManuals(host);
+    }).catch(function () { if (!_manualCache) host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px">불러오기 실패</div>'; });
   };
-  NM.setMFilter = function (c) { _mFilter = (_mFilter === c ? '전체' : c); NM.renderManuals(); }; // 같은 칩 다시 누르면 전체
+  NM.setMFilter = function (c) { _mFilter = (_mFilter === c ? '전체' : c); var h = document.getElementById('view-manual'); if (h && _manualCache) paintManuals(h); else NM.renderManuals(); }; // 같은 칩 다시 누르면 전체
 
   var _manuals = {};
   function manualCard(m) {
