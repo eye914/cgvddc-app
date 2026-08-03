@@ -237,10 +237,19 @@
                     style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#e71a0f;color:white;transition:all .15s">
                     📅 조회
                 </button>
+                <button id="sched-sub-btn-roster" onclick="switchSchedTab('roster')"
+                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s">
+                    🗂 전체 근무표
+                </button>
                 <button id="sched-sub-btn-apply" onclick="switchSchedTab('apply')"
                     style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s">
-                    ✍️ 스케줄 신청
+                    ✍️ 신청
                 </button>
+            </div>
+
+            <!-- ── 서브뷰: 전체 근무표(시트 스냅샷) ── -->
+            <div id="sched-sub-roster" style="display:none">
+                <div id="roster-body"></div>
             </div>
 
             <!-- ── 서브뷰: 조회 ── -->

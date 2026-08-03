@@ -40,6 +40,7 @@ const availVer = fileVer('availability-ui.js');
 const arrVer   = fileVer('arrange-ui.js');
 const nmVer    = fileVer('notice-manual-ui.js');
 const evVer    = fileVer('eval-ui.js');
+const roVer    = fileVer('roster-ui.js');
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src={`/arrange-ui.js?v=${arrVer}`} defer />
         <script src={`/notice-manual-ui.js?v=${nmVer}`} defer />
         <script src={`/eval-ui.js?v=${evVer}`} defer />
+        <script src={`/roster-ui.js?v=${roVer}`} defer />
       </head>
       <body suppressHydrationWarning>
         {children}

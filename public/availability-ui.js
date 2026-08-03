@@ -96,27 +96,28 @@
   /* ── 서브탭 전환 (cgv-app.js가 호출) ── */
   window.switchSchedTab = function (tab) {
     _activeSchedTab = tab;
-    var viewEl  = document.getElementById('sched-sub-view');
-    var applyEl = document.getElementById('sched-sub-apply');
-    var btnView  = document.getElementById('sched-sub-btn-view');
-    var btnApply = document.getElementById('sched-sub-btn-apply');
-    if (!viewEl || !applyEl) return;
+    var els = {
+      view:   document.getElementById('sched-sub-view'),
+      roster: document.getElementById('sched-sub-roster'),
+      apply:  document.getElementById('sched-sub-apply')
+    };
+    var btns = {
+      view:   document.getElementById('sched-sub-btn-view'),
+      roster: document.getElementById('sched-sub-btn-roster'),
+      apply:  document.getElementById('sched-sub-btn-apply')
+    };
+    if (!els.view || !els.apply) return;
 
     var activeStyle   = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;background:#d8463a;color:white;transition:all .15s';
     var inactiveStyle = 'flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;background:transparent;color:#6c6c72;transition:all .15s';
 
-    if (tab === 'view') {
-      viewEl.style.display  = '';
-      applyEl.style.display = 'none';
-      btnView.style.cssText  = activeStyle;
-      btnApply.style.cssText = inactiveStyle;
-    } else {
-      viewEl.style.display  = 'none';
-      applyEl.style.display = '';
-      btnView.style.cssText  = inactiveStyle;
-      btnApply.style.cssText = activeStyle;
-      initAvailabilityUI();
-    }
+    ['view', 'roster', 'apply'].forEach(function (k) {
+      if (els[k]) els[k].style.display = (k === tab ? '' : 'none');
+      if (btns[k]) btns[k].style.cssText = (k === tab ? activeStyle : inactiveStyle);
+    });
+
+    if (tab === 'apply') initAvailabilityUI();
+    else if (tab === 'roster' && window.RO && RO.render) RO.render();
   };
 
   /* ── 초기화 ── */
