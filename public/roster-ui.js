@@ -1,6 +1,6 @@
 /* 근태 → 전체 근무표(시트 스냅샷) UI — window.RO
    편성은 구글시트에서 하고, 시트 버튼(GAS)이 /api/roster 로 등록.
-   payload: { week_label, days:[ {date, dow, rows:[{slot,time,매점,플로어,통합}]} ] } */
+   여러 주 누적: { weeks:[ {week_label, first_date, days:[{date,dow,rows:[{slot,time,매점,플로어,통합}]}]} ] } */
 (function () {
   var RO = (window.RO = window.RO || {});
   function tok() { return sessionStorage.getItem('cgv_token') || ''; }
@@ -10,7 +10,7 @@
   var BG = { '매점': '#E6F1FB', '플로어': '#EAF3DE', '통합': '#FBEAF0' };
   var POS = ['매점', '플로어', '통합'];
 
-  var _data = null, _sel = 0, _loaded = false;
+  var _weeks = null, _wsel = 0, _dsel = 0, _loaded = false;
 
   RO.render = function (force) {
     var host = document.getElementById('roster-body'); if (!host) return;
@@ -20,37 +20,61 @@
       .then(function (r) { return r.json(); })
       .then(function (d) {
         _loaded = true;
-        _data = (d && Array.isArray(d.days) && d.days.length) ? d : null;
-        if (_data) { _sel = pickTodayIdx(_data.days); }
+        _weeks = (d && Array.isArray(d.weeks)) ? d.weeks.filter(function (w) { return w && Array.isArray(w.days) && w.days.length; }) : [];
+        _wsel = pickTodayWeek(_weeks);
+        _dsel = _weeks[_wsel] ? pickTodayDay(_weeks[_wsel].days) : 0;
         paint();
       })
       .catch(function () { host.innerHTML = '<div style="text-align:center;color:#dc2626;padding:30px;font-weight:700">불러오기 실패</div>'; });
   };
 
-  // 오늘 날짜(M/D)와 맞는 요일이 있으면 그 요일을 기본 선택
-  function pickTodayIdx(days) {
-    var n = new Date(), md = (n.getMonth() + 1) + '/' + n.getDate();
+  function todayMD() { var n = new Date(); return (n.getMonth() + 1) + '/' + n.getDate(); }
+  // 오늘이 포함된 주를 기본 선택, 없으면 마지막(최신) 주
+  function pickTodayWeek(weeks) {
+    var md = todayMD();
+    for (var i = 0; i < weeks.length; i++) {
+      if (weeks[i].days.some(function (d) { return String(d.date) === md; })) return i;
+    }
+    return weeks.length ? weeks.length - 1 : 0;
+  }
+  function pickTodayDay(days) {
+    var md = todayMD();
     for (var i = 0; i < days.length; i++) { if (String(days[i].date) === md) return i; }
     return 0;
   }
 
   function paint() {
     var host = document.getElementById('roster-body'); if (!host) return;
-    if (!_data) {
+    if (!_weeks || !_weeks.length) {
       host.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 20px;font-weight:700;background:#f8fafc;border-radius:14px">아직 등록된 근무표가 없습니다.<div style="font-size:12px;color:#b8b8be;margin-top:6px;font-weight:600">편성 후 시트의 [앱에 근무표 등록] 버튼을 눌러주세요.</div></div>';
       return;
     }
-    var days = _data.days;
-    if (_sel >= days.length) _sel = 0;
-    var picker = '<div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:8px;margin-bottom:2px">' + days.map(function (d, i) {
-      var on = i === _sel;
-      return '<button onclick="RO.pick(' + i + ')" style="flex:0 0 auto;padding:6px 11px;border-radius:9px;font-size:12px;font-weight:700;border:1px solid ' + (on ? '#d8463a' : '#e2e2e2') + ';background:' + (on ? '#d8463a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(d.dow) + ' ' + esc(d.date) + '</button>';
+    if (_wsel >= _weeks.length) _wsel = _weeks.length - 1;
+    var wk = _weeks[_wsel];
+    if (_dsel >= wk.days.length) _dsel = 0;
+
+    // 주차 선택 (2주 이상일 때만)
+    var weekSel = '';
+    if (_weeks.length > 1) {
+      weekSel = '<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px">' + _weeks.map(function (w, i) {
+        var on = i === _wsel;
+        var lbl = w.week_label || (w.days[0] && w.days[0].date + '~' + w.days[w.days.length - 1].date) || ('주 ' + (i + 1));
+        return '<button onclick="RO.pickWeek(' + i + ')" style="flex:0 0 auto;padding:6px 12px;border-radius:10px;font-size:12px;font-weight:800;border:1px solid ' + (on ? '#0f172a' : '#e2e2e2') + ';background:' + (on ? '#0f172a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(lbl) + '</button>';
+      }).join('') + '</div>';
+    } else {
+      var lbl0 = wk.week_label || '';
+      if (lbl0) weekSel = '<div style="font-size:12px;color:#94a3b8;font-weight:700;margin:2px 0 8px">' + esc(lbl0) + '</div>';
+    }
+
+    // 요일 선택
+    var dayPick = '<div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:8px">' + wk.days.map(function (d, i) {
+      var on = i === _dsel;
+      return '<button onclick="RO.pickDay(' + i + ')" style="flex:0 0 auto;padding:6px 11px;border-radius:9px;font-size:12px;font-weight:700;border:1px solid ' + (on ? '#d8463a' : '#e2e2e2') + ';background:' + (on ? '#d8463a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + '">' + esc(d.dow) + ' ' + esc(d.date) + '</button>';
     }).join('') + '</div>';
 
-    var label = _data.week_label ? '<div style="font-size:12px;color:#94a3b8;font-weight:700;margin:2px 0 8px">' + esc(_data.week_label) + '</div>' : '';
     var saveBtn = '<button onclick="RO.saveImg()" style="width:100%;margin-top:12px;padding:11px;border-radius:12px;font-size:13px;font-weight:800;background:#f1f5f9;border:1px solid #e2e8f0;color:#334155">📷 이미지로 저장 · 공유</button>';
 
-    host.innerHTML = picker + label + '<div id="roster-capture" style="background:#fff;padding:8px;border-radius:12px">' + gridHtml(days[_sel]) + '</div>' + saveBtn;
+    host.innerHTML = weekSel + dayPick + '<div id="roster-capture" style="background:#fff;padding:8px;border-radius:12px">' + gridHtml(wk.days[_dsel]) + '</div>' + saveBtn;
   }
 
   function gridHtml(day) {
@@ -73,14 +97,15 @@
       + '<table style="width:100%;border-collapse:collapse;table-layout:fixed">' + head + body + '</table>';
   }
 
-  RO.pick = function (i) { _sel = i; paint(); };
+  RO.pickWeek = function (i) { _wsel = i; _dsel = pickTodayDay(_weeks[i].days); paint(); };
+  RO.pickDay = function (i) { _dsel = i; paint(); };
 
   // 현재 요일 그리드를 PNG로 저장 (html2canvas 지연 로드)
   RO.saveImg = function () {
     var node = document.getElementById('roster-capture'); if (!node) return;
     function shoot() {
       window.html2canvas(node, { backgroundColor: '#ffffff', scale: 2 }).then(function (canvas) {
-        var day = _data.days[_sel];
+        var day = _weeks[_wsel].days[_dsel];
         canvas.toBlob(function (blob) {
           var name = '근무표_' + String(day.date).replace('/', '-') + '(' + day.dow + ').png';
           var file = new File([blob], name, { type: 'image/png' });
