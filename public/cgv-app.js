@@ -2007,6 +2007,18 @@ function showKakaoModal(text, forced) {
             var nBtn = document.getElementById("tab-notice-btn"); if (nBtn) nBtn.classList.toggle("active", tab === "notice");
             var mBtn = document.getElementById("tab-manual-btn"); if (mBtn) mBtn.classList.toggle("active", tab === "manual");
             document.getElementById("tab-manager-btn").classList.toggle("active", tab === "manager");
+            // 화면 전환 슬라이드(방향: 탭 순서 기준 좌/우)
+            (function () {
+                var order = { trade: 0, schedule: 1, notice: 2, manual: 3, manager: 4 };
+                var idm = { trade: "view-trade", schedule: "view-schedule", notice: "view-notice", manual: "view-manual", manager: "view-manager" };
+                var el = document.getElementById(idm[tab]);
+                if (!el) return;
+                var idx = order[tab] || 0, last = (window.__cgvLastTab == null ? idx : window.__cgvLastTab);
+                var dir = idx >= last ? "r" : "l"; window.__cgvLastTab = idx;
+                el.classList.remove("cgv-tab-in-r", "cgv-tab-in-l");
+                void el.offsetWidth; // 리플로우로 애니메이션 재시작
+                el.classList.add(dir === "r" ? "cgv-tab-in-r" : "cgv-tab-in-l");
+            })();
             if (tab === "schedule" && typeof window.initScheduleTab === "function") {
                 window.initScheduleTab();
             }
