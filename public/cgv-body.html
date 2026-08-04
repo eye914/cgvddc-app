@@ -1,43 +1,34 @@
-<!-- ── 로그인 오버레이 ── -->
-<div id="auth-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[9000] flex flex-col items-end justify-end transition-opacity duration-500">
-    <div class="bg-white rounded-t-[36px] w-full shadow-2xl overflow-hidden" style="max-height:90vh;overflow-y:auto;overscroll-behavior:contain">
-        <!-- 핸들 -->
-        <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
-        <!-- 헤더 -->
-        <div class="pb-4 text-center border-b border-slate-100" style="padding-top:14px">
-            <div style="font-size:30px;font-weight:800;color:#D32F2F;letter-spacing:-1.5px;line-height:1">CGV</div>
-            <div style="font-size:11px;color:#9E9E9E;font-weight:500;margin-top:3px;letter-spacing:.02em">Shift Management System</div>
-        </div>
+<!-- ── 로그인 (전체화면 PIN) ── -->
+<div id="auth-overlay" class="fixed inset-0 z-[9000]" style="background:#fff;display:flex;flex-direction:column">
+    <!-- 중앙: 로고 + PIN 점 + 이름 선택 -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+        <div style="font-size:36px;font-weight:800;color:#D32F2F;letter-spacing:-2px;line-height:1">CGV</div>
+        <div style="font-size:12px;color:#9E9E9E;font-weight:500;margin-top:4px;letter-spacing:.02em">Shift Management System</div>
+        <div id="auth-pin-boxes" class="flex justify-center" style="gap:15px;margin:36px 0 24px"></div>
+        <div style="font-size:14px;color:#616161;font-weight:600">개인 PIN 번호를 입력하세요</div>
+        <div id="auth-pin-desc" style="font-size:11px;color:#BDBDBD;margin-top:3px">이름을 먼저 선택해 주세요</div>
+        <button id="auth-name-btn" onclick="openNameSheet()" style="margin-top:22px;display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:999px;background:#F5F5F5;border:none;font-size:14px;font-weight:600;color:#616161;cursor:pointer">👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span></button>
+        <p id="auth-pin-error" class="text-red-500 text-xs font-bold text-center" style="margin-top:14px;min-height:1.2rem"></p>
+        <input type="tel" id="auth-pin-input" maxlength="5" inputmode="numeric" pattern="[0-9]*"
+               class="opacity-0 absolute w-0 h-0" oninput="onPinInput()" autocomplete="off">
+        <p id="auth-pin-name" style="display:none"></p>
+    </div>
+    <!-- 하단: 다이얼 패드 -->
+    <div id="auth-numpad" class="grid grid-cols-3" style="row-gap:10px;padding:0 36px calc(26px + env(safe-area-inset-bottom));max-width:340px;margin:0 auto;width:100%"></div>
+</div>
 
-        <!-- Step 1: 이름 선택 -->
-        <div id="auth-step-1" class="px-5 py-5">
-            <p class="text-[11px] font-black text-slate-400 mb-3 text-center uppercase tracking-wider">이름을 선택하세요</p>
-            <div id="auth-name-grid" class="grid grid-cols-3 gap-2 mb-4" style="max-height:220px;overflow-y:auto">
-                <div class="col-span-3 text-center py-6 text-slate-400 text-sm font-bold">로딩 중...</div>
-            </div>
-            <div class="border-t border-slate-100 pt-4">
-                <button onclick="showAdminLogin()" class="w-full btn-c2 btn-c2-ghost py-3.5 rounded-2xl text-sm active:scale-95 transition-all">🔐 관리자 로그인</button>
-            </div>
+<!-- 이름 선택 시트 -->
+<div id="auth-name-sheet" class="fixed inset-0 z-[9100]" style="display:none">
+    <div onclick="closeNameSheet()" style="position:absolute;inset:0;background:rgba(15,23,42,.4)"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:20px 20px 0 0;max-height:80vh;overflow-y:auto;overscroll-behavior:contain;padding:16px 16px calc(20px + env(safe-area-inset-bottom))">
+        <div class="flex items-center justify-between" style="margin-bottom:14px">
+            <span style="font-size:17px;font-weight:700">이름 선택</span>
+            <button onclick="closeNameSheet()" style="width:30px;height:30px;border-radius:50%;background:#F5F5F5;border:none;color:#9E9E9E;font-size:16px">×</button>
         </div>
-
-        <!-- Step 2: PIN 입력 -->
-        <div id="auth-step-2" class="hidden px-5 py-5" style="display:none">
-            <div class="flex items-center gap-3 mb-6">
-                <button onclick="backToNameSelect()" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-600 text-lg active:scale-95 transition-all">←</button>
-                <div>
-                    <p class="font-black text-slate-900 text-base" id="auth-pin-name"></p>
-                    <p class="text-[11px] text-slate-400 font-bold" id="auth-pin-desc"></p>
-                </div>
-            </div>
-            <!-- PIN 박스 -->
-            <div id="auth-pin-boxes" class="flex gap-3 justify-center mb-2"></div>
-            <!-- 숨긴 입력 -->
-            <input type="tel" id="auth-pin-input" maxlength="5" inputmode="numeric" pattern="[0-9]*"
-                   class="opacity-0 absolute w-0 h-0" oninput="onPinInput()" autocomplete="off">
-            <p id="auth-pin-error" class="text-red-500 text-xs font-bold text-center mb-3 min-h-[1.2rem]"></p>
-            <!-- 숫자패드 -->
-            <div class="grid grid-cols-3 gap-2 mb-2" id="auth-numpad"></div>
+        <div id="auth-name-grid" class="grid grid-cols-3 gap-2">
+            <div class="col-span-3 text-center py-6 text-slate-400 text-sm font-bold">로딩 중...</div>
         </div>
+        <button onclick="showAdminLogin()" style="width:100%;margin-top:14px;padding:12px;border-radius:12px;background:#fff;border:1px solid #E0E0E0;font-size:13px;font-weight:600;color:#616161">🔐 관리자 로그인</button>
     </div>
 </div>
 

@@ -385,6 +385,12 @@
             }).join('');
         }
         function loadMisoForAuth() {
+            // 로그인 화면 초기화: 이름 선택 전에도 빈 PIN 점 + 다이얼 패드가 보이도록
+            authSelectedName = ''; authIsAdmin = false;
+            renderPinBoxes('', PIN_LENGTH_STAFF);
+            buildNumpad('auth-numpad', PIN_LENGTH_STAFF, 'numpadPress');
+            var _nb = document.getElementById('auth-name-btn'); if (_nb) _nb.innerHTML = '👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span>';
+            var _dsc = document.getElementById('auth-pin-desc'); if (_dsc) _dsc.innerText = '이름을 먼저 선택해 주세요';
             var CACHE_TTL = 60 * 60 * 1000; // 1시간
             // 1) 지난 세션의 명단(localStorage)이 있으면 즉시 표시 → 콜드/네트워크 지연에도 '로드 실패' 안 뜸
             try {
@@ -423,34 +429,30 @@
                     });
             })(0);
         }
-        function selectAuthName(name) {
-            authSelectedName = name; authIsAdmin = false;
-            showPinStep(name + ' 님', PIN_LENGTH_STAFF + '자리 PIN 입력');
-        }
-        function showAdminLogin() {
-            authSelectedName = ''; authIsAdmin = true;
-            showPinStep('관리자', PIN_LENGTH_ADMIN + '자리 PIN 입력');
-        }
-        function backToNameSelect() {
-            document.getElementById('auth-step-2').style.display = 'none';
-            document.getElementById('auth-step-1').style.display = 'block';
-            var i = document.getElementById('auth-pin-input'); if (i) i.value = '';
-            renderPinBoxes('', PIN_LENGTH_STAFF);
-        }
-        function showPinStep(nameText, descText) {
-            document.getElementById('auth-step-1').style.display = 'none';
-            document.getElementById('auth-step-2').style.display = 'block';
-            document.getElementById('auth-pin-name').innerText = nameText;
-            document.getElementById('auth-pin-desc').innerText = descText;
+        function openNameSheet() { var s = document.getElementById('auth-name-sheet'); if (s) s.style.display = 'block'; }
+        function closeNameSheet() { var s = document.getElementById('auth-name-sheet'); if (s) s.style.display = 'none'; }
+        function _prepPin(btnLabel, descText) {
+            closeNameSheet();
+            var btn = document.getElementById('auth-name-btn'); if (btn) btn.innerHTML = btnLabel;
+            var dsc = document.getElementById('auth-pin-desc'); if (dsc) dsc.innerText = descText;
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
-            var i = document.getElementById('auth-pin-input');
-            if (i) { i.value = ''; i.maxLength = len; }
+            var i = document.getElementById('auth-pin-input'); if (i) { i.value = ''; i.maxLength = len; }
             renderPinBoxes('', len);
-            document.getElementById('auth-pin-error').innerText = '';
+            var er = document.getElementById('auth-pin-error'); if (er) er.innerText = '';
             buildNumpad('auth-numpad', len, 'numpadPress');
             setTimeout(function() { var inp = document.getElementById('auth-pin-input'); if (inp) inp.focus(); }, 100);
         }
+        function selectAuthName(name) {
+            authSelectedName = name; authIsAdmin = false;
+            _prepPin('👤 ' + name + ' <span style="font-size:11px;color:#9E9E9E">▾</span>', PIN_LENGTH_STAFF + '자리 PIN을 입력하세요');
+        }
+        function showAdminLogin() {
+            authSelectedName = ''; authIsAdmin = true;
+            _prepPin('🔐 관리자 <span style="font-size:11px;color:#9E9E9E">▾</span>', PIN_LENGTH_ADMIN + '자리 관리자 PIN을 입력하세요');
+        }
+        function backToNameSelect() { openNameSheet(); }
         function onPinInput() {
+            if (!authSelectedName && !authIsAdmin) { openNameSheet(); return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             var val = (i.value || '').replace(/\D/g,'').substring(0, len);
@@ -458,6 +460,7 @@
             if (val.length === len) submitPin();
         }
         function numpadPress(key) {
+            if (!authSelectedName && !authIsAdmin) { openNameSheet(); return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             if (key === 'x') i.value = i.value.slice(0,-1);
