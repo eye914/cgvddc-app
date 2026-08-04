@@ -459,7 +459,28 @@
             i.value = val; renderPinBoxes(val, len);
             if (val.length === len) submitPin();
         }
+        // 핀 키패드 효과음 (아이폰 잠금화면 키 누름 느낌) — Web Audio 합성 + 진동
+        var _pinAudioCtx = null;
+        function playKeyTick() {
+            try {
+                var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+                if (!_pinAudioCtx) _pinAudioCtx = new AC();
+                if (_pinAudioCtx.state === 'suspended') _pinAudioCtx.resume();
+                var t = _pinAudioCtx.currentTime;
+                var osc = _pinAudioCtx.createOscillator();
+                var g = _pinAudioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1180, t);
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.exponentialRampToValueAtTime(0.2, t + 0.004);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
+                osc.connect(g); g.connect(_pinAudioCtx.destination);
+                osc.start(t); osc.stop(t + 0.06);
+            } catch (e) {}
+            if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+        }
         function numpadPress(key) {
+            playKeyTick();
             if (!authSelectedName && !authIsAdmin) { openNameSheet(); return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
@@ -567,6 +588,7 @@
             if (val.length === PIN_LENGTH_ADMIN) submitAdminModalPin();
         }
         function adminModalNumpad(key) {
+            playKeyTick();
             var i = document.getElementById('admin-modal-pin-input');
             if (key==='x') i.value = i.value.slice(0,-1);
             else if (i.value.length < PIN_LENGTH_ADMIN) i.value += key;
