@@ -1364,6 +1364,8 @@ function showKakaoModal(text, forced) {
         }
 
         function submitNewTrade() {
+            // \uC911\uBCF5 \uC804\uC1A1(\uC5F0\uD0C0) \uBC29\uC9C0 \u2014 \uC9C4\uD589 \uC911\uC774\uBA74 \uBB34\uC2DC. 10\uCD08 \uC9C0\uB098\uBA74 \uC790\uB3D9 \uD574\uC81C(\uC548\uC804\uC7A5\uCE58).
+            if (window._tradeSubmitting && (Date.now() - window._tradeSubmitting) < 10000) return;
             if (!currentUser){ alert("\uC0C1\uB2E8\uC5D0\uC11C \uBCF8\uC778 \uC774\uB984\uC744 \uBA3C\uC800 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
             if (checkPenaltyStatus(currentUser)){ alert("\uADFC\uD0DC \uD398\uB110\uD2F0 \uC801\uC6A9 - \uD604\uC7AC \uC2DC\uC2A4\uD15C \uC774\uC6A9 \uAD8C\uD55C\uC774 \uC815\uC9C0\uB41C \uC0C1\uD0DC\uC785\uB2C8\uB2E4."); return; }
             var type = document.getElementById("trade-type-input").value;
@@ -1378,8 +1380,11 @@ function showKakaoModal(text, forced) {
 
             // \u2605 \uBCF4\uB0BC \uADFC\uBB34(OUT)\uAC00 \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uC640 \uC77C\uCE58\uD558\uB294\uC9C0 \uAC80\uC99D
             var _outCode = String(rCode).split(" ")[0];
+            window._tradeSubmitting = Date.now();   // \uC7A0\uAE08 \uC2DC\uC791(\uC5F0\uD0C0 \uBC29\uC9C0)
+            showLoader(true, "\uD655\uC778 \uC911...");   // \uC989\uC2DC \uD53C\uB4DC\uBC31 \u2192 \uBC18\uC751 \uC5C6\uC5B4 \uBCF4\uC5EC \uC7AC\uD0ED\uD558\uB294 \uAC83 \uBC29\uC9C0
             _fetchActualShifts(currentUser, rDate, function(act){
                 if (act.published && act.mine.length > 0 && !act.mine.some(function(m){ return m.code === _outCode; })) {
+                    window._tradeSubmitting = 0; showLoader(false);
                     alert("\uADF8 \uB0A0(" + rDate + ") \uBCF8\uC778 \uC2E4\uC81C \uADFC\uBB34\uB294 [" + act.mine.map(function(m){ return m.code; }).join(", ") + "] \uC785\uB2C8\uB2E4.\n\uBCF4\uB0BC \uADFC\uBB34(OUT)\uB294 \uC2E4\uC81C \uADFC\uBB34\uC640 \uAC19\uC544\uC57C \uD569\uB2C8\uB2E4. (\uC120\uD0DD: " + _outCode + ")");
                     return;
                 }
@@ -1391,17 +1396,17 @@ function showKakaoModal(text, forced) {
             var dShiftData = "";
             if (type === "swap") {
                 var dates = Object.keys(wishData).sort();
-                if (!dates.length){ alert("\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 \uB0A0\uC9DC(IN)\uB97C \uD558\uB098 \uC774\uC0C1 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
+                if (!dates.length){ window._tradeSubmitting = 0; showLoader(false); alert("\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 \uB0A0\uC9DC(IN)\uB97C \uD558\uB098 \uC774\uC0C1 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
                 var lines = [];
                 for (var i = 0; i < dates.length; i++) {
                     var d = dates[i]; var data = wishData[d];
-                    if (!data.timeGroups.length){ alert("["+d+"]\uC758 \uC2DC\uAC04\uB300\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
-                    if (data.timeGroups.indexOf("ALL") === -1 && !data.positions.length){ alert("["+d+"]\uC758 \uD76C\uB9DD \uD3EC\uC9C0\uC158\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
+                    if (!data.timeGroups.length){ window._tradeSubmitting = 0; showLoader(false); alert("["+d+"]\uC758 \uC2DC\uAC04\uB300\uB97C \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
+                    if (data.timeGroups.indexOf("ALL") === -1 && !data.positions.length){ window._tradeSubmitting = 0; showLoader(false); alert("["+d+"]\uC758 \uD76C\uB9DD \uD3EC\uC9C0\uC158\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694!"); return; }
                     var timeText = "";
                     if (data.timeGroups.indexOf("ALL") > -1) {
                         timeText = "\uC804\uCCB4 \uC2DC\uAC04 \uBB34\uAD00 (ALL)";
                     } else if (!data.codes.length) {
-                        alert("["+d+"]\uC758 \uC138\uBD80 \uC2DC\uAC04\uC744 1\uAC1C \uC774\uC0C1 \uC120\uD0DD\uD558\uAC70\uB098 \uC804\uCCB4 \uC120\uD0DD\uC744 \uB20C\uB7EC\uC8FC\uC138\uC694!"); return;
+                        window._tradeSubmitting = 0; showLoader(false); alert("["+d+"]\uC758 \uC138\uBD80 \uC2DC\uAC04\uC744 1\uAC1C \uC774\uC0C1 \uC120\uD0DD\uD558\uAC70\uB098 \uC804\uCCB4 \uC120\uD0DD\uC744 \uB20C\uB7EC\uC8FC\uC138\uC694!"); return;
                     } else {
                         var allPoss = [];
                         data.timeGroups.forEach(function(g){ var codes = g === "N" ? getAvailableNCodes(d) : SHIFT_CODES[g]; codes.forEach(function(ii){ allPoss.push(ii.code+" ("+ii.time+")"); }); });
@@ -1438,6 +1443,7 @@ function showKakaoModal(text, forced) {
             if (typeof google !== "undefined" && google.script) {
                 google.script.run
                     .withSuccessHandler(function(){
+                        window._tradeSubmitting = 0;
                         showLoader(false);
                         fetchData(); clearReqData(); clearWishData();
                         showKakaoModal(shareText);
@@ -1447,11 +1453,13 @@ function showKakaoModal(text, forced) {
                         }, 800);
                     })
                     .withFailureHandler(function(e){
+                        window._tradeSubmitting = 0;
                         showLoader(false);
                         alert("\uB4F1\uB85D \uC911 \uC624\uB958: "+e.message);
                     })
                     .saveTradeToDB(nT);
             } else {
+                window._tradeSubmitting = 0;
                 trades.unshift(nT);
                 showLoader(false);
                 fetchData(); clearReqData(); clearWishData();
