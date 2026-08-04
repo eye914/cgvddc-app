@@ -42,9 +42,29 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { urgent, ...tradeBody } = body; // urgent는 DB 컬럼 아님 — 푸시 문구용
+    const snake = toSnake(tradeBody);
+
+    // 서버측 중복 방어: 같은 사람·같은 근무(OUT)·같은 유형이 최근 60초 내 이미 등록됐으면
+    //   새로 만들지 않고 기존 공고를 그대로 반환(멱등) + 중복 푸시도 생략 → 연타/재전송 시 중복 차단
+    if (snake.req_name && snake.shift_date) {
+      const sinceIso = new Date(Date.now() - 60_000).toISOString();
+      const { data: dup } = await supabaseAdmin
+        .from('trades')
+        .select('*')
+        .eq('req_name', snake.req_name)
+        .eq('shift_date', snake.shift_date)
+        .eq('req_pos', snake.req_pos ?? '')
+        .eq('trade_type', snake.trade_type ?? '')
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (dup) return NextResponse.json(toCamel(dup));
+    }
+
     const { data, error } = await supabaseAdmin
       .from('trades')
-      .insert([toSnake(tradeBody)])
+      .insert([snake])
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
