@@ -26,3 +26,9 @@ button:active, [role="button"]:active, .tab-btn:active { transform: scale(.94); 
 #nm-sheet-ov { animation: cgvFadeIn .22s ease; }
 #nm-sheet { animation: cgvSheetUp .36s cubic-bezier(.22, .61, .36, 1); will-change: transform; }
 #nm-zoom { animation: cgvFadeIn .2s ease; }
+
+/* 로그인(잠금해제) → 메인 진입: 로그인 화면 줌인+페이드아웃, 메인은 살짝 줌아웃 리빌 */
+@keyframes cgvUnlock { from { transform: scale(1); opacity: 1; } to { transform: scale(1.35); opacity: 0; } }
+#auth-overlay.cgv-unlocking { animation: cgvUnlock .5s cubic-bezier(.4, 0, .2, 1) forwards; transform-origin: center center; }
+@keyframes cgvReveal { from { transform: scale(1.05); opacity: .3; } to { transform: scale(1); opacity: 1; } }
+.cgv-reveal { animation: cgvReveal .52s cubic-bezier(.22, .61, .36, 1) both; transform-origin: center center; }

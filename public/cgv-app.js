@@ -508,8 +508,9 @@
         }
         function authSuccess(r) {
             var ov = document.getElementById('auth-overlay');
-            ov.style.opacity = '0';
-            setTimeout(function(){ ov.style.display = 'none'; }, 400);
+            ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
+            var _appW = document.getElementById('app-content'); if (_appW) _appW.classList.add('cgv-reveal');
+            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); if (_appW) _appW.classList.remove('cgv-reveal'); }, 560);
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
@@ -523,7 +524,7 @@
                 try { localStorage.setItem('cgv_last_name', authSelectedName); } catch(e) {}
                 selectUser(authSelectedName);
             }
-            fetchData();
+            fetchData(true);   // 로그인 직후엔 전체화면 로더 없이 목록만 조용히 로딩
             if (window.EV && EV.homeBoard) EV.homeBoard();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
             if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
@@ -735,7 +736,7 @@ function showKakaoModal(text, forced) {
                         loadMisoForAuth();
                     }
                 }, 15000);
-                fetchData();
+                fetchData(true);   // 이미 로그인 상태로 앱 재진입 시에도 전체화면 로더 없이
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
             } else {
@@ -1807,8 +1808,13 @@ function showKakaoModal(text, forced) {
 
         function closeModal(){ document.getElementById("support-modal").style.display = "none"; }
 
-        function fetchData() {
-            showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
+        function fetchData(silent) {
+            if (silent) {
+                var _mb = document.getElementById('main-list-board');
+                if (_mb) _mb.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:44px 20px;font-size:13px;font-weight:600">\uBD88\uB7EC\uC624\uB294 \uC911\u2026</div>';
+            } else {
+                showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
+            }
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
                 var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
