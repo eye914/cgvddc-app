@@ -470,16 +470,18 @@
             el.innerHTML = '';
             for (var i=0; i<len; i++) {
                 var f = i < val.length;
-                el.innerHTML += '<div class="w-11 h-14 border-2 rounded-2xl flex items-center justify-center transition-all ' + (f?'border-slate-900 bg-slate-900':'border-slate-300 bg-slate-50') + '">' + (f?'<div class="w-3 h-3 bg-white rounded-full"></div>':'') + '</div>';
+                el.innerHTML += '<div style="width:15px;height:15px;border-radius:50%;transition:all .15s;' + (f?'background:#D32F2F;border:1px solid #D32F2F':'background:transparent;border:1.5px solid #D1D1D6') + '"></div>';
             }
         }
         function buildNumpad(containerId, pinLen, pressFunc) {
             var pad = document.getElementById(containerId); if (!pad) return;
             var keys = ['1','2','3','4','5','6','7','8','9','','0','x'];
+            var letters = {'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ'};
             pad.innerHTML = keys.map(function(k) {
                 if (!k) return '<div></div>';
-                var label = k === 'x' ? '⌫' : k;
-                return '<button onclick="'+pressFunc+'(\''+k+'\')" class="py-4 rounded-2xl font-black text-xl active:scale-95 transition-all ' + (k==='x'?'bg-slate-200 text-slate-600':'bg-slate-50 border-2 border-slate-200 text-slate-800') + '">' + label + '</button>';
+                if (k === 'x') return '<button onclick="'+pressFunc+'(\'x\')" style="display:flex;align-items:center;justify-content:center;width:70px;height:70px;margin:0 auto;background:transparent;border:none;font-size:22px;color:#616161;cursor:pointer">⌫</button>';
+                var lt = letters[k] ? '<span style="font-size:8px;letter-spacing:1.5px;color:#9E9E9E;font-weight:700;margin-top:-1px">'+letters[k]+'</span>' : '';
+                return '<button onclick="'+pressFunc+'(\''+k+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:70px;height:70px;margin:0 auto;background:#F2F2F2;border:none;border-radius:50%;color:#212121;cursor:pointer;transition:all .1s"><span style="font-size:26px;font-weight:400;line-height:1">'+k+'</span>'+lt+'</button>';
             }).join('');
         }
         function submitPin() {
