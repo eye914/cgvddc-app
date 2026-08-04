@@ -452,7 +452,7 @@
         }
         function backToNameSelect() { openNameSheet(); }
         function onPinInput() {
-            if (!authSelectedName && !authIsAdmin) { openNameSheet(); return; }
+            if (!authSelectedName && !authIsAdmin) { return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             var val = (i.value || '').replace(/\D/g,'').substring(0, len);
@@ -461,27 +461,51 @@
         }
         // 핀 키패드 효과음 (아이폰 잠금화면 키 누름 느낌) — Web Audio 합성 + 진동
         var _pinAudioCtx = null;
-        function playKeyTick() {
+        function _ensureAudio() {
             try {
-                var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+                var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
                 if (!_pinAudioCtx) _pinAudioCtx = new AC();
                 if (_pinAudioCtx.state === 'suspended') _pinAudioCtx.resume();
-                var t = _pinAudioCtx.currentTime;
-                var osc = _pinAudioCtx.createOscillator();
-                var g = _pinAudioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(1180, t);
-                g.gain.setValueAtTime(0.0001, t);
-                g.gain.exponentialRampToValueAtTime(0.2, t + 0.004);
-                g.gain.exponentialRampToValueAtTime(0.0001, t + 0.055);
-                osc.connect(g); g.connect(_pinAudioCtx.destination);
-                osc.start(t); osc.stop(t + 0.06);
-            } catch (e) {}
+                return _pinAudioCtx;
+            } catch (e) { return null; }
+        }
+        // iOS 오디오 잠금 해제: 첫 사용자 터치에 무음 버퍼 1회 재생 → 이후 효과음이 확실히 남
+        (function () {
+            function _unlock() {
+                var c = _ensureAudio();
+                if (c) { try { var b = c.createBuffer(1, 1, 22050); var s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {} }
+                document.removeEventListener('touchend', _unlock, true);
+                document.removeEventListener('pointerdown', _unlock, true);
+            }
+            document.addEventListener('touchend', _unlock, true);
+            document.addEventListener('pointerdown', _unlock, true);
+        })();
+        function playKeyTick() {
+            var c = _ensureAudio();
+            if (c) {
+                try {
+                    var t = c.currentTime + 0.001;
+                    var osc = c.createOscillator();
+                    var g = c.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(1180, t);
+                    g.gain.setValueAtTime(0.0001, t);
+                    g.gain.exponentialRampToValueAtTime(0.28, t + 0.004);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+                    osc.connect(g); g.connect(c.destination);
+                    osc.start(t); osc.stop(t + 0.07);
+                } catch (e) {}
+            }
             if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
         }
+        function _hintSelectName() {
+            var b = document.getElementById('auth-name-btn'); if (!b) return;
+            b.style.transition = 'transform .07s';
+            [0, -6, 6, -4, 4, 0].forEach(function (x, i) { setTimeout(function () { b.style.transform = 'translateX(' + x + 'px)'; }, i * 55); });
+        }
         function numpadPress(key) {
+            if (!authSelectedName && !authIsAdmin) { _hintSelectName(); return; }  // 이름 선택 전엔 번호판 무시(시트 안 열림)
             playKeyTick();
-            if (!authSelectedName && !authIsAdmin) { openNameSheet(); return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             if (key === 'x') i.value = i.value.slice(0,-1);
@@ -531,7 +555,8 @@
             var ov = document.getElementById('auth-overlay');
             ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
             var _appW = document.getElementById('app-content'); if (_appW) _appW.classList.add('cgv-reveal');
-            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); if (_appW) _appW.classList.remove('cgv-reveal'); }, 560);
+            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 540);
+            setTimeout(function(){ if (_appW) _appW.classList.remove('cgv-reveal'); }, 700);
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
