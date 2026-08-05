@@ -27,10 +27,20 @@ async function computeAuto(period: string) {
     const { data: sigs } = await supabaseAdmin.from('notice_signatures').select('name, notice_id').in('notice_id', nIds);
     (sigs ?? []).forEach((r: any) => { signedMap[r.name] = (signedMap[r.name] || 0) + 1; });
   }
-  return { lateMap, absentMap, noticeReq: nIds.length, signedMap };
+  // 대타/교대 수락(적극적 참여): 승인완료된 공고 중 수락자(sub_name)가 그 사람이고, 근무일이 해당 월인 건 수
+  const { data: trades } = await supabaseAdmin.from('trades').select('sub_name, status, shift_date').eq('status', '승인완료');
+  const subMap: Record<string, number> = {};
+  const pm = period.split('-')[1]; // "08"
+  (trades ?? []).forEach((t: any) => {
+    const nm = String(t.sub_name || '').trim();
+    if (!nm || nm === '모집중') return;
+    const m = String(t.shift_date || '').match(/(\d{1,2})\s*\//);
+    if (m && String(Number(m[1])).padStart(2, '0') === pm) subMap[nm] = (subMap[nm] || 0) + 1;
+  });
+  return { lateMap, absentMap, noticeReq: nIds.length, signedMap, subMap };
 }
 function ctxFor(name: string, a: any) {
-  return { lateN: a.lateMap[name] || 0, absentN: a.absentMap[name] || 0, noticeReq: a.noticeReq, noticeSigned: a.signedMap[name] || 0 };
+  return { lateN: a.lateMap[name] || 0, absentN: a.absentMap[name] || 0, noticeReq: a.noticeReq, noticeSigned: a.signedMap[name] || 0, subN: (a.subMap && a.subMap[name]) || 0 };
 }
 // 동점 처리: 총점↓ → 결근↑(적은) → 지각↑(적은) → 공지서명률↓(높은) → 이름
 function tieCmp(x: any, y: any): number {

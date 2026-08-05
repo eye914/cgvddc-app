@@ -45,12 +45,18 @@ export function autoScore(kind: CriKind, ctx: { lateN: number; absentN: number; 
   return 0;
 }
 
+// 대타/교대 수락 보너스(적극적 참여): 1건당 +3점, 최대 +12점
+export const SUB_BONUS_PER = 3;
+export const SUB_BONUS_CAP = 12;
+export function subBonus(count: number): number { return Math.min((count || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
+
 // 한 사람의 총점 계산 (grades = {kakao,service,active,rule,groom}, ctx = 자동값)
-export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number }): number {
+export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number }): number {
   let total = 0;
   for (const c of CRITERIA) {
     const s = c.kind === 'letter' ? letterScore(grades[c.key]) : autoScore(c.kind, ctx);
     total += s * c.weight / 100;
   }
-  return Math.round(total);
+  total += subBonus(ctx.subN || 0);   // 대타 수락 = 적극적 참여 보너스
+  return Math.min(100, Math.round(total));
 }
