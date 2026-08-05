@@ -3297,15 +3297,17 @@ function showKakaoModal(text, forced) {
                 parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
             });
             if (!parts.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
-            var combined = parts.map(function(p, i) { return (i > 0 ? '<div style="page-break-before:always;height:0"></div>' : '') + p; }).join('');
-            var folder = String(month).replace(/[\\/:*?"<>|]/g, '-');
+            var combined = parts.map(function(p, i) { return (i > 0 ? '<div style="page-break-before:always"></div>' : '') + p; }).join('');
+            // 저장 폴더 경로: cgv근태서류/2026년/8월  (month이 "YYYY-MM"이면 파싱, 아니면 그대로)
+            var _mm = String(month).match(/(\d{4})[-.\/ ]*(\d{1,2})/);
+            var folder = _mm ? ('cgv근태서류/' + _mm[1] + '년/' + Number(_mm[2]) + '월') : ('cgv근태서류/' + String(month).replace(/[\\:*?"<>|]/g, '-'));
             showLoader(true, 'PDF 만드는 중...');
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
-                holder.style.cssText = 'position:fixed;left:-99999px;top:0;z-index:-1';
-                holder.innerHTML = '<div style="width:210mm;padding:16mm 14mm;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111">' + combined + '</div>';
+                holder.style.cssText = 'position:absolute;left:-10000px;top:0;background:#fff';
+                holder.innerHTML = '<div style="width:794px;padding:40px 34px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111">' + combined + '</div>';
                 document.body.appendChild(holder);
-                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
                 window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
                     if (holder.parentNode) document.body.removeChild(holder);
                     var base64 = String(datauri).split(',')[1] || '';
