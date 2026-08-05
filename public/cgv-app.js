@@ -804,8 +804,10 @@ function showKakaoModal(text, forced) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
                     sessionStorage.removeItem("cgv_sched_pos_map_v3");
-                    fetchData();
-                    setTimeout(function(){ ptrActive = false; }, 2000);
+                    // 화면(디자인)까지 최신으로 — SW 갱신 후 전체 리로드
+                    try { if (navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){}); } catch(e){}
+                    showLoader(true, "최신 버전 불러오는 중…");
+                    setTimeout(function(){ location.reload(); }, 250);
                 }
             }, {passive:true});
         };
