@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendPushToNames, sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
 
+export const maxDuration = 30; // 승인 시 GAS 시트 적용이 느릴 수 있어 여유 확보
+
 const toSnake = (obj: Record<string, any>) => {
   const map: Record<string, string> = {
     reqName: 'req_name', reqPos: 'req_pos',
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
 }
 
 // GAS 호출 + 응답 검증 헬퍼
-async function callGASWithCheck(action: string, params: any[]): Promise<{ ok: boolean; msg?: string; raw?: any }> {
+async function callGASWithCheck(action: string, params: any[]): Promise<{ ok: boolean; parseError?: boolean; msg?: string; raw?: any }> {
   const GAS_URL = process.env.GAS_URL;
   if (!GAS_URL) return { ok: false, msg: 'GAS_URL 미설정' };
   try {
@@ -108,7 +110,8 @@ async function callGASWithCheck(action: string, params: any[]): Promise<{ ok: bo
     });
     const txt = await r.text();
     let parsed: any;
-    try { parsed = JSON.parse(txt); } catch { return { ok: false, msg: 'GAS 응답 파싱 실패: ' + txt.substring(0, 200) }; }
+    // doPost 는 성공/실패 모두 JSON 반환 → 파싱 실패는 전송/플랫폼 문제(느린 실행 등). 로직 실패와 구분해서 표시.
+    try { parsed = JSON.parse(txt); } catch { return { ok: false, parseError: true, msg: 'GAS 응답 파싱 실패: ' + txt.substring(0, 200) }; }
     if (!parsed?.success) return { ok: false, msg: parsed?.error || 'GAS success=false', raw: parsed };
     const result = parsed.result;
     // applySwapFromData 같은 경우 result.out/result.in 형태로 응답
@@ -170,12 +173,15 @@ export async function PATCH(req: NextRequest) {
         subHours: hoursMap[subName] ?? '5.5',
       };
       const gasResult = await callGASWithCheck('applySwapFromData', [previewRow]);
-      if (!gasResult.ok) {
+      // 명확한 GAS 실패(success=false / result.error / out·in 실패)만 차단한다.
+      // '응답 파싱 실패'는 GAS가 느려 전송 단계에서 비-JSON을 받은 경우로, 시트 적용은 이미 됐을 가능성이 높아 승인을 진행한다.
+      if (!gasResult.ok && !gasResult.parseError) {
         return NextResponse.json(
           { error: `시트 적용 실패: ${gasResult.msg}. 시트가 존재하는지 확인 후 다시 승인해 주세요.`, gasDetail: gasResult.raw },
           { status: 409 }
         );
       }
+      if (gasResult.parseError) console.warn('[trades approve] GAS 응답 파싱 실패 → 시트 적용된 것으로 보고 승인 진행:', gasResult.msg);
     }
 
     const { data, error } = await supabaseAdmin
