@@ -3294,15 +3294,20 @@ function showKakaoModal(text, forced) {
             if (!items.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
             var folder = String(month).replace(/[\\/:*?"<>|]/g, '-');
             showLoader(true, '드라이브에 PDF 저장 중...');
-            google.script.run
-                .withSuccessHandler(function(res) {
-                    showLoader(false);
+            var _tok = sessionStorage.getItem('cgv_token') || '';
+            var _ctl = new AbortController();
+            var _to = setTimeout(function(){ _ctl.abort(); }, 58000); // 최대 58초 후 중단(무한대기 방지)
+            fetch('/api/gas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok }, body: JSON.stringify({ action: 'saveFormsPdfToDrive', params: [folder, items] }), signal: _ctl.signal })
+                .then(function(r) { return r.json(); })
+                .then(function(res) {
+                    clearTimeout(_to); showLoader(false);
                     if (res && res.ok) {
                         if (confirm('✅ 구글드라이브에 ' + res.saved + '건 저장 완료' + (res.failed ? (' · 실패 ' + res.failed + '건') : '') + '.\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
-                    } else { alert('드라이브 저장 실패. 시트 스크립트가 최신 버전인지 확인해 주세요.'); }
+                    } else {
+                        alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormsPdfToDrive 함수가 추가·재배포됐는지 확인해 주세요)');
+                    }
                 })
-                .withFailureHandler(function(e) { showLoader(false); alert('드라이브 저장 오류: ' + (e && e.message ? e.message : e) + '\n(시트 웹앱에 saveFormsPdfToDrive 함수가 추가·재배포됐는지 확인해 주세요)'); })
-                .saveFormsPdfToDrive(folder, items);
+                .catch(function(e) { clearTimeout(_to); showLoader(false); alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
         }
 
         function cancelFormReq(id) {
