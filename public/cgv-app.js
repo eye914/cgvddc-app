@@ -3310,22 +3310,21 @@ function showKakaoModal(text, forced) {
                 parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
             });
             if (!parts.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
-            var combined = parts.map(function(p, i) { return (i > 0 ? '<div style="page-break-before:always"></div>' : '') + p; }).join('');
+            // 각 서류를 A4 한 장으로 감싸 상(제목)·중(본문)·하(서명·날짜) 분산 배치 (여러 건이어도 장마다 동일 적용)
+            var _pageStyle = 'width:794px;min-height:1123px;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111;display:flex;flex-direction:column;justify-content:space-between';
+            var combined = parts.map(function(p, i) { return '<div style="' + _pageStyle + (i > 0 ? ';page-break-before:always' : '') + '">' + p + '</div>'; }).join('');
             // 저장 폴더 경로: cgv근태서류/2026년/8월  (month이 "YYYY-MM"이면 파싱, 아니면 그대로)
             var _mm = String(month).match(/(\d{4})[-.\/ ]*(\d{1,2})/);
             var folder = _mm ? ('cgv근태서류/' + _mm[1] + '년/' + Number(_mm[2]) + '월') : ('cgv근태서류/' + String(month).replace(/[\\:*?"<>|]/g, '-'));
             showLoader(true, 'PDF 만드는 중...');
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
-                holder.style.cssText = 'position:absolute;left:-10000px;top:0;background:#fff';
-                var single = parts.length === 1; // 한 장이면 A4 높이 확보 + 상(제목)·중(본문)·하(서명·날짜) 분산 배치
-                var innerStyle = 'width:794px;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111'
-                    + (single ? ';min-height:1123px;display:flex;flex-direction:column;justify-content:space-between' : '');
-                holder.innerHTML = '<div style="' + innerStyle + '">' + combined + '</div>';
+                holder.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px;background:#fff';
+                holder.innerHTML = combined;
                 document.body.appendChild(holder);
                 _waitImages(holder, function() {
                 var opt = { margin: 0, image: { type: 'jpeg', quality: 0.7 }, html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }, pagebreak: { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr'] } };
-                window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
+                window.html2pdf().set(opt).from(holder).outputPdf('datauristring').then(function(datauri) {
                     if (holder.parentNode) document.body.removeChild(holder);
                     var base64 = String(datauri).split(',')[1] || '';
                     function p2(n) { return ('0' + n).slice(-2); }
