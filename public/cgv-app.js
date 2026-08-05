@@ -3289,20 +3289,18 @@ function showKakaoModal(text, forced) {
             s.onerror = function() { showLoader(false); alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
             document.head.appendChild(s);
         }
-        // 캡처 전 모든 이미지(서명·관리자도장) 로딩 대기 → PDF에 서명 누락 방지
+        // 캡처 전 모든 이미지(서명·관리자도장)를 완전히 디코딩까지 대기 → PDF에 서명 누락 방지
         function _waitImages(root, cb) {
-            var imgs = root.querySelectorAll('img');
-            var pending = 0, done = false;
-            function finish() { if (done) return; done = true; cb(); }
-            for (var i = 0; i < imgs.length; i++) {
-                if (!imgs[i].complete || imgs[i].naturalWidth === 0) {
-                    pending++;
-                    imgs[i].addEventListener('load', function () { if (--pending <= 0) finish(); });
-                    imgs[i].addEventListener('error', function () { if (--pending <= 0) finish(); });
-                }
-            }
-            if (pending === 0) finish();
-            setTimeout(finish, 2000); // 안전장치
+            var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
+            var done = false;
+            function finish() { if (done) return; done = true; setTimeout(cb, 150); } // 페인트 여유
+            if (!imgs.length) { finish(); return; }
+            var proms = imgs.map(function (im) {
+                if (im.decode) { return im.decode().catch(function () {}); }
+                return new Promise(function (res) { if (im.complete) return res(); im.onload = res; im.onerror = res; });
+            });
+            Promise.all(proms).then(finish);
+            setTimeout(finish, 3000); // 안전장치
         }
         function _doDriveSave(selected, allSubs, adminName, sig, month) {
             // 인쇄 화면과 동일하게 브라우저에서 렌더 → 여러 서류를 1개 PDF로 묶어 저장(서식 보존 + 빠름)
@@ -3320,9 +3318,9 @@ function showKakaoModal(text, forced) {
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
                 holder.style.cssText = 'position:absolute;left:-10000px;top:0;background:#fff';
-                var single = parts.length === 1; // 한 장이면 세로 가운데 배치로 A4 절반 채우기
+                var single = parts.length === 1; // 한 장이면 A4 높이 확보 + 상단에서 조금 내린 위치
                 var innerStyle = 'width:794px;padding:40px 34px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111'
-                    + (single ? ';min-height:1123px;display:flex;flex-direction:column;justify-content:center' : '');
+                    + (single ? ';min-height:1123px;padding-top:150px' : '');
                 holder.innerHTML = '<div style="' + innerStyle + '">' + combined + '</div>';
                 document.body.appendChild(holder);
                 _waitImages(holder, function() {
