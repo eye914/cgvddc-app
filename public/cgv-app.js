@@ -3320,11 +3320,11 @@ function showKakaoModal(text, forced) {
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
                 holder.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px;background:#fff';
-                holder.innerHTML = combined;
+                holder.innerHTML = '<div style="width:794px;background:#fff">' + combined + '</div>';
                 document.body.appendChild(holder);
                 _waitImages(holder, function() {
                 var opt = { margin: 0, image: { type: 'jpeg', quality: 0.7 }, html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }, pagebreak: { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr'] } };
-                window.html2pdf().set(opt).from(holder).outputPdf('datauristring').then(function(datauri) {
+                window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
                     if (holder.parentNode) document.body.removeChild(holder);
                     var base64 = String(datauri).split(',')[1] || '';
                     function p2(n) { return ('0' + n).slice(-2); }
