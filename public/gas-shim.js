@@ -143,7 +143,8 @@
       window.location.reload(); // 새 SW가 활성화되면 최신본으로 1회 자동 새로고침
     });
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      // updateViaCache:'none' → 브라우저가 sw.js를 HTTP 캐시하지 않고 매번 새로 확인 (iOS 24h 지연 제거)
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(function(reg) {
         try { reg.update(); } catch (e) {}
         if (reg.waiting) { try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {} }
         reg.addEventListener('updatefound', function() {
