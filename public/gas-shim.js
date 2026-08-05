@@ -133,12 +133,30 @@
     }
   };
 
-  // PWA Service Worker 등록
+  // PWA Service Worker 등록 + 자동 업데이트 (사용자 조작 없이 다음 실행 시 최신 반영)
   if ('serviceWorker' in navigator) {
+    var _hadController = !!navigator.serviceWorker.controller; // 최초 설치 구분
+    var _swRefreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (_swRefreshing || !_hadController) return; // 최초 설치 땐 새로고침 안 함
+      _swRefreshing = true;
+      window.location.reload(); // 새 SW가 활성화되면 최신본으로 1회 자동 새로고침
+    });
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('/sw.js').catch(function(e) {
-        console.log('SW 등록 실패:', e);
-      });
+      navigator.serviceWorker.register('/sw.js').then(function(reg) {
+        try { reg.update(); } catch (e) {}
+        if (reg.waiting) { try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {} }
+        reg.addEventListener('updatefound', function() {
+          var nw = reg.installing; if (!nw) return;
+          nw.addEventListener('statechange', function() {
+            if (nw.state === 'installed' && reg.waiting) { try { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (e) {} }
+          });
+        });
+        // 앱을 포그라운드로 되돌릴 때마다 업데이트 확인
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') { try { reg.update(); } catch (e) {} }
+        });
+      }).catch(function(e) { console.log('SW 등록 실패:', e); });
     });
   }
 })();
