@@ -3339,8 +3339,12 @@ function showKakaoModal(text, forced) {
                         .then(function(r) { return r.json(); })
                         .then(function(res) {
                             clearTimeout(_to); showLoader(false);
+                            var _parentFolderUrl = 'https://drive.google.com/drive/folders/1Wwn-6713MD0F9y8y3tUZEJuZTlWU8ug-';
                             if (res && res.ok) {
                                 if (confirm('✅ 구글드라이브에 저장 완료 (서류 ' + parts.length + '건 · PDF 1개).\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
+                            } else if (res && res.parseError) {
+                                // 전송 구간 파싱 실패지만 드라이브에는 대개 저장됨
+                                if (confirm('📄 저장 요청을 전송했고, 드라이브에 저장된 것으로 보입니다.\n(응답 확인은 지연됐어요.) 폴더를 열어 확인하시겠어요?')) window.open(_parentFolderUrl, '_blank');
                             } else {
                                 alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormPdfBase64 함수가 재배포됐는지 확인해 주세요)');
                             }
@@ -4404,8 +4408,8 @@ function showKakaoModal(text, forced) {
                     + '<tr><th>생년월일</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '</tbody></table>'
                     + '<div>' // ── 하단 그룹: 날짜(서명 바로 위) → 서명 → CJ CGV
-                    + '<p style="text-align:center;font-size:13px;font-weight:700;color:#222;margin:0 0 16px">날 짜 : ' + pvDate + '</p>'
-                    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px">'
+                    + '<p style="text-align:right;font-size:13px;font-weight:700;color:#222;margin:0 0 16px">날 짜 : ' + pvDate + '</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
                     + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + '<span style="font-size:12px;font-weight:700">(서명)</span>'

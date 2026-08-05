@@ -17,7 +17,9 @@ export async function POST(req: NextRequest) {
     const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params: params || [] }) });
     const txt = await r.text();
     let parsed: any;
-    try { parsed = JSON.parse(txt); } catch { return NextResponse.json({ error: 'GAS 응답 파싱 실패', raw: txt.substring(0, 200) }, { status: 502 }); }
+    // 파싱 실패 = 전송 구간(느린 응답/리다이렉트)에서 비-JSON 수신. GAS는 대개 실제로 실행 완료됨.
+    // 하드 실패로 처리하면 "저장됐는데 실패 팝업"이 뜨므로, parseError 플래그로 부드럽게 넘긴다.
+    try { parsed = JSON.parse(txt); } catch { return NextResponse.json({ parseError: true, raw: txt.substring(0, 200) }, { status: 200 }); }
     if (!parsed?.success) return NextResponse.json({ error: parsed?.error || 'GAS 실패' }, { status: 502 });
     return NextResponse.json(parsed.result ?? {});
   } catch (e: any) {
