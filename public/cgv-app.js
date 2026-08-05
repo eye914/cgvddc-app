@@ -62,11 +62,6 @@
             return { main: timeStr, sub: "" };
         }
 
-        // [\uC9C4\uB2E8] \uC0C8 cgv-app.js\uAC00 \uC2E4\uC81C \uB85C\uB4DC\uB410\uB294\uC9C0 \uBC30\uC9C0\uC5D0 \uD45C\uC2DC
-        (function(){ function _stamp(){ var b=document.getElementById('ver-badge'); if(b) b.textContent='\uD83C\uDFA8 \uC2DC\uC548 \uB9DE\uCDA4 \u00B7 v0806-4 \u00B7 JS\u2713'; }
-          if (document.readyState !== 'loading') _stamp(); else document.addEventListener('DOMContentLoaded', _stamp);
-          setTimeout(_stamp, 1500); setTimeout(_stamp, 4000); })();
-
         var DAYS = ["\uC77C","\uC6D4","\uD654","\uC218","\uBAA9","\uAE08","\uD1A0"];
         var trades = [];
         var isAdmin = false;
