@@ -32,5 +32,5 @@ button:active, [role="button"]:active, .tab-btn:active { transform: scale(.94); 
 @keyframes cgvUnlock { from { opacity: 1; } to { opacity: 0; } }
 #auth-overlay.cgv-unlocking { animation: cgvUnlock .26s ease forwards; }
 /* 신청화면(다음 화면): 작게(줌아웃) 시작 → 커지며(줌인) 부드럽게 들어옴 */
-@keyframes cgvReveal { 0% { transform: scale(0.72); opacity: .55; } 100% { transform: scale(1); opacity: 1; } }
-.cgv-reveal { animation: cgvReveal .56s cubic-bezier(.16, .84, .28, 1) both; transform-origin: center top; }
+@keyframes cgvReveal { 0% { transform: scale(1.28); opacity: .55; } 100% { transform: scale(1); opacity: 1; } }
+.cgv-reveal { animation: cgvReveal .56s cubic-bezier(.16, .84, .28, 1) both; transform-origin: center center; }
