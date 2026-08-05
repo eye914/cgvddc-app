@@ -354,20 +354,23 @@
         if (!el) return;
         if (!rows.length) { el.innerHTML = ''; return; }
         var medal = function (r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; };
-        var bg = function (r) { return r === 1 ? '#fdf6e3' : r === 2 ? '#f4f6f8' : r === 3 ? '#fbf0e8' : '#fff'; };
+        var colBg = function (r) { return r === 1 ? '#fdf6e3' : r === 2 ? '#f5f6f8' : r === 3 ? '#fbf0e8' : '#f8f9fb'; };
+        var colBd = function (r) { return r === 1 ? '1px solid #f0d894' : '1px solid #eef0f2'; };
         var prize = function (r) { return r === 1 ? '🎬 영화관람권 2매' : r === 2 ? '⭐ 마일리지 2,000점' : r === 3 ? '⭐ 마일리지 1,000점' : ''; };
-        var list = rows.slice(0, 3).map(function (r) {
+        // 시안형 3칸 가로 배치 (금·은·동)
+        var cols = rows.slice(0, 3).map(function (r) {
           var pz = prize(r.rank);
-          return '<div style="display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:12px;background:' + bg(r.rank) + ';margin-bottom:6px">'
-            + '<span style="width:30px;text-align:center;font-size:17px">' + medal(r.rank) + '</span>'
-            + '<span style="flex:1;min-width:0"><span style="font-weight:800;font-size:14.5px;color:#0f172a">' + esc(r.miso) + '</span>'
-            + (pz ? '<div style="font-size:11px;color:#a16207;font-weight:700;margin-top:1px">' + pz + '</div>' : '') + '</span>'
-            + '<span style="font-weight:900;color:#e11d48;font-size:15px">' + r.total + '<span style="font-size:11px;color:#94a3b8;font-weight:700">점</span></span></div>';
+          return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:11px 5px;border-radius:12px;background:' + colBg(r.rank) + ';border:' + colBd(r.rank) + '">'
+            + '<span style="font-size:19px;line-height:1">' + medal(r.rank) + '</span>'
+            + '<span style="font-weight:800;font-size:13px;color:#0f172a;text-align:center">' + esc(r.miso) + '</span>'
+            + '<span style="font-weight:900;color:#e11d48;font-size:15px">' + r.total + '<span style="font-size:10px;color:#94a3b8;font-weight:700">점</span></span>'
+            + (pz ? '<span style="font-size:8.5px;color:#a16207;font-weight:700;text-align:center;line-height:1.25">' + pz + '</span>' : '')
+            + '</div>';
         }).join('');
-        el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:20px;padding:15px 16px;box-shadow:0 2px 12px rgba(0,0,0,.05)">'
-          + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:11px"><span style="font-size:18px">🏆</span><span style="font-weight:800;font-size:15px;color:#0f172a">' + mm + ' 우수 미소지기</span></div>'
-          + list
-          + '<div style="margin-top:8px;padding:9px 11px;border-radius:10px;background:#eef6ff;font-size:12px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) : '8월부터 시작') + '</div>'
+        el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:16px;padding:13px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
+          + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><span style="font-size:16px">🏆</span><span style="font-weight:800;font-size:14px;color:#0f172a">이 달의 우수 미소지기</span><span style="margin-left:auto;font-size:10px;font-weight:700;color:#94a3b8;background:#f4f5f7;padding:2px 8px;border-radius:20px">' + mm + '</span></div>'
+          + '<div style="display:flex;gap:7px">' + cols + '</div>'
+          + '<div style="margin-top:9px;padding:8px 11px;border-radius:10px;background:#eef6ff;font-size:11.5px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) : '8월부터 시작') + '</div>'
           + '</div>';
       }).catch(function () {});
   };
