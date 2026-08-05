@@ -3126,6 +3126,7 @@ function showKakaoModal(text, forced) {
                 html += '<span class="text-[9px] text-slate-500 font-bold">전체</span>';
                 html += '</label>';
                 html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-slate-700 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">📥 인쇄</button>';
+                html += '<button onclick="event.stopPropagation();saveSelectedFormsToDrive(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-blue-600 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">☁️ 드라이브</button>';
                 html += '</div>';
                 // 접히는 목록 영역
                 html += '<div id="form-month-body-' + month + '" class="mt-1" style="' + (isCollapsed ? 'display:none' : '') + '">';
@@ -3252,6 +3253,56 @@ function showKakaoModal(text, forced) {
                 + '</div><script>window.onload=function(){window.print();}<\/script>'
                 + '</body></html>');
             win.document.close();
+        }
+
+        // ── 선택 서류를 PDF로 구글드라이브에 저장 (GAS가 변환·저장) ──
+        function buildFullFormHtml(inner) {
+            return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+                + '<style>body{font-family:"Apple SD Gothic Neo","Malgun Gothic","나눔고딕",sans-serif;background:#fff;width:210mm;margin:0 auto;padding:18mm 16mm;box-sizing:border-box;color:#111}'
+                + 'table{border-collapse:collapse}img{max-width:100%}</style></head><body>' + inner + '</body></html>';
+        }
+        function saveSelectedFormsToDrive(month) {
+            var all = document.querySelectorAll('input[data-month="' + month + '"]:not(:disabled)');
+            var ids = [];
+            for (var i = 0; i < all.length; i++) { if (all[i].checked) ids.push(all[i].getAttribute('data-form-id')); }
+            if (!ids.length) { alert('드라이브에 저장할 서류를 선택해 주세요.'); return; }
+            var selected = _formRequests.filter(function(r) { return ids.indexOf(r.id) >= 0 && (r.status === 'submitted' || r.status === 'viewed'); });
+            if (!selected.length) { alert('저장 가능한 서류가 없습니다. (제출완료 상태만)'); return; }
+            var sig = ''; try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            var nameMap = {};
+            selected.forEach(function(r) { if (!nameMap[r.target_name]) nameMap[r.target_name] = []; nameMap[r.target_name].push(r); });
+            var names = Object.keys(nameMap), allSubs = {}, remaining = names.length;
+            showLoader(true, '서류 불러오는 중...');
+            names.forEach(function(name) {
+                google.script.run
+                    .withSuccessHandler(function(subs) { (subs || []).forEach(function(s) { allSubs[s.request_id] = s; }); if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
+                    .withFailureHandler(function() { if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
+                    .getFormSubmissions(name);
+            });
+        }
+        function _doDriveSave(selected, allSubs, adminName, sig, month) {
+            var items = [];
+            selected.forEach(function(req) {
+                var sub = allSubs[req.id]; if (!sub) return;
+                var inner = buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig);
+                var label = (FORM_TYPE_LABELS[req.type] || req.type);
+                var dateStr = String(sub.submitted_at || req.requested_at || '').substring(0, 10);
+                var fileName = (req.target_name + '_' + label + '_' + dateStr).replace(/[\\/:*?"<>|]/g, '-');
+                items.push({ fileName: fileName, html: buildFullFormHtml(inner) });
+            });
+            if (!items.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
+            var folder = String(month).replace(/[\\/:*?"<>|]/g, '-');
+            showLoader(true, '드라이브에 PDF 저장 중...');
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    showLoader(false);
+                    if (res && res.ok) {
+                        if (confirm('✅ 구글드라이브에 ' + res.saved + '건 저장 완료' + (res.failed ? (' · 실패 ' + res.failed + '건') : '') + '.\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
+                    } else { alert('드라이브 저장 실패. 시트 스크립트가 최신 버전인지 확인해 주세요.'); }
+                })
+                .withFailureHandler(function(e) { showLoader(false); alert('드라이브 저장 오류: ' + (e && e.message ? e.message : e) + '\n(시트 웹앱에 saveFormsPdfToDrive 함수가 추가·재배포됐는지 확인해 주세요)'); })
+                .saveFormsPdfToDrive(folder, items);
         }
 
         function cancelFormReq(id) {
