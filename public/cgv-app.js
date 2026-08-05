@@ -3311,7 +3311,7 @@ function showKakaoModal(text, forced) {
             });
             if (!parts.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
             // 각 서류를 A4 한 장으로 감싸 상(제목)·중(본문)·하(서명·날짜) 분산 배치 (여러 건이어도 장마다 동일 적용)
-            var _pageStyle = 'width:794px;min-height:1123px;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111;display:flex;flex-direction:column;justify-content:space-between';
+            var _pageStyle = 'width:794px;height:1092px;overflow:hidden;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111;display:flex;flex-direction:column;justify-content:space-between';
             var combined = parts.map(function(p, i) { return '<div style="' + _pageStyle + (i > 0 ? ';page-break-before:always' : '') + '">' + p + '</div>'; }).join('');
             // 저장 폴더 경로: cgv근태서류/2026년/8월  (month이 "YYYY-MM"이면 파싱, 아니면 그대로)
             var _mm = String(month).match(/(\d{4})[-.\/ ]*(\d{1,2})/);
@@ -4396,7 +4396,6 @@ function showKakaoModal(text, forced) {
                     + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;text-align:left;word-break:keep-all;border:1.5px solid #555;padding:14px 16px;margin-bottom:22px;background:#fafafa">'
                     + '본인은 CJ CGV와 연관된 업무를 수행하면서 취급 및 지득한 CJ CGV 내부자와 외부고객들의 개인정보를 개인적인 목적으로 사용하지 않으며, 관련 개인정보를 내부지침에 따라 안전하게 관리할 것이고 이를 위반하여 발생하는 형·민사 상의 모든 책임은 본인이 감수할 것으로 서약합니다.'
                     + '</div>'
-                    + '<p style="text-align:center;font-size:13px;font-weight:700;color:#222;margin:18px 0 22px">날 짜 : ' + pvDate + '</p>'
                     + '<table class="dt" style="width:100%;margin:0 auto 18px"><tbody>'
                     + '<tr><th style="width:80px">소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
                     + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
@@ -4404,13 +4403,16 @@ function showKakaoModal(text, forced) {
                     + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td></tr>'
                     + '<tr><th>생년월일</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '</tbody></table>'
-                    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
+                    + '<div>' // ── 하단 그룹: 날짜(서명 바로 위) → 서명 → CJ CGV
+                    + '<p style="text-align:center;font-size:13px;font-weight:700;color:#222;margin:0 0 16px">날 짜 : ' + pvDate + '</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
                     + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + '<span style="font-size:12px;font-weight:700">(서명)</span>'
                     + pvSign
                     + '</div>'
-                    + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
+                    + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>'
+                    + '</div>';
             }
 
             if (type === 'overtime') {
@@ -4429,15 +4431,17 @@ function showKakaoModal(text, forced) {
                     + '<p style="margin:0 0 14px"><b>1.</b>&nbsp;상기인은 회사로부터 근로시간 외 추가로 연장근로 및 야간, 휴일근로를 실시할 수 있다는 내용에 대하여 충분히 설명을 들었으며, 연장근로 및 야간, 휴일근로를 실시함에 동의합니다.</p>'
                     + '<p style="margin:0"><b>2.</b>&nbsp;연장 및 야간, 휴일근로에 대해 문제제기를 하지 않겠습니다.</p>'
                     + '</div>'
-                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:20px 0">' + otDate + '</p>'
-                    + '<p style="font-size:12px;font-weight:700;text-align:right;margin-bottom:18px">(주)한연개발 동두천지점 귀하</p>'
+                    + '<div>' // ── 하단 그룹: 귀하 → 날짜(서명 바로 위) → 서명
+                    + '<p style="font-size:12px;font-weight:700;text-align:right;margin:0 0 16px">(주)한연개발 동두천지점 귀하</p>'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:0 0 16px">' + otDate + '</p>'
                     + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">성명 :</span>'
                     + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + otSign
                     + '</div>'
-                    + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
+                    + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>'
+                    + '</div>';
             }
 
             if (type === 'workCondition') {
@@ -4476,14 +4480,16 @@ function showKakaoModal(text, forced) {
                     + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;border:1.5px solid #555;padding:14px 18px;margin-bottom:22px;background:#fafafa">'
                     + '상기 본인은 ㈜한연개발 동두천지점 과 체결된 파견 근로계약서의 근로조건에서 근무 중 영화관 운영 사정상 필요에 의해 소정근로일수 및 소정근로시간이 변경될 수 있는 점에 대하여 동의하며 이로 인한 어떠한 문제제기도 하지 않을 것입니다.'
                     + '</div>'
-                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0">' + wcDate + '</p>'
-                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
+                    + '<div>' // ── 하단 그룹: 날짜(서명 바로 위) → 서명 → 대표이사
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:0 0 16px">' + wcDate + '</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
                     + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + wcSign
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + '</div>'
-                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
+                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>'
+                    + '</div>';
             }
 
             return '<p style="color:#e00;font-weight:700">알 수 없는 서류 유형: ' + type + '</p>';
