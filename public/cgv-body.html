@@ -103,10 +103,11 @@
             </section>
 
             <section class="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 section-accent-top">
-                <div class="mb-8">
-                    <h2 class="text-2xl font-black text-slate-900 tracking-tighter text-red-600">공고 등록</h2>
-                    <p class="text-[12px] font-black text-red-500 mt-2">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
-                </div>
+                <button type="button" id="reg-toggle" onclick="var e=document.getElementById('reg-collapse');var c=document.getElementById('reg-toggle-cue');var h=e.classList.toggle('hidden');if(c)c.textContent=h?'펼치기 ▾':'접기 ▴';if(!h){setTimeout(function(){e.scrollIntoView({behavior:'smooth',block:'nearest'});},60);}" class="w-full flex items-center justify-center gap-2 py-4 rounded-[22px] border-2 border-dashed border-red-400 text-red-600 font-black text-xl active:scale-95 transition-all">
+                    ＋ 공고 등록 <span id="reg-toggle-cue" class="text-[12px] font-bold text-slate-400">펼치기 ▾</span>
+                </button>
+                <div id="reg-collapse" class="hidden mt-5">
+                <p class="text-[12px] font-black text-red-500 mb-6">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
                 <div class="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-[24px]">
                     <button onclick="setTradeType('swap')" id="type-swap-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-dark transition-all">맞교대</button>
                     <button onclick="setTradeType('sub')" id="type-sub-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-ghost transition-all">단순 대타</button>
@@ -194,6 +195,7 @@
                     </div>
                     <button onclick="submitNewTrade()" class="w-full btn-c2 btn-c2-primary py-5 rounded-[28px] font-black text-xl active:scale-95 transition-all">공고 등록 하기</button>
                 </div>
+                </div><!-- /reg-collapse -->
             </section>
 
             <section class="space-y-6 pb-10">
