@@ -3318,9 +3318,9 @@ function showKakaoModal(text, forced) {
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
                 holder.style.cssText = 'position:absolute;left:-10000px;top:0;background:#fff';
-                var single = parts.length === 1; // 한 장이면 A4 높이 확보 + 상단에서 조금 내린 위치
-                var innerStyle = 'width:794px;padding:40px 34px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111'
-                    + (single ? ';min-height:1123px;padding-top:150px' : '');
+                var single = parts.length === 1; // 한 장이면 A4 높이 확보 + 상(제목)·중(본문)·하(서명·날짜) 분산 배치
+                var innerStyle = 'width:794px;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111'
+                    + (single ? ';min-height:1123px;display:flex;flex-direction:column;justify-content:space-between' : '');
                 holder.innerHTML = '<div style="' + innerStyle + '">' + combined + '</div>';
                 document.body.appendChild(holder);
                 _waitImages(holder, function() {
