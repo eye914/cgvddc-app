@@ -554,9 +554,10 @@
         function authSuccess(r) {
             var ov = document.getElementById('auth-overlay');
             ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
-            var _appW = document.getElementById('app-content'); if (_appW) _appW.classList.add('cgv-reveal');
-            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 540);
-            setTimeout(function(){ if (_appW) _appW.classList.remove('cgv-reveal'); }, 700);
+            var _revEls = [document.getElementById('app-content'), document.querySelector('header')];
+            _revEls.forEach(function(el){ if (el) el.classList.add('cgv-reveal'); });
+            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 520);
+            setTimeout(function(){ _revEls.forEach(function(el){ if (el) el.classList.remove('cgv-reveal'); }); }, 680);
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');

@@ -28,7 +28,8 @@ button:active, [role="button"]:active, .tab-btn:active { transform: scale(.94); 
 #nm-zoom { animation: cgvFadeIn .2s ease; }
 
 /* 로그인(잠금해제) → 메인 진입: 로그인 화면 줌인+페이드아웃, 메인은 살짝 줌아웃 리빌 */
-@keyframes cgvUnlock { from { transform: scale(1); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
-#auth-overlay.cgv-unlocking { animation: cgvUnlock .52s cubic-bezier(.4, 0, .2, 1) forwards; transform-origin: center center; }
-@keyframes cgvReveal { 0% { transform: scale(1.16); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-.cgv-reveal { animation: cgvReveal .62s cubic-bezier(.2, .7, .3, 1) both; transform-origin: center center; }
+@keyframes cgvUnlock { from { transform: scale(1); opacity: 1; } to { transform: scale(1.45); opacity: 0; } }
+#auth-overlay.cgv-unlocking { animation: cgvUnlock .5s cubic-bezier(.32, 0, .67, 0) forwards; transform-origin: center center; }
+/* 메인: 줌아웃 상태(작게)에서 시작 → 줌인(커지며)으로 자리잡음 = iOS 잠금해제 느낌 */
+@keyframes cgvReveal { 0% { transform: scale(0.86); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.cgv-reveal { animation: cgvReveal .58s cubic-bezier(.16, .84, .28, 1) both; transform-origin: center center; }
