@@ -28,9 +28,9 @@ button:active, [role="button"]:active, .tab-btn:active { transform: scale(.94); 
 #nm-zoom { animation: cgvFadeIn .2s ease; }
 
 /* 로그인(잠금해제) → 메인 진입: 로그인 화면 줌인+페이드아웃, 메인은 살짝 줌아웃 리빌 */
-/* 로그인 화면: 빠르게 확대되며 페이드아웃(잠금 걷힘) */
-@keyframes cgvUnlock { from { transform: scale(1); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
-#auth-overlay.cgv-unlocking { animation: cgvUnlock .3s cubic-bezier(.4, 0, 1, 1) forwards; transform-origin: center center; }
-/* 신청화면: 작게(줌아웃) 시작 → 커지며(줌인) 들어옴. 로그인이 걷힌 뒤에도 계속 확대돼 눈에 보이게 길게 */
-@keyframes cgvReveal { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
-.cgv-reveal { animation: cgvReveal .62s cubic-bezier(.16, .84, .28, 1) both; transform-origin: center top; }
+/* 로그인 화면: 확대 없이 그냥 빠르게 페이드아웃(조용히 걷힘) */
+@keyframes cgvUnlock { from { opacity: 1; } to { opacity: 0; } }
+#auth-overlay.cgv-unlocking { animation: cgvUnlock .26s ease forwards; }
+/* 신청화면(다음 화면): 작게(줌아웃) 시작 → 커지며(줌인) 부드럽게 들어옴 */
+@keyframes cgvReveal { 0% { transform: scale(0.72); opacity: .55; } 100% { transform: scale(1); opacity: 1; } }
+.cgv-reveal { animation: cgvReveal .56s cubic-bezier(.16, .84, .28, 1) both; transform-origin: center top; }
