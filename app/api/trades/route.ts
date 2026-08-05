@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendPushToNames, sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
 
@@ -144,8 +144,8 @@ export async function PATCH(req: NextRequest) {
       .single();
 
     const ns = snakeUpdate.status;
+    let swapPreview: any = null;   // 승인완료 시 시트 스왑에 쓸 데이터(백그라운드 적용)
 
-    // ✅ '승인완료' 는 GAS 시트 적용을 먼저 시도 → 성공 시에만 Supabase 업데이트 (트랜잭션 일관성)
     if (ns === '승인완료') {
       const reqName = updateData.reqName ?? before?.req_name;
       const subName = updateData.subName ?? before?.sub_name;
@@ -172,16 +172,7 @@ export async function PATCH(req: NextRequest) {
         reqHours: hoursMap[reqName] ?? '5.5',
         subHours: hoursMap[subName] ?? '5.5',
       };
-      const gasResult = await callGASWithCheck('applySwapFromData', [previewRow]);
-      // 명확한 GAS 실패(success=false / result.error / out·in 실패)만 차단한다.
-      // '응답 파싱 실패'는 GAS가 느려 전송 단계에서 비-JSON을 받은 경우로, 시트 적용은 이미 됐을 가능성이 높아 승인을 진행한다.
-      if (!gasResult.ok && !gasResult.parseError) {
-        return NextResponse.json(
-          { error: `시트 적용 실패: ${gasResult.msg}. 시트가 존재하는지 확인 후 다시 승인해 주세요.`, gasDetail: gasResult.raw },
-          { status: 409 }
-        );
-      }
-      if (gasResult.parseError) console.warn('[trades approve] GAS 응답 파싱 실패 → 시트 적용된 것으로 보고 승인 진행:', gasResult.msg);
+      swapPreview = previewRow;   // 시트 반영은 응답 후 백그라운드로 (아래 after) → 승인 즉시 완료
     }
 
     const { data, error } = await supabaseAdmin
@@ -196,42 +187,53 @@ export async function PATCH(req: NextRequest) {
     const row = toCamel(data);
     const prevSubName = before?.sub_name;
 
-    if (ns === '협의중') {
-      await sendPushToNames([row.reqName], '🙋 교대 지원', `${row.subName}님이 ${row.shiftDate} 교대에 지원했습니다.`);
-    } else if (ns === '승인대기') {
-      await sendPushToAdmins('📋 교대 승인 요청', `${row.reqName}↔${row.subName} ${row.shiftDate} 최종 승인이 필요합니다.`);
-    } else if (ns === '반려됨') {
-      await sendPushToNames([prevSubName], '😢 교대 거절', `${row.reqName}님이 교대 신청을 거절했습니다.`);
-    } else if (ns === '승인완료') {
-      // 시트 적용은 위에서 이미 성공. 알림만 발송.
-      await sendPushToNames([row.reqName, row.subName], '✅ 교대 확정!', `${row.shiftDate} 교대가 최종 확정되었습니다.`);
-      const approver = row.approvedBy ?? '관리자';
-      const { data: adminRows } = await supabaseAdmin.from('admins').select('name').eq('active', true);
-      const otherAdmins = (adminRows ?? [])
-        .map((r: Record<string, any>) => r.name)
-        .filter((n: string) => n !== approver);
-      if (otherAdmins.length) {
-        await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver}이(가) ${row.reqName}↔${row.subName} ${row.shiftDate} 교대를 승인했습니다.`);
+    // 무거운 작업(시트 스왑 반영·상태 동기화·푸시)은 응답 후 백그라운드로 → 앱은 즉시 완료
+    after(async () => {
+      try {
+        // 1) 시트 스왑 반영 (승인완료). 진짜 실패 시에만 관리자에게 경고 푸시.
+        if (swapPreview) {
+          const gasResult = await callGASWithCheck('applySwapFromData', [swapPreview]);
+          if (!gasResult.ok && !gasResult.parseError) {
+            console.error('[trades approve] 시트 적용 실패:', gasResult.msg);
+            await sendPushToAdmins('⚠️ 시트 반영 실패', `${row.reqName}↔${row.subName} ${row.shiftDate} 교대는 승인됐으나 시트 반영에 실패했습니다. 수동 확인이 필요합니다.`);
+          }
+        }
+        // 2) 상태별 푸시 알림
+        if (ns === '협의중') {
+          await sendPushToNames([row.reqName], '🙋 교대 지원', `${row.subName}님이 ${row.shiftDate} 교대에 지원했습니다.`);
+        } else if (ns === '승인대기') {
+          await sendPushToAdmins('📋 교대 승인 요청', `${row.reqName}↔${row.subName} ${row.shiftDate} 최종 승인이 필요합니다.`);
+        } else if (ns === '반려됨') {
+          await sendPushToNames([prevSubName], '😢 교대 거절', `${row.reqName}님이 교대 신청을 거절했습니다.`);
+        } else if (ns === '승인완료') {
+          await sendPushToNames([row.reqName, row.subName], '✅ 교대 확정!', `${row.shiftDate} 교대가 최종 확정되었습니다.`);
+          const approver = row.approvedBy ?? '관리자';
+          const { data: adminRows } = await supabaseAdmin.from('admins').select('name').eq('active', true);
+          const otherAdmins = (adminRows ?? [])
+            .map((r: Record<string, any>) => r.name)
+            .filter((n: string) => n !== approver);
+          if (otherAdmins.length) {
+            await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver}이(가) ${row.reqName}↔${row.subName} ${row.shiftDate} 교대를 승인했습니다.`);
+          }
+        } else if (ns === '모집중' && before?.status === '승인대기') {
+          await sendPushToNames([row.reqName], '🔄 교대 반려', `관리자가 ${row.shiftDate} 교대 신청을 반려했습니다. 재모집 중입니다.`);
+          if (prevSubName && prevSubName !== '모집중') {
+            await sendPushToNames([prevSubName], '🔄 교대 반려', `${row.shiftDate} 교대 신청이 관리자에 의해 반려되었습니다.`);
+          }
+        }
+        // 3) 요청DB(시트) 상태·수락자 동기화
+        if (ns) {
+          const gasUpdate: Record<string, any> = { status: ns };
+          if (updateData.subName !== undefined) gasUpdate.subName = updateData.subName;
+          if (updateData.subPos  !== undefined) gasUpdate.subPos  = updateData.subPos;
+          if (updateData.desiredShift !== undefined) gasUpdate.desiredShift = updateData.desiredShift;
+          const syncRes = await callGASWithCheck('updateTradeInDB', [id, gasUpdate]);
+          if (!syncRes.ok) console.warn('[trades PATCH] GAS updateTradeInDB sync failed:', syncRes.msg);
+        }
+      } catch (e: any) {
+        console.error('[trades PATCH after] 백그라운드 처리 오류:', e?.message);
       }
-    } else if (ns === '모집중' && before?.status === '승인대기') {
-      await sendPushToNames([row.reqName], '🔄 교대 반려', `관리자가 ${row.shiftDate} 교대 신청을 반려했습니다. 재모집 중입니다.`);
-      if (prevSubName && prevSubName !== '모집중') {
-        await sendPushToNames([prevSubName], '🔄 교대 반려', `${row.shiftDate} 교대 신청이 관리자에 의해 반려되었습니다.`);
-      }
-    }
-
-    // GAS 요청DB(시트) 상태·수락자 실시간 동기화 — 비차단(상태 동기화는 부가 작업)
-    if (ns) {
-      const gasUpdate: Record<string, any> = { status: ns };
-      if (updateData.subName !== undefined) gasUpdate.subName = updateData.subName;
-      if (updateData.subPos  !== undefined) gasUpdate.subPos  = updateData.subPos;
-      if (updateData.desiredShift !== undefined) gasUpdate.desiredShift = updateData.desiredShift;
-      const syncRes = await callGASWithCheck('updateTradeInDB', [id, gasUpdate]);
-      if (!syncRes.ok) {
-        // 요청DB 시트 동기화 실패는 승인완료에 영향 주지 않음 — 서버 로그로만 남김
-        console.warn('[trades PATCH] GAS updateTradeInDB sync failed:', syncRes.msg);
-      }
-    }
+    });
 
     return NextResponse.json(row);
   } catch (e: any) {
