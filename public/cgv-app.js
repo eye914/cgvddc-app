@@ -2765,36 +2765,50 @@ function showKakaoModal(text, forced) {
                 })();
                 var isMineCard = currentUser && (t.reqName === currentUser || t.subName === currentUser);
                 var cardBorder = canApply ? "border-blue-300 ring-2 ring-blue-100" : isUrgent ? "border-red-400 ring-2 ring-red-100" : isMineCard ? "border-amber-300" : "border-slate-100";
-                var cardHtml = "<div class='bg-white rounded-[22px] p-5 card-shadow border "+cardBorder+" relative overflow-hidden mb-3 "+(isN&&isMine?"my-alert":"")+" transition-all hover:shadow-md'>"
-                    + "<div class='absolute top-0 left-0 w-1.5 h-full "+(isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400")+"'>"+"</div>"
-                    + "<div class='flex justify-between items-center mb-4'>"
-                    + "<div class='flex items-center gap-2'><span class='px-3 py-1 rounded-full text-[11px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-blue-100 text-blue-700")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
-                    + "<span class='text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-md border'>"+t.id+"</span></div>"
-                    + "<div class='flex items-center gap-2'>"
-                    + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-3 py-1.5 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 shadow-sm active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
-                    + "<div class='flex flex-col items-end gap-1'>"
-                    + "<span class='status-badge' style='"+(isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a")+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+(isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a")+"'></span>"+t.status+"</span>"
-                    + (canApply ? "<span class='text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full shadow-sm'>\uC9C0\uC6D0\uAC00\uB2A5</span>" : "")
-                    + (isUrgent ? "<span class='text-[9px] text-red-500 font-bold animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</span>" : "")
-                    + (isMine&&isU ? "<span class='text-[9px] text-slate-400 font-bold'>\uB0B4 \uACF5\uACE0</span>" : "")
-                    + (t.subName===currentUser&&isN ? "<span class='text-[9px] text-blue-500 font-bold'>\uB0B4\uAC00 \uC9C0\uC6D0\uD568</span>" : "")
-                    + "</div></div></div>"
-                    + "<div class='flex justify-between items-start mb-4'>"
-                    + "<div class='flex items-center gap-2.5'><div class='w-9 h-9 rounded-xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
-                    + "<h4 class='text-[17px] font-black text-slate-800 tracking-tight'>"+t.reqName+"</h4></div>"
-                    + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] btn-c2 btn-c2-danger px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
-                    + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] btn-c2 btn-c2-ghost px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
+                var _barColor = isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400";
+                var _stBg  = isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a";
+                var _stDot = isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a";
+                var _ini   = t.reqName ? String(t.reqName).charAt(0) : "";
+                var cardHtml = "<div class='bg-white rounded-[16px] card-shadow border "+cardBorder+" overflow-hidden mb-2.5 "+(isN&&isMine?"my-alert":"")+"'>"
+                    + "<div class='flex'>"
+                    + "<div class='w-1.5 flex-shrink-0 "+_barColor+"'></div>"
+                    + "<div class='flex-1 min-w-0 p-3.5'>"
+                    // \u2500\u2500 \uD5E4\uB354: \uC544\uBC14\uD0C0\u00B7\uC774\uB984\u00B7\uD0DC\uADF8 / \uC720\uD615\u00B7\uC0C1\uD0DC \u2500\u2500
+                    + "<div class='flex items-center justify-between gap-2 mb-2.5'>"
+                    + "<div class='flex items-center gap-2 min-w-0'>"
+                    + "<div class='w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0 "+(isMineCard?"bg-red-50 text-red-600":isSub?"bg-orange-50 text-orange-500":"bg-slate-100 text-slate-500")+"'>"+_ini+"</div>"
+                    + "<span class='text-[14px] font-black text-slate-800 flex-shrink-0'>"+t.reqName+"</span>"
+                    + (isMine&&isU ? "<span class='text-[9.5px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uB0B4 \uACF5\uACE0</span>" : "")
+                    + (t.subName===currentUser&&isN ? "<span class='text-[9.5px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uC9C0\uC6D0\uD568</span>" : "")
                     + "</div>"
-                    + "<div class='bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3'>"
-                    + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
-                    + "<div class='h-px bg-slate-200 w-full'></div>"
-                    + "<div><p class='text-[11px] "+(isSub?"text-orange-600":"text-blue-600")+" font-black tracking-widest uppercase mb-2'>"+(isSub?"\uB2E8\uC21C \uB300\uD0C0 \uC694\uCCAD":"\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 (IN)")+"</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+inHtml+"</div></div>"
-                    + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+_inPos+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
+                    + "<div class='flex items-center gap-1.5 flex-shrink-0'>"
+                    + "<span class='px-2 py-0.5 rounded-full text-[10px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-blue-100 text-blue-700")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
+                    + "<span class='status-badge' style='"+_stBg+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+_stDot+"'></span>"+t.status+"</span>"
+                    + "</div></div>"
+                    // \u2500\u2500 \uD78C\uD2B8: \uC9C0\uC6D0\uAC00\uB2A5/\uB9C8\uAC10\uC784\uBC15 \u2500\u2500
+                    + ((canApply||isUrgent) ? "<div class='flex gap-1.5 mb-2'>"
+                        + (canApply ? "<span class='text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full'>\uC9C0\uC6D0\uAC00\uB2A5</span>" : "")
+                        + (isUrgent ? "<span class='text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-full animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</span>" : "")
+                        + "</div>" : "")
+                    // \u2500\u2500 OUT/IN \uC2AC\uB86F \u2500\u2500
+                    + "<div class='bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-1.5'>"
+                    + "<div class='flex items-center gap-2'><span class='text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0'>OUT</span><div class='min-w-0 flex-1'>"+outHtml+"</div></div>"
+                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1'>"+inHtml+"</div></div>"
                     + "</div>"
-                    + "<div class='mt-5 flex gap-3'>"
-                    + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-4 rounded-2xl font-black'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
-                    + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-4 rounded-2xl font-black'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-4 rounded-2xl font-black'>\uAC70\uC808</button>" : "")
-                    + "</div></div>";
+                    // \u2500\u2500 \uC9C0\uC6D0\uC790 \u2500\u2500
+                    + (!isU ? "<div class='flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5 mt-2 flex-wrap'><span class='text-[10px] text-slate-400 font-bold flex-shrink-0'>\uC9C0\uC6D0\uC790</span><span class='text-[12px] font-black text-blue-700'>"+t.subName+"</span>"+(_inPos?"<span class='text-[10px] text-slate-500 font-bold'>"+_inPos+"</span>":"")+"<span class='text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-md ml-auto flex-shrink-0'>\uB9E4\uCE6D\uB428</span></div>" : "")
+                    // \u2500\u2500 \uC8FC\uC694 \uC561\uC158 \u2500\u2500
+                    + (((isU&&!isMine)||(isN&&isMine)) ? "<div class='mt-2.5 flex gap-2'>"
+                        + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-2.5 rounded-xl font-black text-[14px]'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-2.5 text-center rounded-xl font-black text-[11px]'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
+                        + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-2.5 rounded-xl font-black text-[13px]'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-2.5 rounded-xl font-black text-[13px]'>\uAC70\uC808</button>" : "")
+                        + "</div>" : "")
+                    // \u2500\u2500 \uBCF4\uC870 \uC561\uC158: \uCE74\uD1A1\uACF5\uC720 / \uCDE8\uC18C / \uC0AD\uC81C \u2500\u2500
+                    + ((isMine||((isMine||isAdmin)&&!isD)||(isAdmin&&isD)) ? "<div class='mt-2 flex items-center gap-2 justify-end'>"
+                        + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-2.5 py-1 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
+                        + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[10px] btn-c2 btn-c2-danger px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
+                        + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[10px] btn-c2 btn-c2-ghost px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
+                        + "</div>" : "")
+                    + "</div></div></div>";
 
                 if (isN&&isMine) { myBoard.innerHTML += cardHtml; }
                 else {
