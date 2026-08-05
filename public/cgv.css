@@ -1,7 +1,7 @@
 body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
         .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
         .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
-        .chip.selected { background-color: #991b1b; color: white; border-color: #991b1b; transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(153,27,27,0.28); }
+        .chip.selected { background-color: #D6001C; color: white; border-color: #D6001C; transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(214,0,28,0.28); }
         .chip.wish-selected { background-color: #3b82f6; color: white; border-color: #3b82f6; transform: translateY(-1.5px); }
         .chip.all-selected { background-color: #10b981; color: white; border-color: #10b981; transform: translateY(-1.5px); }
         .chip.pos-selected { background-color: #475569; color: white; border-color: #475569; transform: translateY(-1.5px); }
@@ -42,7 +42,7 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
         }
         .day-chip { border-radius: 14px; font-weight: 800; font-size: 15px; height: 48px; display: flex; align-items: center; justify-content: center; width: 100%; }
         .code-chip { border-radius: 12px; font-weight: 700; font-size: 13px; padding: 12px 0; width: 100%; }
-        .tab-btn.active { background-color: #991b1b; color: white; font-weight: 900; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(153,27,27,0.25); border-radius: 10px; }
+        .tab-btn.active { background-color: #D6001C; color: white; font-weight: 900; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(214,0,28,0.25); border-radius: 10px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: white; width: 95%; max-width: 600px; border-radius: 36px; padding: 32px; animation: scaleUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; border: 2px solid #e2e8f0; }
         .support-modal-content { background: white; width: 100%; max-width: 500px; border-radius: 36px 36px 0 0; padding: 32px; animation: slideUp 0.35s ease-out; max-height: 92vh; overflow-y: auto; position: absolute; bottom: 0; }
@@ -61,7 +61,7 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
         .btn-primary { padding: 18px 0; font-size: 16px; font-weight: 900; border-radius: 20px; }
         /* 색상 변수 통일 */
         :root {
-            --cgv-red: #991b1b;
+            --cgv-red: #D6001C;
             --cgv-red-light: #fef2f2;
             --cgv-orange: #9a3412;
             --cgv-dark: #0f172a;
@@ -83,7 +83,7 @@ body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit
 ═══════════════════════════════════════════════ */
 
 /* Body background gradient */
-body { background: linear-gradient(160deg, #f0f4ff 0%, #faf5f5 50%, #f0f4f8 100%) !important; min-height: 100vh; }
+body { background: #F4F5F7 !important; min-height: 100vh; }
 
 /* ── Base button class ── */
 .btn-c2 {
@@ -95,13 +95,13 @@ body { background: linear-gradient(160deg, #f0f4ff 0%, #faf5f5 50%, #f0f4f8 100%
 
 /* Primary (Deep Red) */
 .btn-c2-primary {
-    background: #991b1b !important;
+    background: #D6001C !important;
     color: #fff !important;
     border: 1px solid rgba(255,255,255,0.3) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 12px rgba(153,27,27,0.28) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 12px rgba(214,0,28,0.28) !important;
 }
-.btn-c2-primary:hover { background: #7f1d1d !important; }
-.btn-c2-primary:active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 4px rgba(153,27,27,0.2) !important; }
+.btn-c2-primary:hover { background: #A8001C !important; }
+.btn-c2-primary:active { box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 1px 4px rgba(214,0,28,0.2) !important; }
 
 /* Dark (Slate/Navy) */
 .btn-c2-dark {
@@ -124,7 +124,7 @@ body { background: linear-gradient(160deg, #f0f4ff 0%, #faf5f5 50%, #f0f4f8 100%
 /* Danger (Soft Red) */
 .btn-c2-danger {
     background: rgba(255,241,242,0.9) !important;
-    color: #991b1b !important;
+    color: #D6001C !important;
     border: 1.5px solid #fecdd3 !important;
 }
 .btn-c2-danger:hover { background: #fff1f2 !important; }
@@ -159,7 +159,7 @@ body { background: linear-gradient(160deg, #f0f4ff 0%, #faf5f5 50%, #f0f4f8 100%
 .badge-c2-nego  { background: #dbeafe; color: #1d4ed8; border: 1.5px solid #93c5fd; }
 .badge-c2-wait  { background: #fef9c3; color: #a16207; border: 1.5px solid #fde047; }
 .badge-c2-done  { background: #f1f5f9; color: #475569; border: 1.5px solid #cbd5e1; }
-.badge-c2-expired { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fca5a5; }
+.badge-c2-expired { background: #fef2f2; color: #D6001C; border: 1.5px solid #fca5a5; }
 
 /* ── Card glass effect ── */
 .card-c2 {
@@ -176,10 +176,10 @@ body { background: linear-gradient(160deg, #f0f4ff 0%, #faf5f5 50%, #f0f4f8 100%
 }
 
 /* ── Header accent ── */
-header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16px) !important; border-bottom: 3px solid #991b1b !important; box-shadow: 0 2px 16px rgba(153,27,27,0.10) !important; }
+header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16px) !important; border-bottom: 3px solid #D6001C !important; box-shadow: 0 2px 16px rgba(214,0,28,0.10) !important; }
 
 /* ── Section top-border (공고 등록) ── */
-.section-accent-top { border-top: 5px solid #991b1b !important; }
+.section-accent-top { border-top: 5px solid #D6001C !important; }
 
 /* ── Filter chip active ── */
 #filter-bar .filter-chip.active,
@@ -195,7 +195,7 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 
 /* ── 공고 등록 섹션 상단 레드 라인 ── */
 .section-accent-top {
-    border-top: 5px solid #991b1b !important;
+    border-top: 5px solid #D6001C !important;
     background: rgba(255,255,255,0.95) !important;
 }
 
@@ -206,7 +206,7 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 /* ── 탭 버튼 pill 모양 강화 ── */
 .tab-btn { border-radius: 10px !important; }
 .tab-btn.active {
-    background: linear-gradient(160deg, #b91c1c 0%, #7f1d1d 100%) !important;
+    background: linear-gradient(160deg, #D6001C 0%, #A8001C 100%) !important;
     color: #fff !important;
     box-shadow: 0 3px 10px rgba(127,29,29,0.4) !important;
 }
