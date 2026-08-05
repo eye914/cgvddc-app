@@ -3323,7 +3323,7 @@ function showKakaoModal(text, forced) {
                 holder.innerHTML = '<div style="width:794px;background:#fff">' + combined + '</div>';
                 document.body.appendChild(holder);
                 _waitImages(holder, function() {
-                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.7 }, html2canvas: { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }, pagebreak: { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr'] } };
+                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.55 }, html2canvas: { scale: 1.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }, pagebreak: { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr'] } };
                 window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
                     if (holder.parentNode) document.body.removeChild(holder);
                     var base64 = String(datauri).split(',')[1] || '';
