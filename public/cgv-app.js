@@ -4442,7 +4442,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'workCondition') {
                 var wcSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="height:34px;width:auto;display:inline-block;vertical-align:middle;margin-left:4px">'
                     : '';
                 var wcDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
