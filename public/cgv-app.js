@@ -3218,7 +3218,7 @@ function showKakaoModal(text, forced) {
             names.forEach(function(name) {
                 google.script.run
                     .withSuccessHandler(function(subs) {
-                        (subs || []).forEach(function(s) { allSubs[s.request_id] = s; });
+                        (subs || []).forEach(function(s) { var _ex = allSubs[s.request_id]; if (!_ex || String(s.submitted_at || '') > String(_ex.submitted_at || '')) allSubs[s.request_id] = s; });
                         remaining--;
                         if (remaining === 0) { showLoader(false); printBatchForms(selected, allSubs, adminName, sig); }
                     })
@@ -3276,7 +3276,7 @@ function showKakaoModal(text, forced) {
             showLoader(true, '서류 불러오는 중...');
             names.forEach(function(name) {
                 google.script.run
-                    .withSuccessHandler(function(subs) { (subs || []).forEach(function(s) { allSubs[s.request_id] = s; }); if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
+                    .withSuccessHandler(function(subs) { (subs || []).forEach(function(s) { var _ex = allSubs[s.request_id]; if (!_ex || String(s.submitted_at || '') > String(_ex.submitted_at || '')) allSubs[s.request_id] = s; }); if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
                     .withFailureHandler(function() { if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
                     .getFormSubmissions(name);
             });
@@ -4200,8 +4200,9 @@ function showKakaoModal(text, forced) {
 
             google.script.run
                 .withSuccessHandler(function(list) {
-                    // request_id로 정확한 제출 서류 찾기 (같은 사람이 여러 서류 제출한 경우 대비)
-                    var sub = (list || []).find(function(s){ return s.request_id === reqId; })
+                    // request_id로 정확한 제출 서류 찾기 — 같은 request_id가 여러 개면 "가장 최근(서명 완성본)" 사용
+                    var sub = (list || []).filter(function(s){ return s.request_id === reqId; })
+                              .sort(function(a, b){ return String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')); })[0]
                               || (list && list[0]);
                     if (!sub) {
                         body.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">제출된 서류가 없습니다</p>';
