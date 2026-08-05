@@ -3289,6 +3289,21 @@ function showKakaoModal(text, forced) {
             s.onerror = function() { showLoader(false); alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
             document.head.appendChild(s);
         }
+        // 캡처 전 모든 이미지(서명·관리자도장) 로딩 대기 → PDF에 서명 누락 방지
+        function _waitImages(root, cb) {
+            var imgs = root.querySelectorAll('img');
+            var pending = 0, done = false;
+            function finish() { if (done) return; done = true; cb(); }
+            for (var i = 0; i < imgs.length; i++) {
+                if (!imgs[i].complete || imgs[i].naturalWidth === 0) {
+                    pending++;
+                    imgs[i].addEventListener('load', function () { if (--pending <= 0) finish(); });
+                    imgs[i].addEventListener('error', function () { if (--pending <= 0) finish(); });
+                }
+            }
+            if (pending === 0) finish();
+            setTimeout(finish, 2000); // 안전장치
+        }
         function _doDriveSave(selected, allSubs, adminName, sig, month) {
             // 인쇄 화면과 동일하게 브라우저에서 렌더 → 여러 서류를 1개 PDF로 묶어 저장(서식 보존 + 빠름)
             var parts = [];
@@ -3305,9 +3320,13 @@ function showKakaoModal(text, forced) {
             _ensureHtml2Pdf(function() {
                 var holder = document.createElement('div');
                 holder.style.cssText = 'position:absolute;left:-10000px;top:0;background:#fff';
-                holder.innerHTML = '<div style="width:794px;padding:40px 34px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111">' + combined + '</div>';
+                var single = parts.length === 1; // 한 장이면 세로 가운데 배치로 A4 절반 채우기
+                var innerStyle = 'width:794px;padding:40px 34px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111'
+                    + (single ? ';min-height:1123px;display:flex;flex-direction:column;justify-content:center' : '');
+                holder.innerHTML = '<div style="' + innerStyle + '">' + combined + '</div>';
                 document.body.appendChild(holder);
-                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+                _waitImages(holder, function() {
+                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
                 window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
                     if (holder.parentNode) document.body.removeChild(holder);
                     var base64 = String(datauri).split(',')[1] || '';
@@ -3331,7 +3350,8 @@ function showKakaoModal(text, forced) {
                         })
                         .catch(function(e) { clearTimeout(_to); showLoader(false); alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
                 }).catch(function(e) { if (holder.parentNode) document.body.removeChild(holder); showLoader(false); alert('PDF 생성 오류: ' + (e && e.message ? e.message : e)); });
-            });
+                }); // _waitImages
+            }); // _ensureHtml2Pdf
         }
 
         function cancelFormReq(id) {
@@ -3955,9 +3975,12 @@ function showKakaoModal(text, forced) {
                 + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
                 + '<tr><th>핸드폰</th><td class="fc"><input id="ff-phone" class="di" type="tel" placeholder="010-0000-0000" maxlength="13" style="font-size:14px"></td></tr>'
                 + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="font-weight:700;font-size:14px"></td></tr>'
+                + '<tr><th>생년월일</th><td class="fc"><input id="ff-birth" class="di" type="tel" inputmode="numeric" placeholder="예) 001215" maxlength="6" style="font-size:14px"></td></tr>'
                 + '</tbody></table>'
                 + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
-                + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
+                + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
+                + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
+                + '<span style="font-size:12px;font-weight:700">(서명)</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
                 + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
                 + '</div>'
@@ -4118,12 +4141,14 @@ function showKakaoModal(text, forced) {
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
             } else if (type === 'privacy') {
                 formData = {
-                    name: v('ff-name'), phone: v('ff-phone'),
+                    name: v('ff-name'), phone: v('ff-phone'), birth: v('ff-birth'),
                     date: v('ff-date'),
                     sign: window._signDataURL || ''
                 };
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
+                if (!formData.birth) { alert('생년월일(주민번호 앞 6자리)을 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
+                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'overtime') {
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
@@ -4133,6 +4158,7 @@ function showKakaoModal(text, forced) {
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
                 if (!formData.birth) { alert('주민등록번호 앞자리를 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
+                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'workCondition') {
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
@@ -4140,7 +4166,9 @@ function showKakaoModal(text, forced) {
                     sign: window._signDataURL || ''
                 };
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
+                if (!formData.birth) { alert('생년월일(주민번호 앞 6자리)을 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
+                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             }
 
             if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
@@ -4376,9 +4404,12 @@ function showKakaoModal(text, forced) {
                     + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
                     + '<tr><th>핸드폰</th><td class="fc">' + tv(fd.phone) + '</td></tr>'
                     + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td></tr>'
+                    + '<tr><th>생년월일</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '</tbody></table>'
                     + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
-                    + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
+                    + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
+                    + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
+                    + '<span style="font-size:12px;font-weight:700">(서명)</span>'
                     + pvSign
                     + '</div>'
                     + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
@@ -4450,6 +4481,7 @@ function showKakaoModal(text, forced) {
                     + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0">' + wcDate + '</p>'
                     + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
+                    + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + wcSign
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + '</div>'
