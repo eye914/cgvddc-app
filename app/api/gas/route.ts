@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/session';
 export const maxDuration = 60; // PDF 변환·드라이브 저장이 느릴 수 있어 여유 확보
 
 // 관리자 전용 GAS 프록시 (허용된 action만). google.script.run 미등록 메서드를 안전하게 호출하기 위한 경로.
-const ALLOWED = new Set(['saveFormsPdfToDrive']);
+const ALLOWED = new Set(['saveFormsPdfToDrive', 'saveFormPdfBase64']);
 
 export async function POST(req: NextRequest) {
   const admin = requireAdmin(req);

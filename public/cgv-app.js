@@ -3281,33 +3281,55 @@ function showKakaoModal(text, forced) {
                     .getFormSubmissions(name);
             });
         }
+        function _ensureHtml2Pdf(cb) {
+            if (window.html2pdf) return cb();
+            var s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+            s.onload = cb;
+            s.onerror = function() { showLoader(false); alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
+            document.head.appendChild(s);
+        }
         function _doDriveSave(selected, allSubs, adminName, sig, month) {
-            var items = [];
+            // 인쇄 화면과 동일하게 브라우저에서 렌더 → 여러 서류를 1개 PDF로 묶어 저장(서식 보존 + 빠름)
+            var parts = [];
             selected.forEach(function(req) {
                 var sub = allSubs[req.id]; if (!sub) return;
-                var inner = buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig);
-                var label = (FORM_TYPE_LABELS[req.type] || req.type);
-                var dateStr = String(sub.submitted_at || req.requested_at || '').substring(0, 10);
-                var fileName = (req.target_name + '_' + label + '_' + dateStr).replace(/[\\/:*?"<>|]/g, '-');
-                items.push({ fileName: fileName, html: buildFullFormHtml(inner) });
+                parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
             });
-            if (!items.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
+            if (!parts.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
+            var combined = parts.map(function(p, i) { return (i > 0 ? '<div style="page-break-before:always;height:0"></div>' : '') + p; }).join('');
             var folder = String(month).replace(/[\\/:*?"<>|]/g, '-');
-            showLoader(true, '드라이브에 PDF 저장 중...');
-            var _tok = sessionStorage.getItem('cgv_token') || '';
-            var _ctl = new AbortController();
-            var _to = setTimeout(function(){ _ctl.abort(); }, 58000); // 최대 58초 후 중단(무한대기 방지)
-            fetch('/api/gas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok }, body: JSON.stringify({ action: 'saveFormsPdfToDrive', params: [folder, items] }), signal: _ctl.signal })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    clearTimeout(_to); showLoader(false);
-                    if (res && res.ok) {
-                        if (confirm('✅ 구글드라이브에 ' + res.saved + '건 저장 완료' + (res.failed ? (' · 실패 ' + res.failed + '건') : '') + '.\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
-                    } else {
-                        alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormsPdfToDrive 함수가 추가·재배포됐는지 확인해 주세요)');
-                    }
-                })
-                .catch(function(e) { clearTimeout(_to); showLoader(false); alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
+            showLoader(true, 'PDF 만드는 중...');
+            _ensureHtml2Pdf(function() {
+                var holder = document.createElement('div');
+                holder.style.cssText = 'position:fixed;left:-99999px;top:0;z-index:-1';
+                holder.innerHTML = '<div style="width:210mm;padding:16mm 14mm;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111">' + combined + '</div>';
+                document.body.appendChild(holder);
+                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.95 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+                window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
+                    if (holder.parentNode) document.body.removeChild(holder);
+                    var base64 = String(datauri).split(',')[1] || '';
+                    function p2(n) { return ('0' + n).slice(-2); }
+                    var d = new Date();
+                    var ts = d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes());
+                    var fileName = ('근태서류_' + folder + '_' + parts.length + '건_' + ts).replace(/[\\/:*?"<>|]/g, '-');
+                    showLoader(true, '드라이브에 저장 중...');
+                    var _tok = sessionStorage.getItem('cgv_token') || '';
+                    var _ctl = new AbortController();
+                    var _to = setTimeout(function(){ _ctl.abort(); }, 58000);
+                    fetch('/api/gas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok }, body: JSON.stringify({ action: 'saveFormPdfBase64', params: [fileName, folder, base64] }), signal: _ctl.signal })
+                        .then(function(r) { return r.json(); })
+                        .then(function(res) {
+                            clearTimeout(_to); showLoader(false);
+                            if (res && res.ok) {
+                                if (confirm('✅ 구글드라이브에 저장 완료 (서류 ' + parts.length + '건 · PDF 1개).\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
+                            } else {
+                                alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormPdfBase64 함수가 재배포됐는지 확인해 주세요)');
+                            }
+                        })
+                        .catch(function(e) { clearTimeout(_to); showLoader(false); alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
+                }).catch(function(e) { if (holder.parentNode) document.body.removeChild(holder); showLoader(false); alert('PDF 생성 오류: ' + (e && e.message ? e.message : e)); });
+            });
         }
 
         function cancelFormReq(id) {
