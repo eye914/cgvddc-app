@@ -2765,10 +2765,10 @@ function showKakaoModal(text, forced) {
                 })();
                 var isMineCard = currentUser && (t.reqName === currentUser || t.subName === currentUser);
                 var cardBorder = canApply ? "border-blue-300 ring-2 ring-blue-100" : isUrgent ? "border-red-400 ring-2 ring-red-100" : isMineCard ? "border-amber-300" : "border-slate-100";
-                var cardHtml = "<div class='bg-white rounded-[40px] p-6 sm:p-8 card-shadow border-2 "+cardBorder+" relative overflow-hidden mb-6 "+(isN&&isMine?"my-alert":"")+" transition-all hover:shadow-md'>"
-                    + "<div class='absolute top-0 left-0 w-2 h-full "+(isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400")+"'>"+"</div>"
-                    + "<div class='flex justify-between items-center mb-6'>"
-                    + "<div class='flex items-center gap-2'><span class='px-3 py-1.5 rounded-full text-[11px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-slate-800 text-white shadow-sm")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
+                var cardHtml = "<div class='bg-white rounded-[22px] p-5 card-shadow border "+cardBorder+" relative overflow-hidden mb-3 "+(isN&&isMine?"my-alert":"")+" transition-all hover:shadow-md'>"
+                    + "<div class='absolute top-0 left-0 w-1.5 h-full "+(isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400")+"'>"+"</div>"
+                    + "<div class='flex justify-between items-center mb-4'>"
+                    + "<div class='flex items-center gap-2'><span class='px-3 py-1 rounded-full text-[11px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-blue-100 text-blue-700")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
                     + "<span class='text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-md border'>"+t.id+"</span></div>"
                     + "<div class='flex items-center gap-2'>"
                     + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-3 py-1.5 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 shadow-sm active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
@@ -2779,19 +2779,19 @@ function showKakaoModal(text, forced) {
                     + (isMine&&isU ? "<span class='text-[9px] text-slate-400 font-bold'>\uB0B4 \uACF5\uACE0</span>" : "")
                     + (t.subName===currentUser&&isN ? "<span class='text-[9px] text-blue-500 font-bold'>\uB0B4\uAC00 \uC9C0\uC6D0\uD568</span>" : "")
                     + "</div></div></div>"
-                    + "<div class='flex justify-between items-start mb-5'>"
-                    + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
-                    + "<h4 class='text-lg font-black text-slate-800'>"+t.reqName+"</h4></div>"
+                    + "<div class='flex justify-between items-start mb-4'>"
+                    + "<div class='flex items-center gap-2.5'><div class='w-9 h-9 rounded-xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
+                    + "<h4 class='text-[17px] font-black text-slate-800 tracking-tight'>"+t.reqName+"</h4></div>"
                     + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] btn-c2 btn-c2-danger px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
                     + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] btn-c2 btn-c2-ghost px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
                     + "</div>"
-                    + "<div class='bg-slate-50 p-4 sm:p-5 rounded-[28px] border border-slate-100 space-y-4'>"
+                    + "<div class='bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3'>"
                     + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
                     + "<div class='h-px bg-slate-200 w-full'></div>"
                     + "<div><p class='text-[11px] "+(isSub?"text-orange-600":"text-blue-600")+" font-black tracking-widest uppercase mb-2'>"+(isSub?"\uB2E8\uC21C \uB300\uD0C0 \uC694\uCCAD":"\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 (IN)")+"</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+inHtml+"</div></div>"
                     + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+_inPos+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
                     + "</div>"
-                    + "<div class='mt-6 flex gap-3'>"
+                    + "<div class='mt-5 flex gap-3'>"
                     + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-4 rounded-2xl font-black'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
                     + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-4 rounded-2xl font-black'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-4 rounded-2xl font-black'>\uAC70\uC808</button>" : "")
                     + "</div></div>";
