@@ -556,8 +556,8 @@
             ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
             var _revEls = [document.getElementById('app-content'), document.querySelector('header')];
             _revEls.forEach(function(el){ if (el) el.classList.add('cgv-reveal'); });
-            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 520);
-            setTimeout(function(){ _revEls.forEach(function(el){ if (el) el.classList.remove('cgv-reveal'); }); }, 680);
+            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 310);  // 로그인 빨리 걷힘
+            setTimeout(function(){ _revEls.forEach(function(el){ if (el) el.classList.remove('cgv-reveal'); }); }, 640);
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
