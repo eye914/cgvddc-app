@@ -3,8 +3,9 @@ import { sendPushToNames } from '@/lib/push';
 import { supabaseAdmin } from '@/lib/supabase';
 
 async function callGASJson(action: string, params: any[] = []) {
-  const GAS_URL = process.env.GAS_URL;
-  if (!GAS_URL) throw new Error('GAS_URL 미설정');
+  // 계약서 전용 GAS 웹앱(별도 배포). 없으면 기존 GAS_URL 로 폴백.
+  const GAS_URL = process.env.CONTRACT_GAS_URL || process.env.GAS_URL;
+  if (!GAS_URL) throw new Error('CONTRACT_GAS_URL(또는 GAS_URL) 미설정');
   const res = await fetch(GAS_URL, {
     method: 'POST',
     body: JSON.stringify({ action, params }),
