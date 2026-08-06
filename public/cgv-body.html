@@ -60,7 +60,7 @@
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button id="header-name-chip" onclick="openUserSelectModal()" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;background:#F4F5F7;border:none;font-size:12px;font-weight:700;color:#6B7078;white-space:nowrap;cursor:pointer">👤 <span id="header-name-txt">이름 선택</span></button>
-                    <button id="push-subscribe-btn" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
+                    <button id="push-subscribe-btn" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;border:2px solid #D6001C;background:white;color:#D6001C;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
                 </div>
             </div>
             <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner mb-2 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;">
@@ -227,7 +227,7 @@
             <!-- ── 서브탭 (조회 / 스케줄 신청) ── -->
             <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:14px;padding:4px;margin-bottom:12px;border:1px solid #e2e8f0">
                 <button id="sched-sub-btn-view" onclick="switchSchedTab('view')"
-                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#e71a0f;color:white;transition:all .15s">
+                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#D6001C;color:white;transition:all .15s">
                     📅 조회
                 </button>
                 <button id="sched-sub-btn-roster" onclick="switchSchedTab('roster')"
@@ -260,7 +260,7 @@
                         <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
                             style="flex:1;height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:10px;font-weight:700;font-size:13px;color:#0f172a;line-height:40px;box-sizing:border-box;background:white">
                         <label style="display:inline-flex;align-items:center;gap:6px;height:40px;font-size:12px;font-weight:700;color:#475569;background:#f8fafc;padding:0 12px;border-radius:10px;cursor:pointer;border:1px solid #e2e8f0;box-sizing:border-box">
-                            <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:14px;height:14px;accent-color:#e71a0f;margin:0"> 본인만
+                            <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:14px;height:14px;accent-color:#D6001C;margin:0"> 본인만
                         </label>
                     </div>
                     <input type="hidden" id="sched-weekkey" value="">
@@ -274,7 +274,7 @@
                 <!-- 주차 표시 -->
                 <div id="avail-week-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 14px;background:white;border-radius:14px;border:1px solid #e2e8f0">
                     <span style="font-size:11px;font-weight:800;color:#64748b">대상 주차</span>
-                    <span id="avail-week-label" style="font-size:13px;font-weight:900;color:#0f172a;background:#fef2f2;color:#e71a0f;padding:4px 12px;border-radius:8px"></span>
+                    <span id="avail-week-label" style="font-size:13px;font-weight:900;color:#0f172a;background:#fef2f2;color:#D6001C;padding:4px 12px;border-radius:8px"></span>
                 </div>
                 <!-- 콘텐츠 영역 -->
                 <div id="avail-body" style="min-height:120px">
@@ -288,7 +288,7 @@
                             &nbsp;/&nbsp; 계약 <b id="avail-footer-contract" style="color:#0f172a">5</b>일
                         </div>
                         <button id="avail-submit-btn" onclick="availSubmit()"
-                            style="padding:11px 28px;background:#e71a0f;color:white;border:none;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:-0.02em">
+                            style="padding:11px 28px;background:#D6001C;color:white;border:none;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:-0.02em">
                             신청하기
                         </button>
                     </div>
@@ -508,7 +508,7 @@
                         <!-- 버튼 -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                             <button onclick="openAvailWeek()"
-                                style="padding:13px 0;background:#e71a0f;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                                style="padding:13px 0;background:#D6001C;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
                                 📬 신청 열기 + 알림
                             </button>
                             <button onclick="closeAvailWeek()"
@@ -540,7 +540,7 @@
                         </button>
                         <!-- 긴급 대타 요청 -->
                         <button onclick="openUrgentSubModal()"
-                            style="width:100%;margin-top:8px;padding:13px 0;background:#fff;color:#e71a0f;border:1.5px solid #e71a0f;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                            style="width:100%;margin-top:8px;padding:13px 0;background:#fff;color:#D6001C;border:1.5px solid #D6001C;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
                             긴급 대타 요청
                         </button>
                         <!-- 이벤트 / 공휴일 설정 -->

@@ -219,7 +219,7 @@
                 btn.innerHTML = '🔕 차단됨';
                 btn.onclick = showPushDeniedGuide;
             } else {
-                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap';
+                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #D6001C;background:white;color:#D6001C;cursor:pointer;white-space:nowrap';
                 btn.innerHTML = '🔕 알림받기';
                 btn.onclick = function() { requestPushPermission(n); };
             }
@@ -2773,8 +2773,8 @@ function showKakaoModal(text, forced) {
                 var isMineCard = currentUser && (t.reqName === currentUser || t.subName === currentUser);
                 var cardBorder = canApply ? "border-blue-300 ring-2 ring-blue-100" : isUrgent ? "border-red-400 ring-2 ring-red-100" : isMineCard ? "border-amber-300" : "border-slate-100";
                 var _barColor = isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400";
-                var _stBg  = isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a";
-                var _stDot = isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a";
+                var _stBg  = isU?"background:#fef2f2;color:#D6001C":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a";
+                var _stDot = isU?"#D6001C":isN?"#d97706":isP2?"#2563eb":"#16a34a";
                 var _ini   = t.reqName ? String(t.reqName).charAt(0) : "";
                 var cardHtml = "<div class='bg-white rounded-[16px] card-shadow border "+cardBorder+" overflow-hidden mb-2.5 "+(isN&&isMine?"my-alert":"")+"'>"
                     + "<div class='flex'>"
@@ -3540,7 +3540,7 @@ function showKakaoModal(text, forced) {
                 + '<canvas id="sign-pad-canvas" width="340" height="160" style="width:100%;height:160px;border:2px solid #334155;border-radius:10px;background:white;touch-action:none;display:block;cursor:crosshair"></canvas>'
                 + '<div style="display:flex;gap:10px;margin-top:14px">'
                 + '<button onclick="clearSignPad()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">🗑 지우기</button>'
-                + '<button onclick="confirmSignPad()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 서명 완료</button>'
+                + '<button onclick="confirmSignPad()" style="flex:2;padding:13px;border-radius:12px;background:#D6001C;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 서명 완료</button>'
                 + '</div>'
                 + '</div>';
             document.body.appendChild(el);
@@ -3642,7 +3642,7 @@ function showKakaoModal(text, forced) {
                 var s = '<div style="position:relative;width:80px;flex-shrink:0">';
                 // 선택 강조 띠
                 s += '<div style="position:absolute;top:'+selTop+'px;left:4px;right:4px;height:'+TP_ITEM_H+'px;'
-                   + 'background:rgba(231,26,15,0.07);border-top:2.5px solid #e71a0f;border-bottom:2.5px solid #e71a0f;'
+                   + 'background:rgba(214,0,28,0.07);border-top:2.5px solid #D6001C;border-bottom:2.5px solid #D6001C;'
                    + 'border-radius:10px;pointer-events:none;z-index:2"></div>';
                 // 위 페이드
                 s += '<div style="position:absolute;top:0;left:0;right:0;height:'+padH+'px;'
@@ -3680,7 +3680,7 @@ function showKakaoModal(text, forced) {
                 + '</div>'
                 + '<div style="display:flex;gap:10px;margin-top:18px">'
                 + '<button onclick="cancelTimePicker()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
-                + '<button onclick="confirmTimePicker()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
+                + '<button onclick="confirmTimePicker()" style="flex:2;padding:13px;border-radius:12px;background:#D6001C;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
                 + '</div></div>';
             document.body.appendChild(el);
         }
@@ -4825,7 +4825,7 @@ function showKakaoModal(text, forced) {
               + '<label style="'+lblS+'">시프트</label><select id="us-code" style="'+inS+'">'+codeOpts+'</select>'
               + '<label style="'+lblS+'">포지션</label><select id="us-pos" style="'+inS+'">'+posOpts+'</select>'
               + '<label style="'+lblS+'">사유 (선택)</label><input type="text" id="us-reason" placeholder="예: 당일 결근" style="'+inS+'">'
-              + '<button onclick="submitUrgentSub()" style="width:100%;margin-top:18px;padding:14px 0;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">전체에 긴급 요청 보내기</button>'
+              + '<button onclick="submitUrgentSub()" style="width:100%;margin-top:18px;padding:14px 0;background:#D6001C;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">전체에 긴급 요청 보내기</button>'
               + '</div></div>';
             var wrap = document.createElement('div'); wrap.id = 'urgent-sub-wrap'; wrap.innerHTML = html;
             document.body.appendChild(wrap);

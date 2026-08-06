@@ -39,7 +39,7 @@
     var css = '.nm-body{font-size:14px;line-height:1.55;color:#3f4652;font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif}'
       + '.nm-body .nm-h{display:flex;align-items:center;gap:7px;margin:20px 0 9px;font-size:15px;font-weight:800;color:#1f2937;letter-spacing:-.01em}'
       + '.nm-body .nm-h:first-child{margin-top:2px}'
-      + '.nm-body .nm-h:before{content:"";width:4px;height:15px;background:#e71a0f;border-radius:3px;flex:0 0 auto}'
+      + '.nm-body .nm-h:before{content:"";width:4px;height:15px;background:#D6001C;border-radius:3px;flex:0 0 auto}'
       + '.nm-body .nm-p{margin:0 0 8px}'
       + '.nm-body .nm-ul{margin:0 0 8px;padding-left:2px;list-style:none}'
       + '.nm-body .nm-ul>li{padding-left:15px;position:relative;margin-bottom:7px}'
@@ -98,7 +98,7 @@
     }).join('') + '</div>';
     var items = list.filter(function (n) { return _nFilter === '전체' || n.category === _nFilter; });
     var body = items.length ? items.map(noticeCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">공지가 없습니다.</div>';
-    var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
+    var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
     host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
   }
   NM.renderNotices = function () {
@@ -129,7 +129,7 @@
     var signed = _mySigned.indexOf(n.id) > -1;
     var badges = '';
     if (n.pinned) badges += '<span style="font-size:11px;color:#c98a00;font-weight:800">📌 고정</span>';
-    if (n.important) badges += '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>';
+    if (n.important) badges += '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#fdeaea;color:#D6001C">🔴 중요</span>';
     if (n.require_signature) badges += '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>';
     badges += '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span>';
     if (n.require_signature && signed) badges += '<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;background:#eaf7ef;color:#1c7a43">✅ 확인완료</span>';
@@ -157,7 +157,7 @@
       }
       var adminStatus = isAdmin() && n.require_signature ? '<div id="nm-sigstat" style="margin-top:12px"></div>' : '';
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
-        + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#e71a0f">🔴 중요</span>' : '')
+        + (n.important ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#fdeaea;color:#D6001C">🔴 중요</span>' : '')
         + (n.require_signature ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>' : '')
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
@@ -175,7 +175,7 @@
       + '<div style="font-size:11px;font-weight:800;color:#555;margin-bottom:7px">아래 칸에 서명해주세요 (손가락/마우스)</div>'
       + '<canvas id="nm-sigpad" style="width:100%;height:130px;background:#fff;border:1.5px dashed #cfcfd6;border-radius:9px;touch-action:none;display:block"></canvas>'
       + '<div style="display:flex;gap:8px;margin-top:9px"><button onclick="NM.sigClear()" style="flex:0 0 34%;border:none;background:#eceef1;color:#555;border-radius:11px;padding:12px;font-weight:800">다시</button>'
-      + '<button onclick="NM.sigSubmit(\'' + id + '\')" style="flex:1;border:none;background:#e71a0f;color:#fff;border-radius:11px;padding:12px;font-weight:800">확인 및 제출</button></div></div>';
+      + '<button onclick="NM.sigSubmit(\'' + id + '\')" style="flex:1;border:none;background:#D6001C;color:#fff;border-radius:11px;padding:12px;font-weight:800">확인 및 제출</button></div></div>';
   }
 
   var _sigCtx = null, _sigCanvas = null, _sigDirty = false;
@@ -272,7 +272,7 @@
       + '<label style="font-size:12px;font-weight:700;color:#555">사진 첨부 (선택)</label>'
       + '<input id="nf-imgs" type="file" accept="image/*" multiple onchange="NM.pickImgs(event)" style="' + inS + ';margin:5px 0 8px">'
       + '<div id="mf-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>'
-      + '<button onclick="NM.saveNotice(' + (id ? "'" + id + "'" : 'null') + ')" style="width:100%;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px">' + (id ? '수정 저장' : '공지 등록') + '</button>';
+      + '<button onclick="NM.saveNotice(' + (id ? "'" + id + "'" : 'null') + ')" style="width:100%;padding:14px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px">' + (id ? '수정 저장' : '공지 등록') + '</button>';
     openSheet(html, true);
     renderImgPreview();
   };
@@ -308,7 +308,7 @@
     }).join('') + '</div>';
     var items = list.filter(function (m) { return _mFilter === '전체' || m.category === _mFilter || m.type === _mFilter; });
     var body = items.length ? items.map(manualCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">매뉴얼이 없습니다.</div>';
-    var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';
+    var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';
     host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
   }
   NM.renderManuals = function () {
@@ -364,7 +364,7 @@
       + '<label style="font-size:12px;font-weight:700;color:#555">사진 첨부</label>'
       + '<input id="mf-imgs" type="file" accept="image/*" multiple onchange="NM.pickImgs(event)" style="' + inS + ';margin:5px 0 8px">'
       + '<div id="mf-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>'
-      + '<button onclick="NM.saveManual(' + (id ? "'" + id + "'" : 'null') + ')" style="width:100%;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px">' + (id ? '수정 저장' : '매뉴얼 등록') + '</button>';
+      + '<button onclick="NM.saveManual(' + (id ? "'" + id + "'" : 'null') + ')" style="width:100%;padding:14px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:15px">' + (id ? '수정 저장' : '매뉴얼 등록') + '</button>';
     openSheet(html, true);
     renderImgPreview();
   };
@@ -380,7 +380,7 @@
   function renderImgPreview() {
     var el = document.getElementById('mf-preview'); if (!el) return;
     el.innerHTML = _formImgs.map(function (src, i) {
-      return '<div style="position:relative"><img src="' + esc(src) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px"><button onclick="NM.rmImg(' + i + ')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#e71a0f;color:#fff;border:none;font-size:12px;line-height:1">×</button></div>';
+      return '<div style="position:relative"><img src="' + esc(src) + '" style="width:60px;height:60px;object-fit:cover;border-radius:8px"><button onclick="NM.rmImg(' + i + ')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#D6001C;color:#fff;border:none;font-size:12px;line-height:1">×</button></div>';
     }).join('');
   }
   NM.rmImg = function (i) { _formImgs.splice(i, 1); renderImgPreview(); };

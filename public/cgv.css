@@ -385,7 +385,7 @@ h1, h2, h3, h4, p, span, button, label {
     transition: border-color 0.15s;
     box-sizing: border-box;
 }
-.ff-input:focus { border-color: #e71a0f; background: #fff; }
+.ff-input:focus { border-color: #D6001C; background: #fff; }
 textarea.ff-input { resize: vertical; min-height: 64px; }
 
 /* 6. 공고 카드 타이틀/정보 정렬 */

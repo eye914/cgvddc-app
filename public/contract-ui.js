@@ -198,7 +198,7 @@
 
     var count = Object.keys(_ctrSelectedNames).filter(function(k) { return _ctrSelectedNames[k]; }).length;
     var btnDisabled = count === 0;
-    html += '<button onclick="ctrSendSelected()" ' + (btnDisabled ? 'disabled' : '') + ' style="width:100%;padding:14px;border-radius:14px;border:none;font-weight:900;font-size:14px;cursor:' + (btnDisabled ? 'not-allowed' : 'pointer') + ';background:' + (btnDisabled ? '#cbd5e1' : '#e71a0f') + ';color:white;transition:all 0.15s">📨 선택 발송 (' + count + '명)</button>';
+    html += '<button onclick="ctrSendSelected()" ' + (btnDisabled ? 'disabled' : '') + ' style="width:100%;padding:14px;border-radius:14px;border:none;font-weight:900;font-size:14px;cursor:' + (btnDisabled ? 'not-allowed' : 'pointer') + ';background:' + (btnDisabled ? '#cbd5e1' : '#D6001C') + ';color:white;transition:all 0.15s">📨 선택 발송 (' + count + '명)</button>';
     list.innerHTML = html;
   }
 

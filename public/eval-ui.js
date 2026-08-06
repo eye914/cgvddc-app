@@ -58,8 +58,8 @@
         : '<span style="background:#fef9c3;color:#854d0e;font-size:11px;font-weight:800;padding:3px 10px;border-radius:7px">● 미오픈</span>';
     var openBtn = st === 'open'
       ? '<button onclick="EV.close_()" style="flex:1;padding:11px;background:#0f172a;color:#fff;border:none;border-radius:11px;font-weight:800">평가 마감 + 순위 확정</button>'
-      : '<button onclick="EV.open_()" style="flex:1;padding:11px;background:#e71a0f;color:#fff;border:none;border-radius:11px;font-weight:800">' + (st === 'closed' ? '재오픈' : '평가 오픈 (관리자 알림)') + '</button>';
-    var tabBtn = function (id, label) { return '<button onclick="EV.tab(\'' + id + '\')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;background:' + (_tab === id ? '#fff' : 'transparent') + ';color:' + (_tab === id ? '#e71a0f' : '#8a8a90') + ';box-shadow:' + (_tab === id ? '0 1px 3px rgba(0,0,0,.1)' : 'none') + '">' + label + '</button>'; };
+      : '<button onclick="EV.open_()" style="flex:1;padding:11px;background:#D6001C;color:#fff;border:none;border-radius:11px;font-weight:800">' + (st === 'closed' ? '재오픈' : '평가 오픈 (관리자 알림)') + '</button>';
+    var tabBtn = function (id, label) { return '<button onclick="EV.tab(\'' + id + '\')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;background:' + (_tab === id ? '#fff' : 'transparent') + ';color:' + (_tab === id ? '#D6001C' : '#8a8a90') + ';box-shadow:' + (_tab === id ? '0 1px 3px rgba(0,0,0,.1)' : 'none') + '">' + label + '</button>'; };
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
       + '<div style="font-size:18px;font-weight:800">📋 월말평가</div>'
       + '<button onclick="EV.close()" style="border:none;background:#e9e9ee;width:32px;height:32px;border-radius:50%;font-size:17px;color:#64748b">×</button></div>'
@@ -87,7 +87,7 @@
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;color:#64748b;font-weight:700">평가할 미소지기 선택 (전체 ' + roster.length + '명)</div>'
       + '<div style="display:flex;gap:6px"><button onclick="EV.tgAll(true)" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:800">전체</button><button onclick="EV.tgAll(false)" style="border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:800">해제</button></div></div>'
       + rows
-      + '<button onclick="EV.saveTargets()" style="width:100%;margin-top:8px;padding:13px;background:#e71a0f;color:#fff;border:none;border-radius:12px;font-weight:800">평가대상 저장 → 배정으로</button>';
+      + '<button onclick="EV.saveTargets()" style="width:100%;margin-top:8px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:12px;font-weight:800">평가대상 저장 → 배정으로</button>';
   }
   EV.tgAll = function (v) { document.querySelectorAll('.ev-tg').forEach(function (c) { c.checked = v; }); };
   EV.saveTargets = function () {
@@ -130,7 +130,7 @@
     var bottom = '<div style="display:flex;gap:6px;margin-top:12px;align-items:stretch">'
       + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#f1f5f9;font-size:11px;font-weight:800;padding:6px 8px">미배정 (' + pool.length + ')</div><div id="ev-pool" style="max-height:260px;overflow:auto;overscroll-behavior:contain;touch-action:pan-y">' + li(pool) + '</div></div>'
       + '<div style="display:flex;flex-direction:column;justify-content:center;gap:8px">'
-      + '<button onclick="EV.moveRight()" title="배정" style="border:none;background:#e71a0f;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">›</button>'
+      + '<button onclick="EV.moveRight()" title="배정" style="border:none;background:#D6001C;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">›</button>'
       + '<button onclick="EV.moveLeft()" title="해제" style="border:none;background:#64748b;color:#fff;border-radius:8px;padding:10px 11px;font-weight:900;font-size:15px">‹</button></div>'
       + '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden"><div style="background:#eef2ff;font-size:11px;font-weight:800;padding:6px 8px">' + esc(_selManager) + ' 배정 (' + mine.length + ')</div><div id="ev-mine" style="max-height:260px;overflow:auto;overscroll-behavior:contain;touch-action:pan-y">' + li(mine) + '</div></div></div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin-top:6px;text-align:center">체크 후 › 배정 / ‹ 해제 · 한 명은 한 평가자에게만</div>';
@@ -200,7 +200,7 @@
       var tot = calcTotal(smap[a.miso_name] || {}, ctx);
       return '<div onclick="EV.input(\'' + esc(a.miso_name) + '\')" style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 14px;margin-bottom:9px;cursor:pointer">'
         + '<div><div style="font-weight:800;font-size:15px">' + esc(a.miso_name) + '</div><div style="font-size:11px;color:#9aa0a6;margin-top:2px">' + (done ? '평가 완료' : '미평가') + '</div></div>'
-        + '<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:' + (done ? '#e71a0f' : '#cbd5e1') + '">' + tot + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div></div>';
+        + '<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:' + (done ? '#D6001C' : '#cbd5e1') + '">' + tot + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div></div>';
     }).join('');
   }
   function calcTotal(grades, ctx) {
@@ -231,7 +231,7 @@
     var css = '#ev-in table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden}#ev-in th{background:#44546A;color:#fff;padding:8px 4px}#ev-in td{border-bottom:1px solid #eee;padding:8px 5px;text-align:center}#ev-in td.l{text-align:left;font-weight:700}';
     var foot = locked
       ? '<div style="margin-top:12px;text-align:center;font-size:12px;font-weight:800;color:#16a34a">✅ 평가 완료 · 수정 불가' + (closed ? ' (마감)' : '') + '<div style="font-size:11px;color:#9aa0a6;font-weight:600;margin-top:2px">지각·결근·공지 점수는 근태 변동에 따라 자동 갱신됩니다</div></div>'
-      : '<button onclick="EV.saveScore(\'' + esc(miso) + '\')" style="width:100%;margin-top:12px;padding:14px;background:#e71a0f;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:15px">평가 저장 (저장 후 수정 불가)</button>';
+      : '<button onclick="EV.saveScore(\'' + esc(miso) + '\')" style="width:100%;margin-top:12px;padding:14px;background:#D6001C;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:15px">평가 저장 (저장 후 수정 불가)</button>';
     var html = '<div style="font-size:16px;font-weight:800;margin-bottom:4px">' + esc(miso) + ' 평가' + (locked ? ' <span style="font-size:11px;color:#16a34a">🔒 완료</span>' : '') + '</div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">' + _period + ' · 평가자 ' + esc((scoreRow && scoreRow.manager_name) || me()) + '</div>'
       + '<style>' + css + '</style><table><thead><tr><th style="width:36%">소구분</th><th>평가</th><th>점수</th><th>가중</th><th>환산</th></tr></thead><tbody>' + rows
@@ -313,7 +313,7 @@
           return '<div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid ' + (r.rank <= 3 && closed ? '#fbbf24' : '#eee') + ';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
             + '<div style="width:38px;text-align:center;font-size:16px;font-weight:900">' + (closed ? medal(r.rank) : r.rank + '위') + '</div>'
             + '<div style="flex:1"><div style="font-weight:800;font-size:15px">' + esc(r.miso) + '</div><div style="font-size:11px;color:#9aa0a6">평가자 ' + esc(r.manager) + (r.scored ? '' : ' · <span style="color:#dc2626">미평가</span>') + '</div></div>'
-            + '<div style="font-size:20px;font-weight:900;color:#e71a0f">' + r.total + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div>';
+            + '<div style="font-size:20px;font-weight:900;color:#D6001C">' + r.total + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div>';
         }).join('');
     });
   }
