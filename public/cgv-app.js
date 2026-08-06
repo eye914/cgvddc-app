@@ -2656,14 +2656,17 @@ function showKakaoModal(text, forced) {
                 }
                 var _sdParts = safeDate.split(" / ");
                 var _sdDate  = _sdParts[0];
+                // 카드용 짧은 날짜: "2026-08-06(목)" → "8/6(목)"
+                var _shortD  = function(s){ return String(s).replace(/^(\d{4})-(\d{1,2})-(\d{1,2})/, function(_m,_y,_mo,_d){ return parseInt(_mo,10)+'/'+parseInt(_d,10); }); };
+                var _sdDateS = _shortD(_sdDate);
                 var _sdCode  = _sdParts.length > 1 ? _sdParts.slice(1).join(' / ').trim() : '';
                 var _codeMatch = _sdCode.match(/^([A-Z]\d+)/);
                 var _pureCode  = _codeMatch ? _codeMatch[1] : _sdCode.split(' ')[0];
                 var _cardTime  = _pureCode ? getActualTimeByCode(_pureCode, _reqHoursCard) : '';
                 var _hoursLbl  = _reqHoursCard <= 4.5 ? '4.5h' : '5.5h';
                 var _hoursCls  = _reqHoursCard <= 4.5 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
-                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
-                    + "<span class='text-slate-700'>" + _sdDate + "</span>"
+                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1'>"
+                    + "<span class='text-slate-800 font-bold whitespace-nowrap'>" + _sdDateS + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
                     + (_cardTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _cardTime + "</span>" : "")
                     + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + rPL + "</span>"
@@ -2684,7 +2687,7 @@ function showKakaoModal(text, forced) {
                         var _inFallbackPos = _inPos;   // IN 슬롯 점유자 기준 포지션
                         _inLines.forEach(function(line, li) {
                             var _lParts = line.split(" / ");
-                            var _lDate = _lParts[0] || '';
+                            var _lDate = _shortD(_lParts[0] || '');
                             var _lCode = _lParts.length > 1 ? _lParts.slice(1).join(' / ').trim() : '';
                             var _lCodeMatch = _lCode.match(/^([A-Z]\d+)/);
                             var _lPureCode = _lCodeMatch ? _lCodeMatch[1] : '';
