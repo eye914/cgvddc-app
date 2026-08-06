@@ -2666,7 +2666,7 @@ function showKakaoModal(text, forced) {
                 var _hoursLbl  = _reqHoursCard <= 4.5 ? '4.5h' : '5.5h';
                 var _hoursCls  = _reqHoursCard <= 4.5 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
                 var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1'>"
-                    + "<span class='text-slate-800 font-bold whitespace-nowrap'>" + _sdDateS + "</span>"
+                    + "<span class='text-slate-800 font-bold whitespace-nowrap' style='display:inline-block;min-width:3.3rem'>" + _sdDateS + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
                     + (_cardTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _cardTime + "</span>" : "")
                     + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + rPL + "</span>"
@@ -2703,7 +2703,7 @@ function showKakaoModal(text, forced) {
                                 if (_lTimeText) _lPureCode = _lTimeText.split(' ')[0];
                             }
                             _inBuf += "<div class='font-bold " + (li > 0 ? "mt-2 pt-2 border-t border-slate-100" : "mt-1") + " flex flex-wrap items-center gap-1.5'>"
-                                + "<span class='text-slate-700'>" + _lDate + "</span>"
+                                + "<span class='text-slate-800 font-bold whitespace-nowrap' style='display:inline-block;min-width:3.3rem'>" + _lDate + "</span>"
                                 + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
                                 + (_lTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _lTime + "</span>" : "")
                                 // IN body: _lPos 포지션 뱃지 (수락자 그 날짜 포지션)
@@ -2802,8 +2802,8 @@ function showKakaoModal(text, forced) {
                         + "</div>" : "")
                     // \u2500\u2500 OUT/IN \uC2AC\uB86F \u2500\u2500
                     + "<div class='bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-1.5'>"
-                    + "<div class='flex items-center gap-2'><span class='text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0'>OUT</span><div class='min-w-0 flex-1'>"+outHtml+"</div></div>"
-                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1'>"+inHtml+"</div></div>"
+                    + "<div class='flex items-center gap-2'><span class='text-[9px] font-black text-red-600 bg-red-100 w-9 text-center py-1 rounded flex-shrink-0'>OUT</span><div class='min-w-0 flex-1'>"+outHtml+"</div></div>"
+                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" w-9 text-center py-1 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1'>"+inHtml+"</div></div>"
                     + "</div>"
                     // \u2500\u2500 \uC9C0\uC6D0\uC790 \u2500\u2500
                     + (!isU ? "<div class='flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5 mt-2 flex-wrap'><span class='text-[10px] text-slate-400 font-bold flex-shrink-0'>\uC9C0\uC6D0\uC790</span><span class='text-[12px] font-black text-blue-700'>"+t.subName+"</span>"+(_inPos?"<span class='text-[10px] text-slate-500 font-bold'>"+_inPos+"</span>":"")+"<span class='text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-md ml-auto flex-shrink-0'>\uB9E4\uCE6D\uB428</span></div>" : "")
