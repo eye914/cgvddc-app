@@ -1,10 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
 async function callGAS(action: string, params: any[]) {
   const GAS_URL = process.env.GAS_URL;
   if (!GAS_URL) return;
   try { await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params }) }); } catch (_) {}
+}
+
+// ── 전화번호 캐시 (GAS 직원정보 시트 콜드스타트 30초를 사용자에게서 분리) ──
+const PHONES_KEY = 'misojigi_phones_cache';
+const PHONES_SOFT_TTL = 6 * 60 * 60 * 1000; // 6시간 지나면 백그라운드 갱신
+async function fetchPhonesFromGAS(): Promise<any | null> {
+  const GAS_URL = process.env.GAS_URL;
+  if (!GAS_URL) return {};
+  const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getEmployeePhones', params: [] }) });
+  const txt = await res.text();
+  const json = JSON.parse(txt);
+  return json?.success ? (json.result || {}) : null;
 }
 
 // GET: 활성 미소지기 목록 (앱용)
@@ -14,19 +27,31 @@ export async function GET(req: NextRequest) {
     const all = searchParams.get('all') === '1'; // 관리자: 비활성 포함
     const mode = searchParams.get('mode');
 
-    // ★ 전화번호 맵 조회 (GAS 직원정보 시트)
+    // ★ 전화번호 맵 조회 (GAS 직원정보 시트) — 캐시 + stale-while-revalidate
     if (mode === 'phones') {
-      const GAS_URL = process.env.GAS_URL;
-      if (!GAS_URL) return NextResponse.json({});
-      const res = await fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'getEmployeePhones', params: [] }),
-      });
-      const txt = await res.text();
+      if (!process.env.GAS_URL) return NextResponse.json({});
+      // 캐시 조회
+      const { data: row } = await supabaseAdmin.from('app_settings').select('value').eq('key', PHONES_KEY).maybeSingle();
+      const cache = row?.value as any;
+      const cached = cache && typeof cache.ts === 'number' ? cache : null;
+      if (cached) {
+        const age = Date.now() - cached.ts;
+        // 오래됐으면 백그라운드 갱신(응답은 즉시 캐시로)
+        if (age > PHONES_SOFT_TTL) {
+          after(async () => {
+            try { const fresh = await fetchPhonesFromGAS(); if (fresh) await supabaseAdmin.from('app_settings').upsert({ key: PHONES_KEY, value: { ts: Date.now(), data: fresh } }, { onConflict: 'key' }); } catch {}
+          });
+        }
+        return NextResponse.json(cached.data || {});
+      }
+      // 캐시 없음 → 최초 1회만 느린 GAS 호출 (이후 캐시)
       try {
-        const json = JSON.parse(txt);
-        if (json?.success) return NextResponse.json(json.result || {});
-        return NextResponse.json({ error: json?.error || 'GAS 오류' }, { status: 500 });
+        const fresh = await fetchPhonesFromGAS();
+        if (fresh) {
+          await supabaseAdmin.from('app_settings').upsert({ key: PHONES_KEY, value: { ts: Date.now(), data: fresh } }, { onConflict: 'key' });
+          return NextResponse.json(fresh);
+        }
+        return NextResponse.json({ error: 'GAS 오류' }, { status: 500 });
       } catch {
         return NextResponse.json({ error: '응답 파싱 실패' }, { status: 500 });
       }

@@ -2265,14 +2265,10 @@ function showKakaoModal(text, forced) {
         function loadMisojigiAdmin() {
             var el = document.getElementById('miso-admin-list');
             if (el) el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">불러오는 중...</p>';
-            // 전화번호 + 미소지기 목록 병렬 fetch (Supabase → Next.js API)
-            Promise.all([
-                fetch('/api/misojigi?mode=phones').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
-                fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).catch(function(){ return []; })
-            ]).then(function(results) {
-                var phones = results[0];
-                var list   = results[1];
-                if (phones && typeof phones === 'object' && !phones.error) _misoPhones = phones;
+            // 0) 캐시된 전화번호 즉시 사용 (있으면 첫 렌더부터 번호 표시)
+            try { var _cp = JSON.parse(sessionStorage.getItem('cgv_miso_phones') || 'null'); if (_cp && typeof _cp === 'object') _misoPhones = _cp; } catch (e) {}
+            // 1) 목록 먼저 (Supabase, 빠름) → 즉시 렌더 — 느린 전화번호를 기다리지 않음
+            fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).then(function(list) {
                 if (!Array.isArray(list)) {
                     if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: 데이터를 불러올 수 없습니다</p>';
                     return;
@@ -2282,6 +2278,14 @@ function showKakaoModal(text, forced) {
             }).catch(function(e) {
                 if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + e + '</p>';
             });
+            // 2) 전화번호는 백그라운드(느린 GAS) → 도착하면 번호만 채워 재렌더 + 캐시
+            fetch('/api/misojigi?mode=phones').then(function(r){ return r.json(); }).then(function(phones) {
+                if (phones && typeof phones === 'object' && !phones.error) {
+                    _misoPhones = phones;
+                    try { sessionStorage.setItem('cgv_miso_phones', JSON.stringify(phones)); } catch (e) {}
+                    if (_misoAdminData.length) renderMisojigiAdmin(_misoAdminData);
+                }
+            }).catch(function(){});
         }
 
         function renderMisojigiAdmin(list) {
