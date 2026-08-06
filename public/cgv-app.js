@@ -1591,7 +1591,7 @@ function showKakaoModal(text, forced) {
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var lines = safe.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
                 document.getElementById("modal-target-wish").innerHTML = safe === "\uB300\uD0C0 \uC694\uCCAD"
-                    ? "<div class='text-slate-400 italic text-sm'>\uB300\uD0C0 \uC694\uCCAD</div>"
+                    ? "<div class='text-slate-400 font-medium text-sm'>\uB300\uD0C0 \uC694\uCCAD</div>"
                     : lines.map(function(l, idx){
                         var parts = l.split(" / ");
                         var date = parts[0] || '';
@@ -2669,7 +2669,7 @@ function showKakaoModal(text, forced) {
                 var _cardTime  = _pureCode ? getActualTimeByCode(_pureCode, _reqHoursCard) : '';
                 var _hoursLbl  = _reqHoursCard <= 4.5 ? '4.5h' : '5.5h';
                 var _hoursCls  = _reqHoursCard <= 4.5 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
-                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1'>"
+                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px]'>"
                     + "<span class='text-slate-800 font-bold whitespace-nowrap' style='display:inline-block;min-width:3.3rem'>" + _sdDateS + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
                     + (_cardTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _cardTime + "</span>" : "")
@@ -2679,11 +2679,11 @@ function showKakaoModal(text, forced) {
                 // \u2605 \uD76C\uB9DD\uADFC\uBB34(IN) \uBA40\uD2F0\uB77C\uC778 \uD30C\uC2F1 \u2014 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC815\uD655 \uCD94\uCD9C
                 var inHtml;
                 if (safe === "\uB300\uD0C0 \uC694\uCCAD") {
-                    inHtml = "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>";
+                    inHtml = "<div class='text-slate-400 font-medium'>\uB300\uD0C0 \uC694\uCCAD</div>";
                 } else {
                     var _inLines = safe.split("\n").filter(function(l){ return l.trim(); });
                     if (!_inLines.length) {
-                        inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
+                        inHtml = "<div class='text-slate-400 font-medium'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
                     } else {
                         var _inBuf = "<div class='space-y-1'>";
                         // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
@@ -2791,7 +2791,7 @@ function showKakaoModal(text, forced) {
                     + "<div class='flex items-center justify-between gap-2 mb-2.5'>"
                     + "<div class='flex items-center gap-2 min-w-0'>"
                     + "<div class='w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0 "+(isMineCard?"bg-red-50 text-red-600":isSub?"bg-orange-50 text-orange-500":"bg-slate-100 text-slate-500")+"'>"+_ini+"</div>"
-                    + "<span class='text-[14px] font-black text-slate-800 flex-shrink-0'>"+t.reqName+"</span>"
+                    + "<span class='text-[16px] font-extrabold text-slate-900 tracking-tight flex-shrink-0'>"+t.reqName+"</span>"
                     + (isMine&&isU ? "<span class='text-[9.5px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uB0B4 \uACF5\uACE0</span>" : "")
                     + (t.subName===currentUser&&isN ? "<span class='text-[9.5px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uC9C0\uC6D0\uD568</span>" : "")
                     + "</div>"
