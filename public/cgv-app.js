@@ -2807,7 +2807,7 @@ function showKakaoModal(text, forced) {
                     // \u2500\u2500 OUT/IN \uC2AC\uB86F \u2500\u2500
                     + "<div class='bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-1.5'>"
                     + "<div class='flex items-center gap-2'><span class='text-[9px] font-black text-red-600 bg-red-100 w-9 text-center py-1 rounded flex-shrink-0'>OUT</span><div class='min-w-0 flex-1'>"+outHtml+"</div></div>"
-                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" w-9 text-center py-1 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1'>"+inHtml+"</div></div>"
+                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" w-9 text-center py-1 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1 text-[14px]'>"+inHtml+"</div></div>"
                     + "</div>"
                     // \u2500\u2500 \uC9C0\uC6D0\uC790 \u2500\u2500
                     + (!isU ? "<div class='flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5 mt-2 flex-wrap'><span class='text-[10px] text-slate-400 font-bold flex-shrink-0'>\uC9C0\uC6D0\uC790</span><span class='text-[12px] font-black text-blue-700'>"+t.subName+"</span>"+(_inPos?"<span class='text-[10px] text-slate-500 font-bold'>"+_inPos+"</span>":"")+"<span class='text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-md ml-auto flex-shrink-0'>\uB9E4\uCE6D\uB428</span></div>" : "")
