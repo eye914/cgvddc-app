@@ -33,8 +33,8 @@
       if (r.shiftCode && r.time && !timeMap[r.shiftCode]) timeMap[r.shiftCode] = r.time;
       var d = byDate[md] || (byDate[md] = { dow: dw, ord: mdNum(md), slots: {} });
       var cell = d.slots[r.shiftCode] || (d.slots[r.shiftCode] = { time: r.time || '' });
-      var label = String(r.name || '').trim() + (r.note ? (' ' + String(r.note).trim()) : '');
-      cell[r.position] = cell[r.position] ? (cell[r.position] + ', ' + label) : label;
+      if (!cell[r.position]) cell[r.position] = [];
+      cell[r.position].push({ name: String(r.name || '').trim(), note: r.note ? String(r.note).trim() : '' });
     });
     var days = Object.keys(byDate).sort(function (a, b) { return byDate[a].ord - byDate[b].ord; }).map(function (md) {
       var d = byDate[md]; return { date: md, dow: d.dow, ord: d.ord, slots: d.slots };
@@ -130,11 +130,19 @@
       var time = cell.time || week.timeMap[sc] || DEFAULT_TIME[sc] || '';
       var cells = POS.map(function (p) {
         var v = cell[p];
-        var inner = v ? '<div style="background:' + BG[p] + ';color:' + CC[p] + ';font-size:11px;font-weight:700;padding:3px 5px;border-radius:6px;line-height:1.3">' + esc(v) + '</div>' : '';
-        return '<td style="padding:3px;vertical-align:top;border-left:1px solid #f0f0f0">' + inner + '</td>';
+        var inner = '';
+        if (v && v.length) {
+          inner = v.map(function (person) {
+            return '<div style="background:' + BG[p] + ';color:' + CC[p] + ';font-size:11px;font-weight:700;padding:4px 4px;border-radius:6px;line-height:1.25;text-align:center;margin-bottom:3px">'
+              + '<div>' + esc(person.name) + '</div>'
+              + (person.note ? '<div style="font-size:9.5px;font-weight:600;opacity:.85;margin-top:1px">' + esc(person.note) + '</div>' : '')
+              + '</div>';
+          }).join('');
+        }
+        return '<td style="padding:3px;vertical-align:middle;text-align:center;border-left:1px solid #f0f0f0">' + inner + '</td>';
       }).join('');
       return '<tr style="border-top:1px solid #f0f0f0">'
-        + '<td style="padding:5px 4px;vertical-align:top"><div style="font-size:11px;font-weight:800;color:#0f172a">' + sc + '</div><div style="font-size:9px;color:#a3a3aa">' + esc(time) + '</div></td>'
+        + '<td style="padding:5px 4px;vertical-align:middle"><div style="font-size:11px;font-weight:800;color:#0f172a">' + sc + '</div><div style="font-size:9px;color:#a3a3aa">' + esc(time) + '</div></td>'
         + cells + '</tr>';
     }).join('');
     return '<div style="text-align:center;font-size:14px;font-weight:800;color:#0f172a;margin:4px 0 8px">' + esc(day.dow) + '요일 · ' + esc(day.date) + '</div>'
