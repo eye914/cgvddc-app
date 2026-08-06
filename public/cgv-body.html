@@ -56,11 +56,11 @@
                     <div class="flex items-baseline gap-1 mb-0.5">
                         <span style="color:#D6001C;font-size:10px;font-weight:800;letter-spacing:0.18em;">CGV</span><span style="color:#9EA3AB;font-size:10px;font-weight:800;letter-spacing:0.18em;"> DONGDUCHEON STAFF</span>
                     </div>
-                    <h1 class="text-[17px] font-extrabold tracking-tight text-slate-900 leading-none whitespace-nowrap">동두천 미소지기 교대 신청</h1>
+                    <h1 class="text-[19px] font-extrabold tracking-tight text-slate-900 leading-none whitespace-nowrap">미소지기 교대 신청</h1>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <span id="header-datetime" class="text-[10px] font-bold text-slate-400 hidden sm:inline"></span>
-                    <button id="push-subscribe-btn" style="font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
+                    <button id="header-name-chip" onclick="openUserSelectModal()" style="display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;background:#F4F5F7;border:none;font-size:12px;font-weight:700;color:#6B7078;white-space:nowrap;cursor:pointer">👤 <span id="header-name-txt">이름 선택</span></button>
+                    <button id="push-subscribe-btn" style="font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
                 </div>
             </div>
             <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner mb-2 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;">
@@ -86,7 +86,7 @@
 
             <div id="home-leaderboard"></div>
 
-            <section id="who-section" class="bg-white rounded-[24px] p-4 card-shadow border-2 border-slate-100">
+            <section id="who-section" style="display:none" class="bg-white rounded-[24px] p-4 card-shadow border-2 border-slate-100">
                 <div class="flex items-center gap-3 mb-5">
                     <div class="w-10 h-10 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 shadow-sm">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -200,7 +200,7 @@
 
             <section class="space-y-6 pb-10">
                 <div class="flex items-center justify-between px-4 border-l-8 border-red-600 ml-1">
-                    <h3 class="font-extrabold text-slate-900 text-xl tracking-tight">실시간 현황</h3>
+                    <h3 class="font-extrabold text-slate-900 text-xl tracking-tight">진행 중인 공고</h3>
                     <div class="flex items-center gap-3">
                         <button onclick="sessionStorage.removeItem('cgv_miso');fetchData();" class="p-2 rounded-full bg-white border shadow-sm">
                             <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>

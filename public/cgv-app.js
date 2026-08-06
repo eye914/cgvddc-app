@@ -974,9 +974,11 @@ function showKakaoModal(text, forced) {
             var btn = document.getElementById("user-display-btn");
             btn.innerHTML = "<span class='text-slate-900 font-black text-xl'>"+name+" <span class='text-[15px] text-slate-500 font-semibold'>("+currentUserPos.join(", ")+")</span></span><span class='bg-slate-800 text-white px-3 py-1.5 rounded-lg font-black tracking-widest uppercase shadow-md'>\uBCC0\uACBD</span>";
             clearReqData(); clearWishData(); updatePosButtonLock();
-            // PIN 로그인(본인 고정)이면 "누구신가요?" 카드는 불필요 → 숨김
+            // 이름은 헤더 칩으로 표시 → 큰 "누구신가요?" 카드는 항상 숨김
             var _ws = document.getElementById("who-section");
-            if (_ws) _ws.style.display = sessionStorage.getItem("cgv_locked_user") ? "none" : "";
+            if (_ws) _ws.style.display = "none";
+            var _hn = document.getElementById("header-name-txt");
+            if (_hn) _hn.textContent = name || "이름 선택";
             var um = document.getElementById("user-select-modal");
             if (um && um.style.display !== "none") closeUserSelectModal();
             renderList();
