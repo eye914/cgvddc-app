@@ -14,7 +14,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", 'P
             .support-modal-content { padding: 20px 16px !important; }
             .kakao-modal-content { padding: 24px 16px !important; }
             /* 시간 코드 그리드: 모바일에서 3열 */
-            #req-code-grid, #support-code-grid { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
+            #req-code-grid { grid-template-columns: repeat(4,1fr) !important; gap: 5px !important; }
+            #support-code-grid { grid-template-columns: repeat(3,1fr) !important; gap: 6px !important; }
             /* 희망근무 코드 그리드도 3열 */
             .grid.grid-cols-2 { grid-template-columns: repeat(3,1fr) !important; }
             /* 요일 칩 */

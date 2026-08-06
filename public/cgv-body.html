@@ -114,12 +114,9 @@
                 </div>
                 <input type="hidden" id="trade-type-input" value="swap">
                 <div class="space-y-5">
-                    <div class="p-4 rounded-[16px] border border-red-100 bg-red-50/30 space-y-3.5">
-                        <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded-md bg-red-600 flex items-center justify-center flex-shrink-0">
-                                <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 1v8M1 5l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-                            </div>
-                            <span class="text-[12px] font-bold text-red-700 tracking-tight">내가 보낼 근무 (OUT)</span>
+                    <div class="space-y-3">
+                        <div class="bg-slate-50 border border-slate-100 rounded-[10px] px-3 py-2">
+                            <span class="text-[11px] font-bold text-slate-400" style="letter-spacing:.06em">내 근무 (OUT)</span>
                         </div>
                         <div class="grid grid-cols-7 gap-1.5">
                             <div onclick="setDayAndAutoDate('월','req')" class="req-day-chip day-chip chip font-bold text-slate-600">월</div>
@@ -136,10 +133,10 @@
                             <div onclick="setTimeGroup('M','req')" id="req-group-M" class="req-time-group time-chip chip py-2.5 rounded-[10px] font-bold text-[13px] text-slate-600">미들(M)</div>
                             <div onclick="setTimeGroup('N','req')" id="req-group-N" class="req-time-group time-chip chip py-2.5 rounded-[10px] font-bold text-[13px] text-slate-600">마감(N)</div>
                         </div>
-                        <div id="req-code-grid" class="grid grid-cols-3 gap-2 hidden border-t-2 border-red-100 pt-6"></div>
+                        <div id="req-code-grid" class="grid grid-cols-4 gap-2 hidden pt-1"></div>
                         <input type="hidden" id="req-selected-day"><input type="hidden" id="req-selected-code">
-                        <div class="pt-5 border-t-2 border-red-100">
-                            <label class="text-[10px] text-red-600 font-black mb-3 block">본인 직무에 맞는 포지션만 선택 가능합니다.</label>
+                        <div class="pt-3 border-t border-slate-100">
+                            <label class="text-[11px] text-slate-400 font-bold mb-2 block" style="letter-spacing:.04em">포지션 (본인 직무)</label>
                             <div class="flex flex-wrap gap-2">
                                 <div onclick="setReqPosition('통합')" id="req-pos-통합" class="req-pos-chip chip py-2 px-3.5 rounded-[10px] font-bold text-xs text-slate-700">통합</div>
                                 <div onclick="setReqPosition('매점')" id="req-pos-매점" class="req-pos-chip chip py-2 px-3.5 rounded-[10px] font-bold text-xs text-slate-700">매점</div>
@@ -155,18 +152,10 @@
                         <p class="text-[12px] font-bold text-orange-800 leading-relaxed">피치 못할 사유(병결, 경조사 등)가 아닌 무분별한 단순 대타 요청은 매니저 검토 후 승인이 엄격히 반려됩니다.</p>
                     </div>
 
-                    <div id="wish-section" class="p-4 rounded-[16px] border border-blue-100 bg-blue-50/30 space-y-3.5">
-                        <div class="flex justify-between items-center gap-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <div class="w-4 h-4 rounded-md bg-blue-600 flex items-center justify-center flex-shrink-0">
-                                    <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 9V1M1 5l4 4 4-4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-[12px] font-bold text-blue-700 tracking-tight block">내가 받고 싶은 시간 (IN)</span>
-                                    <span class="text-[10px] font-bold text-blue-400">최대 2일 선택</span>
-                                </div>
-                            </div>
-                            <button onclick="clearWishData()" class="text-[10px] text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-md shadow-sm active:scale-95 font-black flex-shrink-0">초기화</button>
+                    <div id="wish-section" class="space-y-3">
+                        <div class="flex justify-between items-center gap-2 bg-slate-50 border border-slate-100 rounded-[10px] px-3 py-2">
+                            <span class="text-[11px] font-bold text-slate-400" style="letter-spacing:.06em">원하는 근무 (IN) · 최대 2일</span>
+                            <button onclick="clearWishData()" class="text-[10px] text-slate-500 bg-white border border-slate-200 px-2.5 py-0.5 rounded-md active:scale-95 font-bold flex-shrink-0">초기화</button>
                         </div>
                         <div class="grid grid-cols-7 gap-1.5">
                             <div onclick="toggleWishDay('월')" class="wish-day-chip day-chip chip font-bold text-slate-600">월</div>
