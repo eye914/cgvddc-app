@@ -2665,8 +2665,8 @@ function showKakaoModal(text, forced) {
                 var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
                     + "<span class='text-slate-700'>" + _sdDate + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
-                    + (_cardTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _cardTime + "</span>" : "")
-                    + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + rPL + "</span>"
+                    + (_cardTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _cardTime + "</span>" : "")
+                    + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + rPL + "</span>"
 
                     + "</div>";
                 // \u2605 \uD76C\uB9DD\uADFC\uBB34(IN) \uBA40\uD2F0\uB77C\uC778 \uD30C\uC2F1 \u2014 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC815\uD655 \uCD94\uCD9C
@@ -2702,9 +2702,9 @@ function showKakaoModal(text, forced) {
                             _inBuf += "<div class='font-bold " + (li > 0 ? "mt-2 pt-2 border-t border-slate-100" : "mt-1") + " flex flex-wrap items-center gap-1.5'>"
                                 + "<span class='text-slate-700'>" + _lDate + "</span>"
                                 + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
-                                + (_lTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _lTime + "</span>" : "")
+                                + (_lTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _lTime + "</span>" : "")
                                 // IN body: _lPos 포지션 뱃지 (수락자 그 날짜 포지션)
-                                + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>"
+                                + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + _lPos + "</span>"
                                 + "</div>";
                         });
                         inHtml = _inBuf + "</div>";
