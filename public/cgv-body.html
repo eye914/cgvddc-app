@@ -103,8 +103,8 @@
             </section>
 
             <section class="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 section-accent-top">
-                <button type="button" id="reg-toggle" onclick="var e=document.getElementById('reg-collapse');var c=document.getElementById('reg-toggle-cue');var h=e.classList.toggle('hidden');if(c)c.textContent=h?'펼치기 ▾':'접기 ▴';if(!h){setTimeout(function(){e.scrollIntoView({behavior:'smooth',block:'nearest'});},60);}" class="w-full flex items-center justify-center gap-2 py-4 rounded-[22px] border-2 border-dashed border-red-400 text-red-600 font-black text-xl active:scale-95 transition-all">
-                    ＋ 공고 등록 <span id="reg-toggle-cue" class="text-[12px] font-bold text-slate-400">펼치기 ▾</span>
+                <button type="button" id="reg-toggle" onclick="var e=document.getElementById('reg-collapse');var c=document.getElementById('reg-toggle-cue');var h=e.classList.toggle('hidden');if(c)c.textContent=h?'＋ 공고 등록':'✕ 등록 닫기';var lb=document.getElementById('home-leaderboard');var ls=document.getElementById('list-section');if(lb)lb.style.display=h?'':'none';if(ls)ls.style.display=h?'':'none';window.scrollTo({top:0,behavior:'smooth'});" class="w-full flex items-center justify-center gap-2 py-3 rounded-[14px] border-2 border-dashed border-red-400 text-red-600 font-bold text-[15px] active:scale-95 transition-all">
+                    <span id="reg-toggle-cue">＋ 공고 등록</span>
                 </button>
                 <div id="reg-collapse" class="hidden mt-5">
                 <p class="text-[11px] font-bold text-red-500 mb-4">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
@@ -187,7 +187,7 @@
                 </div><!-- /reg-collapse -->
             </section>
 
-            <section class="space-y-6 pb-10">
+            <section id="list-section" class="space-y-6 pb-10">
                 <div class="flex items-center justify-between px-4 border-l-4 border-red-600 ml-1">
                     <h3 class="font-bold text-slate-400 text-base tracking-tight">진행 중인 공고</h3>
                     <div class="flex items-center gap-3">
