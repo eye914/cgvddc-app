@@ -1,4 +1,4 @@
-body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; letter-spacing: -0.04em; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", 'Pretendard', "Noto Sans KR", sans-serif; background-color: #F4F5F7; -webkit-tap-highlight-color: transparent; letter-spacing: -0.02em; }
         .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
         .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
         .chip.selected { background-color: #D6001C; color: white; border-color: #D6001C; transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(214,0,28,0.28); }
@@ -241,9 +241,9 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 }
 @keyframes badge-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(1.5); }
+    50% { opacity: 0.25; transform: scale(1.9); }
 }
-.badge-dot-pulse { animation: badge-pulse 1.5s ease-in-out infinite; }
+.badge-dot-pulse { animation: badge-pulse 2s ease-in-out infinite; }
 
 /* Section labels (OUT/IN headers) — uppercase slate */
 .section-label-red   { font-size: 11px !important; font-weight: 900 !important; letter-spacing: 0.10em !important; text-transform: uppercase !important; color: #94a3b8 !important; }
@@ -262,7 +262,9 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 }
 
 /* Body base letter-spacing override */
-body { letter-spacing: -0.03em !important; }
+body { letter-spacing: -0.02em !important; }
+/* 시안 톤: 과한 900 두께를 800으로 완화 (가볍고 깔끔한 느낌) */
+.font-black { font-weight: 800 !important; }
 
 /* ═══════════════════════════════════════════════
    Mobile Fix — 좌우 스크롤 차단 + 폰트/레이아웃 정렬
