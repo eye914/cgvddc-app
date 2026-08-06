@@ -3003,6 +3003,21 @@ function showKakaoModal(text, forced) {
 
         var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서', privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서' };
         var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐', privacy: '🔒', overtime: '🌙', workCondition: '📋' };
+        // 깔끔한 컬러 배지 + 라인 아이콘 (이모지 대체)
+        var FORM_TYPE_STYLE = {
+            workCondition: { bg:'#eef2ff', fg:'#4f46e5', p:'<path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3"/><path d="M8 10h6M8 13h6"/>' },
+            overtime:      { bg:'#f5f3ff', fg:'#7c3aed', p:'<path d="M15.5 11.5A5.5 5.5 0 1 1 8.5 4.5a4.3 4.3 0 0 0 7 7z"/>' },
+            privacy:       { bg:'#f1f5f9', fg:'#475569', p:'<rect x="5" y="9" width="10" height="7" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>' },
+            late:          { bg:'#fff7ed', fg:'#ea580c', p:'<circle cx="10" cy="10" r="6"/><path d="M10 6.5V10l2.5 1.5"/>' },
+            earlyLeave:    { bg:'#f0fdfa', fg:'#0d9488', p:'<circle cx="10" cy="10" r="6"/><path d="M10 6.5V10l2.5 1.5"/>' },
+            absent:        { bg:'#fef2f2', fg:'#dc2626', p:'<circle cx="10" cy="10" r="6"/><path d="M8 8l4 4M12 8l-4 4"/>' },
+            resign:        { bg:'#f8fafc', fg:'#64748b', p:'<path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3"/>' }
+        };
+        function formBadge(type) {
+            var s = FORM_TYPE_STYLE[type] || FORM_TYPE_STYLE.workCondition;
+            return '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:' + s.bg + ';flex-shrink:0">'
+                + '<svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="' + s.fg + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + s.p + '</svg></span>';
+        }
         var FORM_STATUS_LABELS = { pending: '제출대기', submitted: '제출완료', viewed: '확인완료' };
 
         // 관리자: 폼 패널 토글
@@ -3146,15 +3161,21 @@ function showKakaoModal(text, forced) {
                 var isCollapsed = !!_formCollapsed[month];
                 html += '<div class="mb-3">';
                 // 월 헤더: 클릭으로 접기/펴기 + 전체선택 + 인쇄
-                html += '<div class="flex items-center gap-1.5 px-2.5 py-2 bg-slate-100 rounded-xl cursor-pointer select-none" onclick="toggleFormMonth(\'' + month + '\')">';
+                html += '<div class="px-2.5 py-2 bg-slate-100 rounded-xl select-none">';
+                // 1행: 화살표 + 날짜(넉넉히) + 전체
+                html += '<div class="flex items-center gap-1.5 cursor-pointer" onclick="toggleFormMonth(\'' + month + '\')">';
                 html += '<span id="form-month-arrow-' + month + '" class="text-[10px] text-slate-500 font-black flex-shrink-0">' + (isCollapsed ? '▶' : '▼') + '</span>';
-                html += '<span class="text-xs font-black text-slate-700 flex-1 min-w-0 truncate">' + monthLabel + ' <span class="font-bold text-slate-400 text-[10px]">(' + forms.length + ')</span></span>';
-                html += '<label class="flex items-center gap-0.5 flex-shrink-0 ml-1" onclick="event.stopPropagation()">';
-                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3 h-3">';
-                html += '<span class="text-[9px] text-slate-500 font-bold">전체</span>';
+                html += '<span class="text-[13px] font-black text-slate-700 flex-1 min-w-0 whitespace-nowrap">' + monthLabel + ' <span class="font-bold text-slate-400 text-[10px]">(' + forms.length + ')</span></span>';
+                html += '<label class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">';
+                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3.5 h-3.5">';
+                html += '<span class="text-[10px] text-slate-500 font-bold">전체</span>';
                 html += '</label>';
-                html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-slate-700 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">📥 인쇄</button>';
-                html += '<button onclick="event.stopPropagation();saveSelectedFormsToDrive(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-blue-600 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">☁️ 드라이브</button>';
+                html += '</div>';
+                // 2행: 인쇄 / 드라이브
+                html += '<div class="flex items-center gap-1.5 mt-1.5">';
+                html += '<button onclick="downloadSelectedForms(\'' + month + '\')" class="flex-1 text-[11px] font-black bg-slate-700 text-white py-1.5 rounded-lg active:scale-95 whitespace-nowrap">📥 인쇄</button>';
+                html += '<button onclick="saveSelectedFormsToDrive(\'' + month + '\')" class="flex-1 text-[11px] font-black bg-blue-600 text-white py-1.5 rounded-lg active:scale-95 whitespace-nowrap">☁️ 드라이브</button>';
+                html += '</div>';
                 html += '</div>';
                 // 접히는 목록 영역
                 html += '<div id="form-month-body-' + month + '" class="mt-1" style="' + (isCollapsed ? 'display:none' : '') + '">';
@@ -3188,7 +3209,7 @@ function showKakaoModal(text, forced) {
                     // ── 1행: 체크박스 + 아이콘 + 이름 + 서류명(truncate) + 상태뱃지 ──
                     html += '<div class="flex items-center gap-1.5 w-full min-w-0">';
                     html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
-                    html += '<span class="flex-shrink-0">' + icon + '</span>';
+                    html += formBadge(r.type);
                     html += '<span class="font-black text-[13px] text-slate-800 whitespace-nowrap flex-shrink-0">' + r.target_name + '</span>';
                     html += '<span class="text-[10px] text-slate-500 font-bold flex-1 min-w-0 truncate">' + label + '</span>';
                     html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ' + statusBgCls + ' ml-1"><span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>' + statusLabel + '</span>';
@@ -3451,7 +3472,7 @@ function showKakaoModal(text, forced) {
                         }
                         return '<div class="' + (isOverdue ? 'bg-red-50 border-2 border-red-300' : 'bg-yellow-50 border-2 border-yellow-200') + ' rounded-2xl p-4">'
                             + '<div class="flex items-center gap-2 mb-2">'
-                            + '<span class="text-xl">' + icon + '</span>'
+                            + formBadge(r.type)
                             + '<div><p class="font-black text-slate-800">' + label + ' 제출 요청</p>'
                             + '<p class="text-xs text-slate-500 font-bold">' + dateStr + ' · ' + (r.requested_by || '관리자') + '</p></div>'
                             + '</div>'
