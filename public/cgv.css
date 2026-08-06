@@ -1,6 +1,6 @@
 body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", 'Pretendard', "Noto Sans KR", sans-serif; background-color: #F4F5F7; -webkit-tap-highlight-color: transparent; letter-spacing: -0.02em; }
         .card-shadow { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.03); }
-        .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 2px solid #cbd5e1; background: #f8fafc; text-align: center; }
+        .chip { cursor: pointer; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); border: 1.5px solid #e2e8f0; background: #f8fafc; text-align: center; }
         .chip.selected { background-color: #D6001C; color: white; border-color: #D6001C; transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(214,0,28,0.28); }
         .chip.wish-selected { background-color: #3b82f6; color: white; border-color: #3b82f6; transform: translateY(-1.5px); }
         .chip.all-selected { background-color: #10b981; color: white; border-color: #10b981; transform: translateY(-1.5px); }
@@ -40,8 +40,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", 'P
             .space-y-10 > * + * { margin-top: 20px !important; }
             .space-y-8 > * + * { margin-top: 16px !important; }
         }
-        .day-chip { border-radius: 14px; font-weight: 800; font-size: 15px; height: 48px; display: flex; align-items: center; justify-content: center; width: 100%; }
-        .code-chip { border-radius: 12px; font-weight: 700; font-size: 13px; padding: 12px 0; width: 100%; }
+        .day-chip { border-radius: 10px; font-weight: 700; font-size: 13px; height: 40px; display: flex; align-items: center; justify-content: center; width: 100%; }
+        .code-chip { border-radius: 9px; font-weight: 600; font-size: 12px; padding: 9px 0; width: 100%; }
         .tab-btn.active { background-color: #D6001C; color: white; font-weight: 900; box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(214,0,28,0.25); border-radius: 10px; }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal-content { background: white; width: 95%; max-width: 600px; border-radius: 36px; padding: 32px; animation: scaleUp 0.3s ease-out; max-height: 90vh; overflow-y: auto; border: 2px solid #e2e8f0; }
