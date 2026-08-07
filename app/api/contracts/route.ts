@@ -40,12 +40,31 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data);
     }
     if (mode === 'completed') {
-      // 새 함수 우선, 미배포 시 구 함수 폴백
-      let data = await callGASJson('listCompletedContractsV2');
-      if (data && data.__gasError && String(data.__gasError).indexOf('알 수 없는 action') > -1) {
-        data = await callGASJson('getCompletedContracts');
-      }
-      return NextResponse.json(data);
+      // 서명완료 기록은 Supabase 가 소스 오브 트루스 → DB에서 바로 월/주차 트리 구성
+      const { data, error } = await supabaseAdmin
+        .from('contract_requests')
+        .select('recipient_name, week_key, doc_id, file_name, signed_at')
+        .not('signed_at', 'is', null)
+        .order('signed_at', { ascending: false });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      const monthMap: Record<string, Record<string, { name: string; fileId: string }[]>> = {};
+      (data ?? []).forEach((r: any) => {
+        const wk = r.week_key || '기타';
+        const mm = String(wk).match(/(\d{4})\s*년\s*(\d{1,2})\s*월/);
+        const month = mm ? `${mm[1]}년 ${parseInt(mm[2], 10)}월` : wk;
+        (monthMap[month] ||= {});
+        (monthMap[month][wk] ||= []);
+        monthMap[month][wk].push({ name: r.recipient_name, fileId: r.doc_id });
+      });
+      const tree = Object.keys(monthMap).sort().reverse().map((month) => ({
+        month,
+        weeks: Object.keys(monthMap[month]).sort().reverse().map((wk) => ({
+          weekKey: wk,
+          count: monthMap[month][wk].length,
+          files: monthMap[month][wk],
+        })),
+      }));
+      return NextResponse.json(tree);
     }
     // ★ 관리자: 주차별 발송 상태 (누가/언제/서명여부)
     if (mode === 'status') {
