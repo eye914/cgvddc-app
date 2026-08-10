@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
       type: b.type ?? '일반',
       images,
       sort: Number(b.sort) || 0,
+      author: admin.name || '관리자',
     };
     const { data, error } = await supabaseAdmin.from('manuals').insert(row).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

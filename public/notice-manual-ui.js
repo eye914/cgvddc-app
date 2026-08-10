@@ -137,7 +137,7 @@
     return '<div onclick="NM.openNotice(\'' + n.id + '\')" style="background:#fff;border:1px solid #eee;border-radius:14px;padding:13px 14px;margin-bottom:10px;cursor:pointer">'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">' + badges + adminExtra + '</div>'
       + '<div style="font-size:14px;font-weight:800;line-height:1.35;color:#0f172a">' + esc(n.title) + '</div>'
-      + '<div style="font-size:11px;color:#9a9aa0;margin-top:5px;font-weight:600">' + periodTxt(n) + '</div>'
+      + '<div style="font-size:11px;color:#9a9aa0;margin-top:5px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + periodTxt(n) + '</div>'
       + '</div>';
   }
 
@@ -161,7 +161,7 @@
         + (n.require_signature ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>' : '')
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
-        + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">' + periodTxt(n) + ' · 관리자</div>'
+        + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + periodTxt(n) + '</div>'
         + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderBody(n.body, n.images) + '</div>'
         + sigArea + adminStatus + adminBtns;
       openSheet(html, true);
@@ -332,7 +332,7 @@
     return '<div onclick="NM.openManual(\'' + m.id + '\')" style="background:#fff;border:1px solid #eee;border-radius:14px;padding:11px 12px;margin-bottom:10px;cursor:pointer;display:flex;gap:11px;align-items:center">'
       + thumb + '<div style="min-width:0"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px"><span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
       + '<div style="font-size:14px;font-weight:800;line-height:1.35;color:#0f172a">' + esc(m.title) + '</div>'
-      + '<div style="font-size:11px;color:#9a9aa0;margin-top:3px;font-weight:600">' + esc(m.type) + imgCnt + '</div></div></div>';
+      + '<div style="font-size:11px;color:#9a9aa0;margin-top:3px;font-weight:600">✍ ' + esc(m.author || '관리자') + ' · ' + esc(m.type) + imgCnt + '</div></div></div>';
   }
 
   NM.openManual = function (id) {
@@ -340,6 +340,7 @@
     var adminBtns = isAdmin() ? '<div style="display:flex;gap:8px;margin-top:14px"><button onclick="NM.openManualForm(\'' + id + '\')" style="flex:1;padding:10px;background:#f1f5f9;border:none;border-radius:10px;font-weight:800;color:#334155">수정</button><button onclick="NM.delManual(\'' + id + '\')" style="flex:1;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;font-weight:800;color:#dc2626">삭제</button></div>' : '';
     var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (typeCls[m.type] || typeCls['일반']) + '">' + esc(m.type) + '</span><span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[m.category] || catCls['매점']) + '">' + esc(m.category) + '</span></div>'
       + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(m.title) + '</div>'
+      + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 2px;font-weight:600">✍ ' + esc(m.author || '관리자') + '</div>'
       + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;margin-top:10px;position:relative">' + renderBody(m.body, m.images) + '</div>' + adminBtns;
     openSheet(html, true);
   };

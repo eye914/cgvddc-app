@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
     important: !!b.important,
     require_signature: !!b.require_signature,
     images: await uploadImages(b.images || []),
+    author: admin.name || '관리자',
   };
   const { data, error } = await supabaseAdmin.from('notices').insert(row).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
