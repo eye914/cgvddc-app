@@ -7,6 +7,29 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!
 );
 
+// 구독 문자열 배열 → 기기(endpoint) 기준 중복 제거 후 파싱된 구독 배열 반환
+// 한 기기가 여러 이름으로 구독돼 있어도 endpoint 가 같으면 1번만 발송(중복 알림 방지)
+function dedupByEndpoint(subs: string[]): any[] {
+  const map = new Map<string, any>();
+  for (const s of subs) {
+    try {
+      const p = JSON.parse(s);
+      const key = p && p.endpoint ? p.endpoint : s;
+      map.set(key, p);
+    } catch { /* 파싱 실패 구독은 무시 */ }
+  }
+  return [...map.values()];
+}
+
+async function pushMany(subs: string[], title: string, body: string) {
+  const targets = dedupByEndpoint(subs);
+  if (!targets.length) return;
+  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' });
+  await Promise.allSettled(
+    targets.map((p: any) => webpush.sendNotification(p, payload))
+  );
+}
+
 export async function sendPushToNames(names: string[], title: string, body: string) {
   const validNames = names.filter(n => n && n !== '모집중');
   if (!validNames.length) return;
@@ -17,18 +40,7 @@ export async function sendPushToNames(names: string[], title: string, body: stri
     .in('name', validNames);
   if (!data?.length) return;
 
-  // 동일 이름의 중복 구독 제거 — 마지막 row만 사용
-  const dedupMap = new Map<string, string>();
-  for (const row of data) dedupMap.set(row.name, row.subscription);
-
-  await Promise.allSettled(
-    [...dedupMap.values()].map((sub: string) =>
-      webpush.sendNotification(
-        JSON.parse(sub),
-        JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
-      )
-    )
-  );
+  await pushMany(data.map((r: any) => r.subscription), title, body);
 }
 
 export async function sendPushToAdmins(title: string, body: string) {
@@ -48,19 +60,9 @@ export async function sendPushToAllExcept(excludeNames: string[], title: string,
     .select('name, subscription');
   if (!data?.length) return;
 
-  // 동일 이름 중복 제거 후 제외 목록 필터
-  const dedupMap = new Map<string, string>();
-  for (const row of data) dedupMap.set(row.name, row.subscription);
-
-  const targets = [...dedupMap.entries()].filter(([name]) => !excludeNames.includes(name));
-  if (!targets.length) return;
-
-  await Promise.allSettled(
-    targets.map(([, sub]) =>
-      webpush.sendNotification(
-        JSON.parse(sub),
-        JSON.stringify({ title, body, icon: '/icons/icon-192.png' })
-      )
-    )
-  );
+  // 제외 이름 필터 후, 기기(endpoint) 기준 중복 제거하여 발송
+  const subs = data
+    .filter((r: any) => !excludeNames.includes(r.name))
+    .map((r: any) => r.subscription);
+  await pushMany(subs, title, body);
 }
