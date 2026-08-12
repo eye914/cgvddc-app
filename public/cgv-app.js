@@ -1881,6 +1881,7 @@ function showKakaoModal(text, forced) {
                         showLoader(false); buildUserGrid(); renderList();
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
+                            renderMyDocbox();
                         }
                     }
                 }
@@ -2115,6 +2116,7 @@ function showKakaoModal(text, forced) {
             if (tab === "schedule" && typeof window.initScheduleTab === "function") {
                 window.initScheduleTab();
             }
+            if (tab === "schedule") renderMyDocbox();
             if (tab === "notice" && window.NM && NM.renderNotices) NM.renderNotices();
             if (tab === "manual" && window.NM && NM.renderManuals) NM.renderManuals();
             if (tab === "trade" && window.EV && EV.homeBoard) EV.homeBoard();
@@ -3432,6 +3434,82 @@ function showKakaoModal(text, forced) {
                 .cancelFormRequest(id);
         }
 
+        // ── 직원용: 내 서류함 (근태서류 + 근로계약서 통합, 근태 탭 상단 고정) ──
+        function renderMyDocbox() {
+            var el = document.getElementById('my-docbox');
+            if (!el) return;
+            var myName = sessionStorage.getItem('cgv_currentUser');
+            var admin = sessionStorage.getItem('cgv_admin') === 'true';
+            if (!myName || admin) { el.innerHTML = ''; return; }  // 관리자/미로그인 시 숨김
+
+            if (el.getAttribute('data-loaded') !== '1') {
+                el.innerHTML = '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:14px;text-align:center;color:#94a3b8;font-size:12px;font-weight:700">내 서류함 불러오는 중…</div>';
+            }
+            Promise.all([
+                fetch('/api/forms?name=' + encodeURIComponent(myName)).then(function(r){ return r.json(); }).catch(function(){ return []; }),
+                fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName)).then(function(r){ return r.json(); }).catch(function(){ return []; })
+            ]).then(function(res){
+                var forms = Array.isArray(res[0]) ? res[0] : [];
+                var contracts = Array.isArray(res[1]) ? res[1] : [];
+                var pForms = forms.filter(function(r){ return r.status === 'pending'; });
+                var pContracts = contracts.filter(function(c){ return !c.signedAt; });
+                el.setAttribute('data-loaded', '1');
+                el.innerHTML = buildDocboxHtml(pForms, pContracts);
+                // 근태 탭 버튼에 미처리 표시(빨간 점)
+                var tb = document.getElementById('tab-schedule-btn');
+                if (tb) {
+                    var dot = document.getElementById('sched-tab-dot');
+                    if ((pForms.length + pContracts.length) > 0) {
+                        if (!dot) { dot = document.createElement('span'); dot.id = 'sched-tab-dot'; dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#D6001C;margin-left:4px;vertical-align:middle'; tb.appendChild(dot); }
+                    } else if (dot) { dot.remove(); }
+                }
+            });
+        }
+
+        function buildDocboxHtml(pForms, pContracts) {
+            var total = pForms.length + pContracts.length;
+            if (total === 0) {
+                return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:800">'
+                    + '<span>📂</span><span>내 서류함 — 처리할 서명/제출 요청이 없습니다 ✅</span></div>';
+            }
+            var rows = '';
+            // 근태서류
+            pForms.forEach(function(r){
+                var label = (FORM_TYPE_LABELS && FORM_TYPE_LABELS[r.type]) || r.type;
+                var icon = (FORM_TYPE_ICONS && FORM_TYPE_ICONS[r.type]) || '📄';
+                var dueStr = '', overdue = false;
+                if (r.requested_at) {
+                    var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
+                    var diff = Math.ceil((due - new Date()) / (1000*60*60*24));
+                    overdue = diff < 0;
+                    dueStr = overdue ? ('기한 초과 (' + (due.getMonth()+1) + '/' + due.getDate() + ')')
+                                     : ('기한 ' + (due.getMonth()+1) + '/' + due.getDate() + ' · ' + diff + '일 남음');
+                }
+                rows += '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:white;border:1px solid ' + (overdue ? '#fca5a5' : '#fde68a') + ';border-radius:12px;margin-bottom:8px">'
+                    + '<span style="font-size:18px;flex-shrink:0">' + icon + '</span>'
+                    + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:900;color:#0f172a">' + label + ' 제출 요청</div>'
+                    + (dueStr ? '<div style="font-size:11px;font-weight:800;color:' + (overdue ? '#dc2626' : '#b45309') + '">⏰ ' + dueStr + '</div>' : '')
+                    + '</div>'
+                    + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" style="flex-shrink:0;padding:9px 16px;background:#D6001C;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✏️ 작성</button>'
+                    + '</div>';
+            });
+            // 근로계약서
+            pContracts.forEach(function(c){
+                rows += '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:white;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:8px">'
+                    + '<span style="font-size:18px;flex-shrink:0">📄</span>'
+                    + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:900;color:#0f172a">' + (c.weekKey || '') + ' 근로계약서</div>'
+                    + '<div style="font-size:11px;font-weight:800;color:#2563eb">서명 후 제출 → PDF 자동 저장</div></div>'
+                    + '<button onclick="openMyContracts()" style="flex-shrink:0;padding:9px 16px;background:#1d4ed8;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✍ 서명</button>'
+                    + '</div>';
+            });
+            return '<div style="background:linear-gradient(180deg,#fff7f7,#ffffff);border:2px solid #fecaca;border-radius:18px;padding:14px 14px 6px;box-shadow:0 3px 14px rgba(214,0,28,.08)">'
+                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">'
+                + '<span style="font-size:16px">📥</span>'
+                + '<span style="font-size:14px;font-weight:900;color:#0f172a">내 서류함 · 처리할 요청</span>'
+                + '<span style="margin-left:auto;background:#D6001C;color:white;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px">' + total + '건</span>'
+                + '</div>' + rows + '</div>';
+        }
+
         // ── 직원용: 내 서류 ──
         function checkMyPendingForms() {
             var myName = sessionStorage.getItem('cgv_currentUser');
@@ -4248,6 +4326,8 @@ function showKakaoModal(text, forced) {
                     closeFormFillModal();
                     closeMyFormsModal();
                     checkMyPendingForms();
+                    var _db = document.getElementById('my-docbox'); if (_db) _db.removeAttribute('data-loaded');
+                    renderMyDocbox();
                     alert('제출이 완료되었습니다. 수고하셨습니다!');
                 })
                 .withFailureHandler(function(e) {
