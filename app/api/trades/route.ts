@@ -29,7 +29,13 @@ const toCamel = (row: Record<string, any>) => ({
   status: row.status,
   createdAt: row.created_at,
   approvedBy: row.approved_by ?? null,
+  lastRemindAt: row.last_remind_at ?? null,
 });
+
+// KST 기준 오늘 날짜(YYYY-MM-DD)
+function kstDay(d: Date | string | number): string {
+  return new Date(d).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+}
 
 export async function GET() {
   const { data, error } = await supabaseAdmin
@@ -43,6 +49,34 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // ── 관리자: 모집중 공고 재알림(리마인더). 하루 1회 제한 ──
+    if (body.action === 'remind') {
+      const { id } = body;
+      if (!id) return NextResponse.json({ error: 'id 필요' }, { status: 400 });
+      const { data: t } = await supabaseAdmin.from('trades').select('*').eq('id', id).single();
+      if (!t) return NextResponse.json({ error: '공고를 찾을 수 없습니다.' }, { status: 404 });
+      if (t.status !== '모집중') {
+        return NextResponse.json({ error: '모집 중인 공고만 재알림할 수 있습니다.' }, { status: 400 });
+      }
+      // 하루 1회: 마지막 재알림이 KST 오늘이면 차단
+      if (t.last_remind_at && kstDay(t.last_remind_at) >= kstDay(new Date())) {
+        return NextResponse.json({ error: '오늘은 이미 재알림을 보냈습니다. 내일 다시 보낼 수 있습니다.' }, { status: 429 });
+      }
+      const row = toCamel(t);
+      const typeLabel = row.tradeType === 'sub' ? '대타' : '맞교대';
+      const shiftShort = (row.shiftDate ?? '').split(' / ')[0];
+      const exclude = [row.reqName];
+      if (row.subName && row.subName !== '모집중') exclude.push(row.subName);
+      await sendPushToAllExcept(
+        exclude,
+        `🔔 ${typeLabel} 공고 재안내`,
+        `${shiftShort} [${row.reqPos}] ${typeLabel} 아직 모집 중입니다. 가능하신 분은 지금 앱에서 지원해 주세요!`
+      );
+      await supabaseAdmin.from('trades').update({ last_remind_at: new Date().toISOString() }).eq('id', id);
+      return NextResponse.json({ ok: true });
+    }
+
     const { urgent, ...tradeBody } = body; // urgent는 DB 컬럼 아님 — 푸시 문구용
     const snake = toSnake(tradeBody);
 

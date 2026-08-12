@@ -2027,6 +2027,20 @@ function showKakaoModal(text, forced) {
                 .deleteTradeFromDB(id);
         }
 
+        function remindTrade(id){
+            if (!confirm("이 공고를 아직 못 본 미소지기 전체에게 재알림(푸시)을 보낼까요?\n(하루 1회만 보낼 수 있습니다)")) return;
+            showLoader(true);
+            fetch('/api/trades', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'remind', id:id }) })
+                .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+                .then(function(res){
+                    showLoader(false);
+                    if (!res.ok || (res.j && res.j.error)) { alert(res.j && res.j.error ? res.j.error : "재알림 실패"); return; }
+                    alert("재알림을 발송했습니다.");
+                    if (typeof fetchData === 'function') fetchData();
+                })
+                .catch(function(){ showLoader(false); alert("네트워크 오류"); });
+        }
+
         function handleAgreement(id, action) {
             var t = trades.find(function(i){ return i.id === id; });
             var nS = action === "agree" ? "\uC2B9\uC778\uB300\uAE30" : "\uBC18\uB824\uB428";
@@ -2783,6 +2797,10 @@ function showKakaoModal(text, forced) {
                 var _stBg  = isU?"background:#fef2f2;color:#D6001C":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a";
                 var _stDot = isU?"#D6001C":isN?"#d97706":isP2?"#2563eb":"#16a34a";
                 var _ini   = t.reqName ? String(t.reqName).charAt(0) : "";
+                // 재알림: 오늘(KST) 이미 보냈는지 → 버튼 상태 결정
+                var _remindedToday = !!(t.lastRemindAt &&
+                    new Date(t.lastRemindAt).toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"})
+                    === new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"}));
                 var cardHtml = "<div class='bg-white rounded-[16px] card-shadow border "+cardBorder+" overflow-hidden mb-2.5 "+(isN&&isMine?"my-alert":"")+"'>"
                     + "<div class='flex'>"
                     + "<div class='w-1.5 flex-shrink-0 "+_barColor+"'></div>"
@@ -2819,6 +2837,9 @@ function showKakaoModal(text, forced) {
                     // \u2500\u2500 \uBCF4\uC870 \uC561\uC158: \uCE74\uD1A1\uACF5\uC720 / \uCDE8\uC18C / \uC0AD\uC81C \u2500\u2500
                     + ((isMine||((isMine||isAdmin)&&!isD)||(isAdmin&&isD)) ? "<div class='mt-2 flex items-center gap-2 justify-end'>"
                         + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-2.5 py-1 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
+                        + (isAdmin&&isU ? (_remindedToday
+                            ? "<button disabled class='text-[10px] px-2.5 py-1 bg-slate-100 text-slate-400 rounded-lg font-black cursor-default'>\uD83D\uDD14 \uC624\uB298 \uBC1C\uC1A1\uB428</button>"
+                            : "<button onclick=\"remindTrade('"+t.id+"')\" class='text-[10px] btn-c2 btn-c2-blue px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uD83D\uDD14 \uC7AC\uC54C\uB9BC</button>") : "")
                         + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[10px] btn-c2 btn-c2-danger px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
                         + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[10px] btn-c2 btn-c2-ghost px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
                         + "</div>" : "")
