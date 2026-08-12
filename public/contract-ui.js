@@ -325,9 +325,11 @@
 
   window.refreshCompletedContracts = loadCompletedContracts;
 
-  // Drive 직접 다운로드 URL (link 공유된 파일은 인증 없이 다운로드)
+  // 다운로드 URL. 서명완료 목록의 fileId 는 구글 Docs 원본 문서 ID 이므로
+  // Docs export 엔드포인트로 PDF 를 받아야 한다(서명이 문서에 반영된 상태).
+  // (uc?export=download 는 네이티브 Docs 에는 동작하지 않아 파일이 안 받아짐)
   function ctrDownloadUrl(fileId) {
-    return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(fileId);
+    return 'https://docs.google.com/document/d/' + encodeURIComponent(fileId) + '/export?format=pdf';
   }
 
   // 순차 다운로드 (브라우저 팝업 차단 회피)
@@ -398,12 +400,15 @@
       var mOpen = _ctrCollapsed[monthKey] !== false;
       var totalCount = monthNode.weeks.reduce(function(s, w) { return s + w.count; }, 0);
 
-      // 월 헤더 - 한 줄 (토글만)
+      // 월 헤더 - 토글 + 전체 저장
       html += '<div style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:8px;background:white">';
-      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:40px;border:none;background:#f8fafc;cursor:pointer">';
+      html += '<div style="display:flex;align-items:center;height:40px;background:#f8fafc">';
+      html += '<button onclick="ctrToggleMonth(\'' + monthNode.month + '\')" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:100%;border:none;background:transparent;cursor:pointer">';
       html += '<span style="font-weight:800;color:#0f172a;font-size:13px">' + monthNode.month + ' <span style="color:#94a3b8;font-size:11px;font-weight:700">(' + totalCount + ')</span></span>';
       html += '<span style="color:#94a3b8;font-size:11px">' + (mOpen ? '▲' : '▼') + '</span>';
       html += '</button>';
+      html += '<button onclick="ctrDownloadMonth(\'' + monthNode.month + '\')" title="이 달 전체 PDF 저장" style="height:100%;padding:0 13px;border:none;border-left:1px solid #e2e8f0;background:transparent;cursor:pointer;color:#475569;font-size:14px;flex-shrink:0">⬇</button>';
+      html += '</div>';
 
       if (mOpen) {
         html += '<div style="padding:6px 8px">';
@@ -412,11 +417,14 @@
           var wOpen = _ctrCollapsed[wKey] !== false;
 
           html += '<div style="border:1px solid #f1f5f9;border-radius:10px;overflow:hidden;margin-bottom:4px">';
-          // 주차 헤더 - 한 줄 (토글만)
-          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:34px;border:none;background:white;cursor:pointer">';
+          // 주차 헤더 - 토글 + 전체 저장
+          html += '<div style="display:flex;align-items:center;height:34px;background:white">';
+          html += '<button onclick="ctrToggleWeek(\'' + weekNode.weekKey + '\')" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;height:100%;border:none;background:transparent;cursor:pointer">';
           html += '<span style="font-weight:700;color:#334155;font-size:12px">' + weekNode.weekKey + ' <span style="color:#94a3b8;font-weight:600">(' + weekNode.count + ')</span></span>';
           html += '<span style="color:#cbd5e1;font-size:10px">' + (wOpen ? '▲' : '▼') + '</span>';
           html += '</button>';
+          html += '<button onclick="ctrDownloadWeek(\'' + weekNode.weekKey + '\')" title="이 주차 전체 PDF 저장" style="height:100%;padding:0 11px;border:none;border-left:1px solid #f1f5f9;background:transparent;cursor:pointer;color:#64748b;font-size:13px;flex-shrink:0">⬇</button>';
+          html += '</div>';
 
           if (wOpen) {
             html += '<div style="background:#fafbfc;border-top:1px solid #f1f5f9">';
