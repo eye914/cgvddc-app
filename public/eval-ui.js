@@ -27,6 +27,9 @@
     if (kind === 'notice') return (c.noticeReq || 0) <= 0 ? 100 : Math.round((c.noticeSigned || 0) / c.noticeReq * 100);
     return 0;
   }
+  // 대타/교대 수락 보너스 — 서버(lib/evalConfig.ts)와 반드시 동일해야 최종 순위와 어긋나지 않음
+  var SUB_BONUS_PER = 3, SUB_BONUS_CAP = 12;
+  function subBonus(n) { return Math.min((n || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
   var _period, _data, _tab = 'targets', _managers = [];
 
   EV.open = function () {
@@ -191,22 +194,67 @@
     if (!_data.isSuper && st !== 'open' && st !== 'closed') {
       return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:24px;text-align:center;color:#94a3b8;font-weight:700;line-height:1.6">⏳ 아직 평가가 오픈되지 않았습니다.<br><span style="font-size:12px">관리자가 평가를 오픈하면 배정된 미소지기를 평가할 수 있어요.</span></div>';
     }
-    var mine = (_data.assignments || []).filter(function (a) { return a.manager_name === _data.me; });
-    if (!mine.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:20px;text-align:center;color:#94a3b8;font-weight:700">나에게 배정된 미소지기가 없습니다.</div>';
+    var all = _data.assignments || [];
+    // 최고관리자는 전체(다른 평가자 배정분 포함) 열람, 일반 평가자는 본인 배정분만
+    var mine = _data.isSuper ? all.slice() : all.filter(function (a) { return a.manager_name === _data.me; });
+    if (!mine.length) return '<div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:20px;text-align:center;color:#94a3b8;font-weight:700">' + (_data.isSuper ? '배정된 미소지기가 없습니다.' : '나에게 배정된 미소지기가 없습니다.') + '</div>';
     var smap = {}; (_data.scores || []).forEach(function (s) { smap[s.miso_name] = s.grades || {}; });
-    return mine.map(function (a) {
+    if (_data.isSuper) {  // 평가자별로 묶어서 보이도록 정렬
+      mine.sort(function (x, y) {
+        return String(x.manager_name === _data.me ? '0' : '1' + x.manager_name)
+          .localeCompare(String(y.manager_name === _data.me ? '0' : '1' + y.manager_name), 'ko')
+          || String(x.miso_name).localeCompare(String(y.miso_name), 'ko');
+      });
+    }
+    var hdr = _data.isSuper
+      ? '<div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:9px 11px;margin-bottom:9px;font-size:11.5px;font-weight:800;color:#3730a3">👑 최고관리자 — 전체 평가자의 배정·점수를 모두 볼 수 있습니다 (총 ' + mine.length + '명)</div>'
+      : '';
+    var lastMgr = null, out = '';
+    mine.forEach(function (a) {
       var done = !!_data.scores.find(function (s) { return s.miso_name === a.miso_name; });
       var ctx = (_data.auto || {})[a.miso_name] || {};
       var tot = calcTotal(smap[a.miso_name] || {}, ctx);
-      return '<div onclick="EV.input(\'' + esc(a.miso_name) + '\')" style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 14px;margin-bottom:9px;cursor:pointer">'
-        + '<div><div style="font-weight:800;font-size:15px">' + esc(a.miso_name) + '</div><div style="font-size:11px;color:#9aa0a6;margin-top:2px">' + (done ? '평가 완료' : '미평가') + '</div></div>'
+      if (_data.isSuper && a.manager_name !== lastMgr) {   // 평가자 구분 헤더
+        lastMgr = a.manager_name;
+        out += '<div style="font-size:11px;font-weight:900;color:#64748b;margin:12px 2px 6px">평가자 · ' + esc(a.manager_name || '미배정') + (a.manager_name === _data.me ? ' (나)' : '') + '</div>';
+      }
+      out += '<div onclick="EV.input(\'' + esc(a.miso_name) + '\')" style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 14px;margin-bottom:9px;cursor:pointer">'
+        + '<div><div style="font-weight:800;font-size:15px">' + esc(a.miso_name) + '</div>'
+        + '<div style="font-size:11px;color:#9aa0a6;margin-top:2px">' + (done ? '평가 완료' : '미평가')
+        + (ctx.subN ? ' · 대타수락 ' + ctx.subN + '건(+' + subBonus(ctx.subN) + ')' : '')
+        + ((ctx.lateN || ctx.absentN) ? ' · <span style="color:#dc2626">지각' + (ctx.lateN || 0) + '/결근' + (ctx.absentN || 0) + '</span>' : '')
+        + '</div></div>'
         + '<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:' + (done ? '#D6001C' : '#cbd5e1') + '">' + tot + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div></div>';
-    }).join('');
+    });
+    return hdr + out;
   }
   function calcTotal(grades, ctx) {
     var t = 0;
     CRI.forEach(function (c) { var s = c.kind === 'letter' ? (LETTER[grades[c.key]] || 0) : autoS(c.kind, ctx); t += s * c.w / 100; });
-    return Math.round(t);
+    t += subBonus(ctx.subN);               // 대타 수락 보너스(서버와 동일)
+    return Math.min(100, Math.round(t));   // 총점 상한 100
+  }
+
+  // ── 점수 산정 기준 안내 (모든 평가자에게 동일 노출) ──
+  function guideHtml() {
+    var letters = LETTERS.map(function (l) { return l + '=' + LETTER[l]; }).join(' · ');
+    return '<details style="margin-top:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden">'
+      + '<summary style="padding:10px 12px;font-size:12px;font-weight:800;color:#334155;cursor:pointer">ℹ️ 점수 산정 기준 (탭하여 보기)</summary>'
+      + '<div style="padding:0 12px 12px;font-size:11.5px;line-height:1.65;color:#475569">'
+      + '<b>등급 점수</b><br>' + letters + '<br><br>'
+      + '<b>가중치 (합계 100%)</b><br>'
+      + CRI.map(function (c) { return '· ' + c.sub + ' <b>' + c.w + '%</b>' + (c.kind !== 'letter' ? ' <span style="color:#2563a8">(자동)</span>' : ''); }).join('<br>')
+      + '<br><br><b>자동 산정 항목</b><br>'
+      + '· 지각: 100 − 15×횟수<br>'
+      + '· 결근: 100 − 50×횟수<br>'
+      + '· 공지 숙지: 서명수 ÷ 서명필요 공지수 × 100 (해당 월 공지 없으면 100)<br><br>'
+      + '<b>가산점</b><br>'
+      + '· 대타·교대 <u>수락</u> 1건당 +' + SUB_BONUS_PER + '점 (최대 +' + SUB_BONUS_CAP + '점)<br>'
+      + '&nbsp;&nbsp;※ 승인완료된 건 중 해당 월 근무분만 집계<br>'
+      + '&nbsp;&nbsp;※ 대타를 <u>요청</u>한 것은 점수에 반영되지 않음<br><br>'
+      + '<b>총점</b> = 가중 환산 합계 + 가산점 (상한 100)<br>'
+      + '<span style="color:#94a3b8">지각·결근·공지 점수는 저장 후에도 근태 변동에 따라 자동 갱신됩니다.</span>'
+      + '</div></details>';
   }
 
   // ── 평가 입력 시트 (저장하면 잠금 · 지각/결근/공지는 항상 자동 최신) ──
@@ -215,7 +263,7 @@
     var closed = _data.period && _data.period.status === 'closed';
     var locked = (!!scoreRow && !_data.isSuper) || closed;
     var grades = (scoreRow || {}).grades || {};
-    var ctx = (_data.auto || {})[miso] || { lateN: 0, absentN: 0, noticeReq: 0, noticeSigned: 0 };
+    var ctx = (_data.auto || {})[miso] || { lateN: 0, absentN: 0, noticeReq: 0, noticeSigned: 0, subN: 0 };
     var rows = CRI.map(function (c) {
       if (c.kind === 'letter') {
         var sc = LETTER[grades[c.key]] || 0;
@@ -235,7 +283,12 @@
     var html = '<div style="font-size:16px;font-weight:800;margin-bottom:4px">' + esc(miso) + ' 평가' + (locked ? ' <span style="font-size:11px;color:#16a34a">🔒 완료</span>' : '') + '</div>'
       + '<div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">' + _period + ' · 평가자 ' + esc((scoreRow && scoreRow.manager_name) || me()) + '</div>'
       + '<style>' + css + '</style><table><thead><tr><th style="width:36%">소구분</th><th>평가</th><th>점수</th><th>가중</th><th>환산</th></tr></thead><tbody>' + rows
-      + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점</td><td id="ev-tot">' + (locked ? calcTotal(grades, ctx) : 0) + '</td></tr></tbody></table>'
+      // 대타/교대 수락 보너스 — 가중치와 무관하게 총점에 가산
+      + '<tr style="background:#f0f9ff"><td class="l">대타·교대 수락<div style="font-size:10px;color:#93a">' + (ctx.subN || 0) + '건 · 1건당 +' + SUB_BONUS_PER + '점(최대 +' + SUB_BONUS_CAP + ')</div></td>'
+      + '<td style="color:#2563a8;font-weight:800">자동</td><td>-</td><td>가산</td>'
+      + '<td id="ev-bonus" style="font-weight:900;color:#2563a8">+' + subBonus(ctx.subN) + '</td></tr>'
+      + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점 <span style="font-size:10px;font-weight:700;color:#9aa0a6">(상한 100)</span></td><td id="ev-tot">' + (locked ? calcTotal(grades, ctx) : 0) + '</td></tr></tbody></table>'
+      + guideHtml()
       + foot;
     openSheet(html);
     if (!locked) EV.calc();
@@ -249,7 +302,9 @@
       var c = Math.round(sc * w / 100); document.getElementById('c_' + sel.getAttribute('data-k')).textContent = c; tot += c;
     });
     box.querySelectorAll('td.au').forEach(function (td) { var sc = +td.textContent; var w = +td.getAttribute('data-w'); tot += Math.round(sc * w / 100); });
-    document.getElementById('ev-tot').textContent = tot;
+    var bn = document.getElementById('ev-bonus');
+    if (bn) tot += (parseInt(bn.textContent.replace(/[^0-9]/g, ''), 10) || 0);  // 대타 보너스 가산
+    document.getElementById('ev-tot').textContent = Math.min(100, tot);          // 총점 상한 100
   };
   EV.saveScore = function (miso) {
     var box = document.getElementById('ev-in'); var grades = {};
