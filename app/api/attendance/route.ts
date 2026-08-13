@@ -17,6 +17,7 @@ export async function GET() {
       result[row.name][row.week] = {
         late: row.late,
         absent: row.absent,
+        miss: row.miss ?? 0,
         logs: row.logs ?? [],
       };
     });
@@ -28,11 +29,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, week, late, absent, logs } = await req.json();
+    const { name, week, late, absent, miss, logs } = await req.json();
     const key = `${name}_${week}`;
     const { error } = await supabaseAdmin
       .from('attendance')
-      .upsert({ key, name, week, late, absent, logs }, { onConflict: 'key' });
+      .upsert({ key, name, week, late, absent, miss: miss ?? 0, logs }, { onConflict: 'key' });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     // GAS 출결DB 동기화
     await callGAS('saveAttendanceToDB', [name, week, late, absent, logs]);

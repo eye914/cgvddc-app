@@ -84,8 +84,8 @@
       getAttendanceFromDB: function() {
         fetch('/api/attendance').then(function(r){ return r.json(); }).then(_success).catch(_failure);
       },
-      saveAttendanceToDB: function(name, week, late, absent, logs) {
-        fetch('/api/attendance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, week:week, late:late, absent:absent, logs:logs}) })
+      saveAttendanceToDB: function(name, week, late, absent, logs, miss) {
+        fetch('/api/attendance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, week:week, late:late, absent:absent, miss:miss||0, logs:logs}) })
           .then(function(r){ return r.json(); }).then(function(d){ if(d && d.error) throw new Error(d.error); _success(d); }).catch(_failure);
       },
 

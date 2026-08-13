@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requireAdmin } from '@/lib/session';
 import { sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
-import { weekInPeriod, totalScore } from '@/lib/evalConfig';
+import { weekInPeriod, totalScore, subReqPenalty, parseShiftDate, leadDaysBetween } from '@/lib/evalConfig';
 
 function monthRange(period: string): [string, string] {
   const [y, m] = period.split('-').map(Number);
@@ -10,12 +10,13 @@ function monthRange(period: string): [string, string] {
 }
 
 async function computeAuto(period: string) {
-  const { data: att } = await supabaseAdmin.from('attendance').select('name, week, late, absent');
-  const lateMap: Record<string, number> = {}, absentMap: Record<string, number> = {};
+  const { data: att } = await supabaseAdmin.from('attendance').select('name, week, late, absent, miss');
+  const lateMap: Record<string, number> = {}, absentMap: Record<string, number> = {}, missMap: Record<string, number> = {};
   (att ?? []).forEach((r: any) => {
     if (weekInPeriod(r.week, period)) {
       lateMap[r.name] = (lateMap[r.name] || 0) + (Number(r.late) || 0);
       absentMap[r.name] = (absentMap[r.name] || 0) + (Number(r.absent) || 0);
+      missMap[r.name] = (missMap[r.name] || 0) + (Number(r.miss) || 0);
     }
   });
   const [s, e] = monthRange(period);
@@ -27,20 +28,39 @@ async function computeAuto(period: string) {
     const { data: sigs } = await supabaseAdmin.from('notice_signatures').select('name, notice_id').in('notice_id', nIds);
     (sigs ?? []).forEach((r: any) => { signedMap[r.name] = (signedMap[r.name] || 0) + 1; });
   }
-  // 대타/교대 수락(적극적 참여): 승인완료된 공고 중 수락자(sub_name)가 그 사람이고, 근무일이 해당 월인 건 수
-  const { data: trades } = await supabaseAdmin.from('trades').select('sub_name, status, shift_date').eq('status', '승인완료');
+  // 대타/교대: 승인완료 건 중 근무일이 해당 월인 것만 집계
+  //  · 수락자(sub_name) → 가점 / 단순대타 요청자(req_name, trade_type='sub') → 임박도별 감점
+  const { data: trades } = await supabaseAdmin
+    .from('trades').select('req_name, sub_name, status, shift_date, trade_type, created_at').eq('status', '승인완료');
   const subMap: Record<string, number> = {};
-  const pm = period.split('-')[1]; // "08"
+  const leadMap: Record<string, number[]> = {};
+  const [py, pmNum] = period.split('-').map(Number);
   (trades ?? []).forEach((t: any) => {
-    const nm = String(t.sub_name || '').trim();
-    if (!nm || nm === '모집중') return;
-    const m = String(t.shift_date || '').match(/(\d{1,2})\s*\//);
-    if (m && String(Number(m[1])).padStart(2, '0') === pm) subMap[nm] = (subMap[nm] || 0) + 1;
+    const sd = parseShiftDate(t.shift_date, py);
+    if (!sd || sd.getFullYear() !== py || sd.getMonth() + 1 !== pmNum) return;  // 해당 월 근무분만
+    const acc = String(t.sub_name || '').trim();
+    if (acc && acc !== '모집중') subMap[acc] = (subMap[acc] || 0) + 1;          // 수락 = 가점
+    if (String(t.trade_type || '') === 'sub') {                                  // 단순대타 요청만 감점 대상
+      const rq = String(t.req_name || '').trim();
+      if (rq && t.created_at) {
+        (leadMap[rq] = leadMap[rq] || []).push(leadDaysBetween(new Date(t.created_at), sd));
+      }
+    }
   });
-  return { lateMap, absentMap, noticeReq: nIds.length, signedMap, subMap };
+  return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap };
 }
 function ctxFor(name: string, a: any) {
-  return { lateN: a.lateMap[name] || 0, absentN: a.absentMap[name] || 0, noticeReq: a.noticeReq, noticeSigned: a.signedMap[name] || 0, subN: (a.subMap && a.subMap[name]) || 0 };
+  const absentN = a.absentMap[name] || 0;
+  return {
+    lateN: a.lateMap[name] || 0,
+    absentN,
+    missN: (a.missMap && a.missMap[name]) || 0,
+    noticeReq: a.noticeReq,
+    noticeSigned: a.signedMap[name] || 0,
+    subN: (a.subMap && a.subMap[name]) || 0,
+    subReqN: ((a.leadMap && a.leadMap[name]) || []).length,
+    subReqPen: subReqPenalty((a.leadMap && a.leadMap[name]) || [], absentN),
+  };
 }
 // 동점 처리: 총점↓ → 결근↑(적은) → 지각↑(적은) → 공지서명률↓(높은) → 이름
 function tieCmp(x: any, y: any): number {

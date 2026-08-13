@@ -19,9 +19,12 @@ export const CRITERIA: Criterion[] = [
 export function letterScore(g?: string): number { return g && LETTER[g] != null ? LETTER[g] : 0; }
 export function lateScore(count: number): number { return Math.max(0, 100 - 15 * count); }
 export function absentScore(count: number): number { return Math.max(0, 100 - 50 * count); }
-export function noticeScore(required: number, signed: number): number {
-  if (required <= 0) return 100; // 그 달 서명필요 공지 없으면 만점
-  return Math.round((signed / required) * 100);
+
+// 공지 미숙지: 서명은 했으나 현장 확인(질문/테스트)에서 내용을 모른 경우 1회당 차감
+export const NOTICE_MISS_PENALTY = 25;
+export function noticeScore(required: number, signed: number, miss: number = 0): number {
+  const base = required <= 0 ? 100 : Math.round((signed / required) * 100); // 서명필요 공지 없으면 만점
+  return Math.max(0, base - NOTICE_MISS_PENALTY * (miss || 0));
 }
 
 // 근태 주차키를 period(YYYY-MM)에 매칭 (목요일=과반 달 기준). 두 형식 모두 지원:
@@ -38,10 +41,10 @@ export function weekInPeriod(weekKey: string, period: string): boolean {
 }
 
 // 항목별 자동 점수(정량/공지) 계산
-export function autoScore(kind: CriKind, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number }): number {
+export function autoScore(kind: CriKind, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; missN?: number }): number {
   if (kind === 'late') return lateScore(ctx.lateN);
   if (kind === 'absent') return absentScore(ctx.absentN);
-  if (kind === 'notice') return noticeScore(ctx.noticeReq, ctx.noticeSigned);
+  if (kind === 'notice') return noticeScore(ctx.noticeReq, ctx.noticeSigned, ctx.missN || 0);
   return 0;
 }
 
@@ -50,13 +53,47 @@ export const SUB_BONUS_PER = 3;
 export const SUB_BONUS_CAP = 12;
 export function subBonus(count: number): number { return Math.min((count || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
 
+// ── 단순대타 '요청' 감점 (A안: 얼마나 미리 냈는지로 차등) ──
+//   3일 이상 전 = 정상적인 사전 조정이므로 감점 없음 / 1~2일 전 = −2 / 당일(이후) = −5
+//   ※ 맞교대(swap)는 본인도 근무하므로 대상 제외
+//   ※ 결근으로 생긴 대타는 결근으로 이미 처벌 → 결근 횟수만큼 무거운 건부터 제외(이중처벌 방지)
+export const SUBREQ_FREE_LEAD: number = 3;
+export const SUBREQ_PEN_NEAR: number = 2;
+export const SUBREQ_PEN_SAMEDAY: number = 5;
+export const SUBREQ_PEN_CAP: number = 10;
+export function subReqPenalty(leadDays: number[], absentN: number = 0): number {
+  const pens: number[] = (leadDays || [])
+    .map(d => (d <= 0 ? SUBREQ_PEN_SAMEDAY : d < SUBREQ_FREE_LEAD ? SUBREQ_PEN_NEAR : 0))
+    .filter(p => p > 0)
+    .sort((a, b) => b - a);              // 무거운 건부터
+  const kept = pens.slice(Math.max(0, absentN || 0));  // 결근 건수만큼 상쇄
+  return Math.min(SUBREQ_PEN_CAP, kept.reduce((s, p) => s + p, 0));
+}
+
+// 근무일 문자열 → Date. "2026-08-10(월) / D1", "8/10(월) / D1" 두 형식 모두 지원.
+export function parseShiftDate(shiftDate: string, fallbackYear?: number): Date | null {
+  const s = String(shiftDate || '');
+  const iso = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]);
+  const md = s.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  if (md) return new Date(fallbackYear || new Date().getFullYear(), +md[1] - 1, +md[2]);
+  return null;
+}
+// 두 날짜의 일수 차이(근무일 − 등록일). 시각은 버리고 날짜만 비교.
+export function leadDaysBetween(created: Date, shift: Date): number {
+  const a = new Date(created.getFullYear(), created.getMonth(), created.getDate());
+  const b = new Date(shift.getFullYear(), shift.getMonth(), shift.getDate());
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+
 // 한 사람의 총점 계산 (grades = {kakao,service,active,rule,groom}, ctx = 자동값)
-export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number }): number {
+export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number; missN?: number; subReqPen?: number }): number {
   let total = 0;
   for (const c of CRITERIA) {
     const s = c.kind === 'letter' ? letterScore(grades[c.key]) : autoScore(c.kind, ctx);
     total += s * c.weight / 100;
   }
   total += subBonus(ctx.subN || 0);   // 대타 수락 = 적극적 참여 보너스
-  return Math.min(100, Math.round(total));
+  total -= (ctx.subReqPen || 0);      // 단순대타 요청 = 임박도에 따른 감점
+  return Math.max(0, Math.min(100, Math.round(total)));
 }

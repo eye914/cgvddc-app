@@ -2151,18 +2151,20 @@ function showKakaoModal(text, forced) {
             var now = new Date();
             var wk = getWeekKey(getLocalYYYYMMDD(currentStatsDate));
             if (!attendanceData[n]) attendanceData[n] = {};
-            if (!attendanceData[n][wk]) attendanceData[n][wk] = { late:0, absent:0, logs:[] };
+            if (!attendanceData[n][wk]) attendanceData[n][wk] = { late:0, absent:0, miss:0, logs:[] };
+            if (attendanceData[n][wk][t] == null) attendanceData[n][wk][t] = 0;
             attendanceData[n][wk][t] += a;
             if (attendanceData[n][wk][t] < 0) attendanceData[n][wk][t] = 0;
             var ts = (now.getMonth()+1)+"/"+now.getDate()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
-            attendanceData[n][wk].logs.unshift("["+ts+"] "+(t==="late"?"\uC9C0\uAC01":"\uACB0\uADFC")+" "+(a>0?"\uBD80\uC5EC":"\uCC28\uAC10"));
+            var tLabel = t==="late" ? "\uC9C0\uAC01" : t==="absent" ? "\uACB0\uADFC" : "\uACF5\uC9C0\uBBF8\uC219\uC9C0";
+            attendanceData[n][wk].logs.unshift("["+ts+"] "+tLabel+" "+(a>0?"\uBD80\uC5EC":"\uCC28\uAC10"));
             if (attendanceData[n][wk].logs.length > 5) attendanceData[n][wk].logs.pop();
             // DB에 저장
             if (typeof google !== "undefined" && google.script) {
                 var att = attendanceData[n][wk];
                 google.script.run
                     .withFailureHandler(function(e){ alert("\uCD9C\uACB0 \uC800\uC7A5 \uC2E4\uD328: "+e.message); })
-                    .saveAttendanceToDB(n, wk, att.late, att.absent, att.logs);
+                    .saveAttendanceToDB(n, wk, att.late, att.absent, att.logs, att.miss || 0);
             }
             renderStaffStats(); renderList();
         }
@@ -2211,7 +2213,7 @@ function showKakaoModal(text, forced) {
             var html = '';
             MISO_DATA.forEach(function(m, idx){
                 if (!attendanceData[m.name]) attendanceData[m.name] = {};
-                if (!attendanceData[m.name][wk]) attendanceData[m.name][wk] = { late:0, absent:0, logs:[] };
+                if (!attendanceData[m.name][wk]) attendanceData[m.name][wk] = { late:0, absent:0, miss:0, logs:[] };
                 var att = attendanceData[m.name][wk];
                 var isP = checkPenaltyStatus(m.name);
                 var isExp = !!_statsExpanded[m.name];
@@ -2248,6 +2250,14 @@ function showKakaoModal(text, forced) {
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
                 html += "<span class='text-lg font-black w-7 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
+                html += "</div></div>";
+                // 공지 미숙지 — 서명은 했으나 현장 확인 시 내용을 모른 경우
+                html += "<div class='flex items-center justify-between bg-white rounded-xl px-4 py-2.5'>";
+                html += "<span class='text-sm font-black text-slate-600'>공지 미숙지<span class='block text-[10px] font-bold text-slate-400'>서명O · 내용 확인 시 오답</span></span>";
+                html += "<div class='flex items-center gap-2'>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','miss',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
+                html += "<span class='text-lg font-black w-7 text-center " + ((att.miss||0) > 0 ? 'text-purple-600' : 'text-slate-700') + "'>" + (att.miss||0) + "</span>";
+                html += "<button onclick=\"updateAttendance('" + m.name + "','miss',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
                 html += "</div></div></div></div></div>";
             });
             container.innerHTML = html;

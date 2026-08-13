@@ -24,11 +24,16 @@
   function autoS(kind, c) {
     if (kind === 'late') return Math.max(0, 100 - 15 * (c.lateN || 0));
     if (kind === 'absent') return Math.max(0, 100 - 50 * (c.absentN || 0));
-    if (kind === 'notice') return (c.noticeReq || 0) <= 0 ? 100 : Math.round((c.noticeSigned || 0) / c.noticeReq * 100);
+    if (kind === 'notice') {
+      var base = (c.noticeReq || 0) <= 0 ? 100 : Math.round((c.noticeSigned || 0) / c.noticeReq * 100);
+      return Math.max(0, base - NOTICE_MISS_PENALTY * (c.missN || 0));   // 미숙지 차감
+    }
     return 0;
   }
-  // 대타/교대 수락 보너스 — 서버(lib/evalConfig.ts)와 반드시 동일해야 최종 순위와 어긋나지 않음
+  // 아래 상수·계산은 서버(lib/evalConfig.ts)와 반드시 동일해야 최종 순위와 어긋나지 않음
   var SUB_BONUS_PER = 3, SUB_BONUS_CAP = 12;
+  var NOTICE_MISS_PENALTY = 25;
+  var SUBREQ_FREE_LEAD = 3, SUBREQ_PEN_NEAR = 2, SUBREQ_PEN_SAMEDAY = 5, SUBREQ_PEN_CAP = 10;
   function subBonus(n) { return Math.min((n || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
   var _period, _data, _tab = 'targets', _managers = [];
 
@@ -222,6 +227,8 @@
         + '<div><div style="font-weight:800;font-size:15px">' + esc(a.miso_name) + '</div>'
         + '<div style="font-size:11px;color:#9aa0a6;margin-top:2px">' + (done ? '평가 완료' : '미평가')
         + (ctx.subN ? ' · 대타수락 ' + ctx.subN + '건(+' + subBonus(ctx.subN) + ')' : '')
+        + (ctx.subReqPen ? ' · <span style="color:#c2410c">대타요청(−' + ctx.subReqPen + ')</span>' : '')
+        + (ctx.missN ? ' · <span style="color:#7c3aed">미숙지' + ctx.missN + '</span>' : '')
         + ((ctx.lateN || ctx.absentN) ? ' · <span style="color:#dc2626">지각' + (ctx.lateN || 0) + '/결근' + (ctx.absentN || 0) + '</span>' : '')
         + '</div></div>'
         + '<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:' + (done ? '#D6001C' : '#cbd5e1') + '">' + tot + '<span style="font-size:11px;color:#9aa0a6">점</span></div></div></div>';
@@ -231,8 +238,9 @@
   function calcTotal(grades, ctx) {
     var t = 0;
     CRI.forEach(function (c) { var s = c.kind === 'letter' ? (LETTER[grades[c.key]] || 0) : autoS(c.kind, ctx); t += s * c.w / 100; });
-    t += subBonus(ctx.subN);               // 대타 수락 보너스(서버와 동일)
-    return Math.min(100, Math.round(t));   // 총점 상한 100
+    t += subBonus(ctx.subN);                        // 대타 수락 보너스
+    t -= (ctx.subReqPen || 0);                      // 단순대타 요청 감점(서버 계산값)
+    return Math.max(0, Math.min(100, Math.round(t)));
   }
 
   // ── 점수 산정 기준 안내 (모든 평가자에게 동일 노출) ──
@@ -247,12 +255,19 @@
       + '<br><br><b>자동 산정 항목</b><br>'
       + '· 지각: 100 − 15×횟수<br>'
       + '· 결근: 100 − 50×횟수<br>'
-      + '· 공지 숙지: 서명수 ÷ 서명필요 공지수 × 100 (해당 월 공지 없으면 100)<br><br>'
+      + '· 공지 숙지: (서명수 ÷ 서명필요 공지수 × 100) − ' + NOTICE_MISS_PENALTY + '×미숙지횟수<br>'
+      + '&nbsp;&nbsp;※ <b>미숙지</b> = 서명은 했으나 현장 확인(질문/테스트)에서 내용을 모른 경우<br>'
+      + '&nbsp;&nbsp;※ 인력풀 현황에서 지각·결근과 함께 관리자가 기록<br><br>'
       + '<b>가산점</b><br>'
       + '· 대타·교대 <u>수락</u> 1건당 +' + SUB_BONUS_PER + '점 (최대 +' + SUB_BONUS_CAP + '점)<br>'
-      + '&nbsp;&nbsp;※ 승인완료된 건 중 해당 월 근무분만 집계<br>'
-      + '&nbsp;&nbsp;※ 대타를 <u>요청</u>한 것은 점수에 반영되지 않음<br><br>'
-      + '<b>총점</b> = 가중 환산 합계 + 가산점 (상한 100)<br>'
+      + '&nbsp;&nbsp;※ 승인완료된 건 중 해당 월 근무분만 집계<br><br>'
+      + '<b>차감점 — 단순대타 <u>요청</u></b><br>'
+      + '· 근무일 ' + SUBREQ_FREE_LEAD + '일 이상 전 신청: 감점 없음 (정상적인 사전 조정)<br>'
+      + '· 1~2일 전 신청: 1건당 −' + SUBREQ_PEN_NEAR + '점<br>'
+      + '· 당일 신청: 1건당 −' + SUBREQ_PEN_SAMEDAY + '점 (최대 −' + SUBREQ_PEN_CAP + '점)<br>'
+      + '&nbsp;&nbsp;※ <b>맞교대는 제외</b> (본인도 근무하므로)<br>'
+      + '&nbsp;&nbsp;※ <b>결근으로 생긴 대타는 자동 제외</b> (결근으로 이미 감점 → 이중처벌 방지)<br><br>'
+      + '<b>총점</b> = 가중 환산 합계 + 가산점 − 차감점 (0~100)<br>'
       + '<span style="color:#94a3b8">지각·결근·공지 점수는 저장 후에도 근태 변동에 따라 자동 갱신됩니다.</span>'
       + '</div></details>';
   }
@@ -273,7 +288,10 @@
         return '<tr><td class="l">' + c.sub + '</td><td>' + cell + '</td><td id="s_' + c.key + '">' + (locked ? sc : 0) + '</td><td>' + c.w + '</td><td id="c_' + c.key + '">' + (locked ? Math.round(sc * c.w / 100) : 0) + '</td></tr>';
       }
       var as = autoS(c.kind, ctx);
-      var note = c.kind === 'late' ? ('지각 ' + (ctx.lateN || 0) + '회') : c.kind === 'absent' ? ('결근 ' + (ctx.absentN || 0) + '회') : ('서명 ' + (ctx.noticeSigned || 0) + '/' + (ctx.noticeReq || 0));
+      var note = c.kind === 'late' ? ('지각 ' + (ctx.lateN || 0) + '회')
+        : c.kind === 'absent' ? ('결근 ' + (ctx.absentN || 0) + '회')
+          : ('서명 ' + (ctx.noticeSigned || 0) + '/' + (ctx.noticeReq || 0)
+            + ((ctx.missN || 0) ? ' · <span style="color:#7c3aed">미숙지 ' + ctx.missN + '회(−' + (NOTICE_MISS_PENALTY * ctx.missN) + ')</span>' : ''));
       return '<tr><td class="l">' + c.sub + '<div style="font-size:10px;color:#93a">' + note + '</div></td><td style="color:#2563a8;font-weight:800">자동</td><td class="au" data-k="' + c.key + '" data-w="' + c.w + '">' + as + '</td><td>' + c.w + '</td><td class="ac" id="c_' + c.key + '">' + Math.round(as * c.w / 100) + '</td></tr>';
     }).join('');
     var css = '#ev-in table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden}#ev-in th{background:#44546A;color:#fff;padding:8px 4px}#ev-in td{border-bottom:1px solid #eee;padding:8px 5px;text-align:center}#ev-in td.l{text-align:left;font-weight:700}';
@@ -287,6 +305,10 @@
       + '<tr style="background:#f0f9ff"><td class="l">대타·교대 수락<div style="font-size:10px;color:#93a">' + (ctx.subN || 0) + '건 · 1건당 +' + SUB_BONUS_PER + '점(최대 +' + SUB_BONUS_CAP + ')</div></td>'
       + '<td style="color:#2563a8;font-weight:800">자동</td><td>-</td><td>가산</td>'
       + '<td id="ev-bonus" style="font-weight:900;color:#2563a8">+' + subBonus(ctx.subN) + '</td></tr>'
+      // 단순대타 요청 감점 — 임박도(리드타임)에 따라 차등, 결근분은 자동 상쇄
+      + '<tr style="background:#fff7ed"><td class="l">단순대타 요청<div style="font-size:10px;color:#93a">' + (ctx.subReqN || 0) + '건 · 3일이상 전 0 / 1~2일 전 −2 / 당일 −5<br>결근으로 생긴 건은 자동 제외</div></td>'
+      + '<td style="color:#c2410c;font-weight:800">자동</td><td>-</td><td>차감</td>'
+      + '<td id="ev-penalty" style="font-weight:900;color:#c2410c">−' + (ctx.subReqPen || 0) + '</td></tr>'
       + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점 <span style="font-size:10px;font-weight:700;color:#9aa0a6">(상한 100)</span></td><td id="ev-tot">' + (locked ? calcTotal(grades, ctx) : 0) + '</td></tr></tbody></table>'
       + guideHtml()
       + foot;
@@ -303,8 +325,10 @@
     });
     box.querySelectorAll('td.au').forEach(function (td) { var sc = +td.textContent; var w = +td.getAttribute('data-w'); tot += Math.round(sc * w / 100); });
     var bn = document.getElementById('ev-bonus');
-    if (bn) tot += (parseInt(bn.textContent.replace(/[^0-9]/g, ''), 10) || 0);  // 대타 보너스 가산
-    document.getElementById('ev-tot').textContent = Math.min(100, tot);          // 총점 상한 100
+    if (bn) tot += (parseInt(bn.textContent.replace(/[^0-9]/g, ''), 10) || 0);   // 대타 수락 가산
+    var pn = document.getElementById('ev-penalty');
+    if (pn) tot -= (parseInt(pn.textContent.replace(/[^0-9]/g, ''), 10) || 0);   // 대타 요청 차감
+    document.getElementById('ev-tot').textContent = Math.max(0, Math.min(100, tot));
   };
   EV.saveScore = function (miso) {
     var box = document.getElementById('ev-in'); var grades = {};
