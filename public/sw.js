@@ -1,6 +1,6 @@
 // Service Worker — CGV동두천 맞교대 PWA
 // ⚠️ CACHE_VER 를 올리면 모든 캐시 초기화 → 모바일 강제 업데이트
-const CACHE_VER = 'cgv-v42';
+const CACHE_VER = 'cgv-v43';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting(); // 대기 없이 즉시 활성화
@@ -64,20 +64,26 @@ self.addEventListener('push', (e) => {
       icon: data.icon || '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       vibrate: [200, 100, 200],
-      data: { url: '/' }
+      // 서버가 지정한 이동 경로(예: /?go=contract) → 알림을 누르면 해당 화면으로
+      data: { url: data.url || '/' }
     })
   );
 });
 
-// 알림 클릭 시 앱 열기
+// 알림 클릭 시 해당 화면으로 이동 (열려 있으면 그 창을 재사용)
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) return client.focus();
+        if ('focus' in client) {
+          // 이미 앱이 떠 있으면 포커스 후 이동 경로를 전달 (로그인 상태 유지됨)
+          client.postMessage({ type: 'NAVIGATE', url: target });
+          return client.focus();
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      if (clients.openWindow) return clients.openWindow(target);
     })
   );
 });

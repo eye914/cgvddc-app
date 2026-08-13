@@ -1906,6 +1906,7 @@ function showKakaoModal(text, forced) {
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
                             renderMyDocbox();
+                            consumeDeepLink();   // 푸시 알림으로 들어온 경우 해당 화면 열기
                         }
                     }
                 }
@@ -3466,6 +3467,40 @@ function showKakaoModal(text, forced) {
                 .withSuccessHandler(function() { loadAdminForms(); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .cancelFormRequest(id);
+        }
+
+        // ── 푸시 알림 딥링크 (?go=contract | ?go=forms) ──
+        //   알림을 누르면 앱이 열리는데, 로그인 전이면 PIN 화면이 먼저 뜬다.
+        //   목적지를 저장해 두었다가 로그인 완료 후 해당 화면을 자동으로 연다.
+        function stashDeepLink() {
+            try {
+                var go = new URLSearchParams(location.search).get('go');
+                if (go) {
+                    sessionStorage.setItem('cgv_go', go);
+                    history.replaceState(null, '', location.pathname);  // 주소 정리
+                }
+            } catch (e) {}
+        }
+        function consumeDeepLink() {
+            var go = sessionStorage.getItem('cgv_go');
+            if (!go) return;
+            if (!sessionStorage.getItem('cgv_currentUser')) return;   // 로그인 후에만
+            sessionStorage.removeItem('cgv_go');
+            setTimeout(function () {
+                if (go === 'contract' && typeof openMyContracts === 'function') openMyContracts();
+                else if (go === 'forms') { switchTab('schedule'); if (typeof openMyFormsModal === 'function') openMyFormsModal(); }
+            }, 600);
+        }
+        window.consumeDeepLink = consumeDeepLink;
+        stashDeepLink();
+        // 앱이 이미 떠 있는 상태에서 알림을 누른 경우 (서비스워커가 경로를 전달)
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('message', function (e) {
+                if (e.data && e.data.type === 'NAVIGATE' && e.data.url) {
+                    var m = String(e.data.url).match(/go=([a-z]+)/);
+                    if (m) { sessionStorage.setItem('cgv_go', m[1]); consumeDeepLink(); }
+                }
+            });
         }
 
         // ── 직원용: 내 서류함 (근태서류 + 근로계약서 통합, 근태 탭 상단 고정) ──

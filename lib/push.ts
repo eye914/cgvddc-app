@@ -21,16 +21,16 @@ function dedupByEndpoint(subs: string[]): any[] {
   return [...map.values()];
 }
 
-async function pushMany(subs: string[], title: string, body: string) {
+async function pushMany(subs: string[], title: string, body: string, url?: string) {
   const targets = dedupByEndpoint(subs);
   if (!targets.length) return;
-  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png' });
+  const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png', url: url || '/' });
   await Promise.allSettled(
     targets.map((p: any) => webpush.sendNotification(p, payload))
   );
 }
 
-export async function sendPushToNames(names: string[], title: string, body: string) {
+export async function sendPushToNames(names: string[], title: string, body: string, url?: string) {
   const validNames = names.filter(n => n && n !== '모집중');
   if (!validNames.length) return;
 
@@ -40,7 +40,7 @@ export async function sendPushToNames(names: string[], title: string, body: stri
     .in('name', validNames);
   if (!data?.length) return;
 
-  await pushMany(data.map((r: any) => r.subscription), title, body);
+  await pushMany(data.map((r: any) => r.subscription), title, body, url);
 }
 
 export async function sendPushToAdmins(title: string, body: string) {

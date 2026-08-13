@@ -156,7 +156,8 @@ export async function POST(req: NextRequest) {
       await sendPushToNames(
         names,
         `📄 ${weekKey} 근로계약서`,
-        `관리자(${requestedBy || '관리자'})가 근로계약서 서명을 요청했습니다.`
+        `관리자(${requestedBy || '관리자'})가 근로계약서 서명을 요청했습니다.`,
+        '/?go=contract'   // 알림 클릭 → 내 계약서(서명) 화면
       );
       return NextResponse.json({ ok: true, sentTo: names });
     }

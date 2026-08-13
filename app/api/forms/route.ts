@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
     await sendPushToNames(
       [targetName],
       `📋 ${typeName} 제출 요청`,
-      `관리자(${requestedBy})가 ${typeName} 제출을 요청했습니다. 3일 이내에 제출해주세요.`
+      `관리자(${requestedBy})가 ${typeName} 제출을 요청했습니다. 3일 이내에 제출해주세요.`,
+      '/?go=forms'   // 알림 클릭 → 내 서류함
     );
     // GAS 사유서DB 기록
     await callGAS('saveFormRequestToDB', [{ type, targetName, requestedBy, note: note || '' }]);
