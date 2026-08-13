@@ -2253,7 +2253,7 @@ function showKakaoModal(text, forced) {
                 html += "</div></div>";
                 // 공지 미숙지 — 서명은 했으나 현장 확인 시 내용을 모른 경우
                 html += "<div class='flex items-center justify-between bg-white rounded-xl px-4 py-2.5'>";
-                html += "<span class='text-sm font-black text-slate-600'>공지 미숙지<span class='block text-[10px] font-bold text-slate-400'>서명O · 내용 확인 시 오답</span></span>";
+                html += "<span class='text-sm font-black text-slate-600 whitespace-nowrap'>공지 미숙지</span>";
                 html += "<div class='flex items-center gap-2'>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','miss',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
                 html += "<span class='text-lg font-black w-7 text-center " + ((att.miss||0) > 0 ? 'text-purple-600' : 'text-slate-700') + "'>" + (att.miss||0) + "</span>";
