@@ -47,7 +47,14 @@
       + '.nm-body .nm-ol{margin:0 0 8px;padding-left:20px}'
       + '.nm-body .nm-ol>li{margin-bottom:7px}'
       + '.nm-body .nm-note{margin:8px 0;background:#fbf7ee;border:1px solid #f0e6d2;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.5;color:#8a6d3b}'
-      + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}';
+      + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}'
+      // 카테고리 칩: 가로 스크롤임을 알 수 있게 얇은 스크롤바 + 우측 페이드 힌트
+      + '.nm-chipwrap{position:relative}'
+      + '.nm-chipwrap:after{content:"";position:absolute;top:0;right:0;bottom:8px;width:26px;pointer-events:none;background:linear-gradient(to right,rgba(244,245,247,0),rgba(244,245,247,.95))}'
+      + '.nm-chips{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}'
+      + '.nm-chips::-webkit-scrollbar{height:4px}'
+      + '.nm-chips::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}'
+      + '.nm-chips::-webkit-scrollbar-track{background:#eef0f2;border-radius:4px}';
     var st = document.createElement('style'); st.id = 'nm-style'; st.textContent = css; document.head.appendChild(st);
   }
   // 이미지에 도난방지 워터마크를 직접 얹어 렌더 (스크롤·위치와 무관하게 모든 이미지에 표시)
@@ -92,10 +99,10 @@
   function paintNotices(host) {
     if (!_noteCache) return;
     var list = _noteCache;
-    var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + N_CATS.map(function (c) {
+    var chips = '<div class="nm-chipwrap"><div class="nm-chips">' + N_CATS.map(function (c) {
       var on = _nFilter === c;
       return '<button onclick="NM.setNFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-    }).join('') + '</div>';
+    }).join('') + '</div></div>';
     var items = list.filter(function (n) { return _nFilter === '전체' || n.category === _nFilter; });
     var body = items.length ? items.map(noticeCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">공지가 없습니다.</div>';
     var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
@@ -302,10 +309,10 @@
     if (!_manualCache) return;
     var list = _manualCache;
     var filters = M_TYPES.concat(M_CATS);
-    var chips = '<div style="display:flex;gap:6px;overflow-x:auto;padding:4px 2px 12px">' + filters.map(function (c) {
+    var chips = '<div class="nm-chipwrap"><div class="nm-chips">' + filters.map(function (c) {
       var on = _mFilter === c;
       return '<button onclick="NM.setMFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-    }).join('') + '</div>';
+    }).join('') + '</div></div>';
     var items = list.filter(function (m) { return _mFilter === '전체' || m.category === _mFilter || m.type === _mFilter; });
     var body = items.length ? items.map(manualCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">매뉴얼이 없습니다.</div>';
     var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';

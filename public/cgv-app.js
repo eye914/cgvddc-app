@@ -790,12 +790,26 @@ function showKakaoModal(text, forced) {
             } else {
                 loadMisoForAuth();
             }
-            // Pull-to-refresh
-            var ptrStart = 0; var ptrActive = false;
-            document.addEventListener("touchstart", function(e){ ptrStart = e.touches[0].clientY; }, {passive:true});
+            // Pull-to-refresh — 페이지 최상단에서 시작한 당김에만 반응
+            //   (모달/시트 등 자체 스크롤 영역 안에서의 스와이프는 제외 → 글 읽다 튕기는 문제 방지)
+            var ptrStart = 0; var ptrActive = false; var ptrEligible = false;
+            function ptrInScrollable(el) {
+                for (var n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+                    if (n.scrollHeight - n.clientHeight > 4) {
+                        var ov = getComputedStyle(n).overflowY;
+                        if (ov === "auto" || ov === "scroll") return true;
+                    }
+                }
+                return false;
+            }
+            document.addEventListener("touchstart", function(e){
+                ptrStart = e.touches[0].clientY;
+                // 시작 순간 페이지가 최상단이고, 스크롤 가능한 내부 영역이 아닐 때만 허용
+                ptrEligible = (window.scrollY <= 0) && !ptrInScrollable(e.target);
+            }, {passive:true});
             document.addEventListener("touchend", function(e){
                 var dist = e.changedTouches[0].clientY - ptrStart;
-                if (dist > 80 && window.scrollY === 0 && !ptrActive) {
+                if (ptrEligible && dist > 80 && window.scrollY <= 0 && !ptrActive) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
                     sessionStorage.removeItem("cgv_sched_pos_map_v3");
