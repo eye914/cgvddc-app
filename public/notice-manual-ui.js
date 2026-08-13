@@ -34,8 +34,11 @@
     close();
     return html;
   }
+  var NM_STYLE_ID = 'nm-style-v3';   // 스타일 변경 시 버전을 올려 옛 <style> 을 교체
   function injectNMStyle() {
-    if (document.getElementById('nm-style')) return;
+    if (document.getElementById(NM_STYLE_ID)) return;
+    var old = document.getElementById('nm-style'); if (old) old.remove();
+    var old2 = document.getElementById('nm-style-v2'); if (old2) old2.remove();
     var css = '.nm-body{font-size:14px;line-height:1.55;color:#3f4652;font-family:"Pretendard",-apple-system,"Malgun Gothic",sans-serif}'
       + '.nm-body .nm-h{display:flex;align-items:center;gap:7px;margin:20px 0 9px;font-size:15px;font-weight:800;color:#1f2937;letter-spacing:-.01em}'
       + '.nm-body .nm-h:first-child{margin-top:2px}'
@@ -48,14 +51,14 @@
       + '.nm-body .nm-ol>li{margin-bottom:7px}'
       + '.nm-body .nm-note{margin:8px 0;background:#fbf7ee;border:1px solid #f0e6d2;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.5;color:#8a6d3b}'
       + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}'
-      // 카테고리 칩: 한 줄 가로 스크롤 + 아래 항상 보이는 가는 스크롤바(더 있음을 인지)
+      // 카테고리 칩: 한 줄 가로 스크롤. 모바일은 기본 스크롤바가 안 보이므로
+      // 아래에 '항상 보이는' 표시줄(.nm-sb)을 직접 그려서 더 있다는 걸 알린다.
       + '.nm-chipwrap{position:relative}'
-      + '.nm-chips{display:flex;flex-wrap:nowrap;gap:6px;padding:4px 2px 8px;overflow-x:scroll;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#94a3b8 #e5e7eb}'
-      // iOS/안드로이드 크롬은 기본적으로 스크롤바를 숨기므로 강제로 항상 표시
-      + '.nm-chips::-webkit-scrollbar{height:5px;-webkit-appearance:none;display:block}'
-      + '.nm-chips::-webkit-scrollbar-track{background:#e5e7eb;border-radius:5px}'
-      + '.nm-chips::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:5px}';
-    var st = document.createElement('style'); st.id = 'nm-style'; st.textContent = css; document.head.appendChild(st);
+      + '.nm-chips{display:flex;flex-wrap:nowrap;gap:6px;padding:4px 2px 6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}'
+      + '.nm-chips::-webkit-scrollbar{display:none}'
+      + '.nm-sb{position:relative;height:4px;background:#e5e7eb;border-radius:4px;margin:0 2px 12px;overflow:hidden}'
+      + '.nm-sb-th{position:absolute;top:0;left:0;height:100%;background:#94a3b8;border-radius:4px;transition:left .08s linear}';
+    var st = document.createElement('style'); st.id = NM_STYLE_ID; st.textContent = css; document.head.appendChild(st);
   }
   // 이미지에 도난방지 워터마크를 직접 얹어 렌더 (스크롤·위치와 무관하게 모든 이미지에 표시)
   function protectedImg(u) {
@@ -96,17 +99,46 @@
 
   /* ══════════════════════ 공지 ══════════════════════ */
   var _noteCache = null; // 직전 목록 캐시 → 탭 전환 시 즉시 렌더(로딩 깜빡임 제거)
+  // 카테고리 칩 아래 표시줄을 실제 스크롤 위치와 연동 (항상 보이는 가로 스크롤바)
+  function wireChipBar(host) {
+    var wraps = host.querySelectorAll('.nm-chipwrap');
+    for (var i = 0; i < wraps.length; i++) {
+      (function (wrap) {
+        var chips = wrap.querySelector('.nm-chips');
+        var bar = wrap.querySelector('.nm-sb');
+        var th = wrap.querySelector('.nm-sb-th');
+        if (!chips || !bar || !th) return;
+        function update() {
+          var sw = chips.scrollWidth, cw = chips.clientWidth;
+          if (sw <= cw + 1) { bar.style.display = 'none'; return; }  // 넘치지 않으면 숨김
+          bar.style.display = '';
+          var ratio = cw / sw;
+          var thW = Math.max(24, bar.clientWidth * ratio);
+          th.style.width = thW + 'px';
+          var maxScroll = sw - cw;
+          var maxLeft = bar.clientWidth - thW;
+          th.style.left = (maxScroll > 0 ? (chips.scrollLeft / maxScroll) * maxLeft : 0) + 'px';
+        }
+        chips.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        setTimeout(update, 0);
+        update();
+      })(wraps[i]);
+    }
+  }
+
   function paintNotices(host) {
     if (!_noteCache) return;
     var list = _noteCache;
     var chips = '<div class="nm-chipwrap"><div class="nm-chips">' + N_CATS.map(function (c) {
       var on = _nFilter === c;
       return '<button onclick="NM.setNFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-    }).join('') + '</div></div>';
+    }).join('') + '</div><div class="nm-sb"><div class="nm-sb-th"></div></div></div>';
     var items = list.filter(function (n) { return _nFilter === '전체' || n.category === _nFilter; });
     var body = items.length ? items.map(noticeCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">공지가 없습니다.</div>';
     var addBtn = isAdmin() ? '<button onclick="NM.openNoticeForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 공지 작성</button>' : '';
     host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
+    wireChipBar(host);
   }
   NM.renderNotices = function () {
     injectNMStyle();
@@ -312,11 +344,12 @@
     var chips = '<div class="nm-chipwrap"><div class="nm-chips">' + filters.map(function (c) {
       var on = _mFilter === c;
       return '<button onclick="NM.setMFilter(\'' + c + '\')" style="flex:0 0 auto;border:1px solid ' + (on ? '#1a1a1a' : '#e2e2e2') + ';background:' + (on ? '#1a1a1a' : '#fff') + ';color:' + (on ? '#fff' : '#555') + ';padding:6px 12px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap">' + c + '</button>';
-    }).join('') + '</div></div>';
+    }).join('') + '</div><div class="nm-sb"><div class="nm-sb-th"></div></div></div>';
     var items = list.filter(function (m) { return _mFilter === '전체' || m.category === _mFilter || m.type === _mFilter; });
     var body = items.length ? items.map(manualCard).join('') : '<div style="text-align:center;color:#94a3b8;padding:30px;font-weight:700">매뉴얼이 없습니다.</div>';
     var addBtn = isAdmin() ? '<button onclick="NM.openManualForm()" style="width:100%;margin-bottom:12px;padding:13px;background:#D6001C;color:#fff;border:none;border-radius:13px;font-weight:800;font-size:14px">＋ 새 매뉴얼 작성</button>' : '';
     host.innerHTML = '<div style="padding:4px 14px">' + addBtn + chips + body + '</div>';
+    wireChipBar(host);
   }
   NM.renderManuals = function () {
     injectNMStyle();

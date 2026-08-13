@@ -802,14 +802,24 @@ function showKakaoModal(text, forced) {
                 }
                 return false;
             }
+            // 모달·시트·사진확대가 열려 있으면 당겨서 새로고침 자체를 끔
+            //  (이때 body가 position:fixed 로 잠기며 scrollY가 0이 되어 '최상단'으로 오판되던 문제)
+            function ptrBlocked() {
+                var b = document.body.style;
+                if (b.position === "fixed" || b.overflow === "hidden") return true;   // lockBody 중
+                if (document.getElementById("nm-zoom") || document.getElementById("nm-sheet-ov")) return true;
+                if (document.querySelector('[id$="-modal"]:not(.hidden)')) return true;
+                if (document.getElementById("urgent-sub-wrap") || document.getElementById("ev-ov")) return true;
+                return false;
+            }
             document.addEventListener("touchstart", function(e){
                 ptrStart = e.touches[0].clientY;
-                // 시작 순간 페이지가 최상단이고, 스크롤 가능한 내부 영역이 아닐 때만 허용
-                ptrEligible = (window.scrollY <= 0) && !ptrInScrollable(e.target);
+                // 시작 순간 페이지가 최상단이고, 스크롤 영역/모달 안이 아닐 때만 허용
+                ptrEligible = (window.scrollY <= 0) && !ptrInScrollable(e.target) && !ptrBlocked();
             }, {passive:true});
             document.addEventListener("touchend", function(e){
                 var dist = e.changedTouches[0].clientY - ptrStart;
-                if (ptrEligible && dist > 80 && window.scrollY <= 0 && !ptrActive) {
+                if (ptrEligible && !ptrBlocked() && dist > 80 && window.scrollY <= 0 && !ptrActive) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
                     sessionStorage.removeItem("cgv_sched_pos_map_v3");
