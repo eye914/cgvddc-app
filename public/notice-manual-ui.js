@@ -48,9 +48,13 @@
       + '.nm-body .nm-ol>li{margin-bottom:7px}'
       + '.nm-body .nm-note{margin:8px 0;background:#fbf7ee;border:1px solid #f0e6d2;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.5;color:#8a6d3b}'
       + '.nm-body img{width:100%;border-radius:10px;margin:10px 0 2px;border:1px solid #eee}'
-      // 카테고리 칩: 2줄로 모두 보이게 wrap (가로 스크롤 없앰 → 숨은 카테고리 없음)
+      // 카테고리 칩: 한 줄 가로 스크롤 + 아래 항상 보이는 가는 스크롤바(더 있음을 인지)
       + '.nm-chipwrap{position:relative}'
-      + '.nm-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 2px 10px}';
+      + '.nm-chips{display:flex;flex-wrap:nowrap;gap:6px;padding:4px 2px 8px;overflow-x:scroll;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#94a3b8 #e5e7eb}'
+      // iOS/안드로이드 크롬은 기본적으로 스크롤바를 숨기므로 강제로 항상 표시
+      + '.nm-chips::-webkit-scrollbar{height:5px;-webkit-appearance:none;display:block}'
+      + '.nm-chips::-webkit-scrollbar-track{background:#e5e7eb;border-radius:5px}'
+      + '.nm-chips::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:5px}';
     var st = document.createElement('style'); st.id = 'nm-style'; st.textContent = css; document.head.appendChild(st);
   }
   // 이미지에 도난방지 워터마크를 직접 얹어 렌더 (스크롤·위치와 무관하게 모든 이미지에 표시)
@@ -482,7 +486,7 @@
     // touch-action:none → 브라우저 기본 제스처(스크롤/당겨서 새로고침) 차단, 우리가 직접 이동 처리
     ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.93);overflow:hidden;touch-action:none;overscroll-behavior:contain;display:flex;align-items:center;justify-content:center';
     ov.innerHTML =
-      '<img id="nm-zoom-img" src="' + esc(src) + '" draggable="false" oncontextmenu="return false" style="max-width:100%;max-height:100%;position:relative;z-index:2;transform-origin:0 0;will-change:transform;user-select:none;-webkit-user-drag:none">'
+      '<img id="nm-zoom-img" src="' + esc(src) + '" draggable="false" oncontextmenu="return false" style="max-width:100%;max-height:100%;position:relative;z-index:2;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none;touch-action:none">'
       + '<div style="position:absolute;inset:0;z-index:5;pointer-events:none;display:flex;flex-wrap:wrap;gap:40px 28px;align-content:flex-start;padding:70px 12px;overflow:hidden">' + wm + '</div>'
       + '<button onclick="NM.closeZoom()" style="position:absolute;top:14px;right:14px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:22px;z-index:6">×</button>'
       + '<div style="position:absolute;bottom:16px;left:0;right:0;display:flex;gap:10px;justify-content:center;z-index:6">'
@@ -492,15 +496,25 @@
       + '</div>';
     document.body.appendChild(ov);
     lockBody();   // 배경 잠금 → 확대 중 터치가 뒤로 새거나 새로고침되지 않게
+    // 확대 중에는 문서 레벨에서 멀티터치/브라우저 확대 제스처를 완전 차단
+    //  (두 손가락 벌릴 때 페이지 줌·당겨서 새로고침으로 새어 튕기던 문제 방지)
+    NM._zoomGuard = function (e) { if (e.touches && e.touches.length > 1 && e.cancelable) e.preventDefault(); };
+    document.addEventListener('touchmove', NM._zoomGuard, { passive: false });
+    NM._gestureGuard = function (e) { if (e.cancelable) e.preventDefault(); };
+    document.addEventListener('gesturestart', NM._gestureGuard, { passive: false });
+    document.addEventListener('gesturechange', NM._gestureGuard, { passive: false });
 
     var img = document.getElementById('nm-zoom-img');
     var st = { scale: 1, x: 0, y: 0 };
     function apply() { img.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px) scale(' + st.scale + ')'; }
     function clamp() {
-      // 확대 배율이 1이면 중앙 고정, 그 이상이면 이미지가 화면 밖으로 완전히 빠지지 않게 제한
+      // 배율 1이면 중앙 고정. 그 이상이면 확대된 이미지가 화면 밖으로 빠지지 않는 범위로 제한.
+      // transform-origin 이 center 이므로 x/y 는 중앙 기준 오프셋 → 여유 = (렌더크기*배율 - 화면)/2
       if (st.scale <= 1) { st.scale = 1; st.x = 0; st.y = 0; return; }
-      var w = img.clientWidth * st.scale, h = img.clientHeight * st.scale;
-      var maxX = Math.max(0, (w - ov.clientWidth) / 2), maxY = Math.max(0, (h - ov.clientHeight) / 2);
+      // offsetWidth/Height = 실제 렌더된(맞춤된) 이미지 크기
+      var w = img.offsetWidth * st.scale, h = img.offsetHeight * st.scale;
+      var maxX = Math.max(0, (w - ov.clientWidth) / 2);
+      var maxY = Math.max(0, (h - ov.clientHeight) / 2);
       st.x = Math.min(maxX, Math.max(-maxX, st.x));
       st.y = Math.min(maxY, Math.max(-maxY, st.y));
     }
@@ -528,6 +542,11 @@
     }, { passive: false });
     ov.addEventListener('touchend', function (e) {
       if (e.touches.length === 0) { drag = false; pinch = false; }
+      else if (e.touches.length === 1) {
+        // 핀치 중 손가락 하나를 떼면 → 남은 손가락으로 이어서 이동
+        pinch = false;
+        if (st.scale > 1) { drag = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY; ox = st.x; oy = st.y; }
+      }
     });
 
     // 더블탭 / 더블클릭 → 확대·축소 토글
@@ -559,6 +578,13 @@
     var z = document.getElementById('nm-zoom');
     if (z) z.remove();
     NM._zoomState = null; NM._zoomApply = null;
+    // 확대 중 걸어둔 제스처 차단 해제
+    if (NM._zoomGuard) { document.removeEventListener('touchmove', NM._zoomGuard, { passive: false }); NM._zoomGuard = null; }
+    if (NM._gestureGuard) {
+      document.removeEventListener('gesturestart', NM._gestureGuard, { passive: false });
+      document.removeEventListener('gesturechange', NM._gestureGuard, { passive: false });
+      NM._gestureGuard = null;
+    }
     // 상세 시트가 열려 있으면 잠금 유지, 아니면 해제
     if (!document.getElementById('nm-sheet-ov')) unlockBody();
   };
