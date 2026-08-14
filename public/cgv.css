@@ -76,8 +76,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", 'P
         .log-container::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .fold-hint::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#94a3b8; white-space:nowrap; }
         details[open] > summary .fold-hint::after { content: "\25B2  \C811\AE30"; color:#64748b; }
-        .fold-hint-dark::after { content: "\25BC  \D3BC\CE58\AE30"; font-size:10px; font-weight:700; color:#64748b; white-space:nowrap; }
-        details[open] > summary .fold-hint-dark::after { content: "\25B2  \C811\AE30"; color:#94a3b8; }
+        /* 월·주차 헤더는 배지(대기/확정)와 한 줄을 나눠 쓰므로 글자 없이 화살표만 → 제목 줄바꿈 방지 */
+        .fold-hint-dark::after { content: "\25BC"; font-size:11px; font-weight:700; color:#94a3b8; white-space:nowrap; }
+        details[open] > summary .fold-hint-dark::after { content: "\25B2"; color:#cbd5e1; }
 /* ═══════════════════════════════════════════════
    C-2 Light Glassmorphism Design System v1.0
    CGV Dongducheon Staff App

@@ -883,6 +883,15 @@ function showKakaoModal(text, forced) {
             return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
         }
 
+        // 주차 라벨 압축: "2026년 8월 3주차 (8/17(월)~8/23(일))" → "8월 3주차 (8/17~8/23)"
+        //   관리자 헤더는 배지와 한 줄을 나눠 쓰므로 짧게 만들어 줄바꿈을 막는다.
+        function shortWeekLabel(wk) {
+            var s = String(wk || '').replace(' 주간', '');
+            s = s.replace(/^\d{4}\s*년\s*/, '');          // 연도 제거
+            s = s.replace(/\((\d{1,2}\/\d{1,2})\([^)]*\)\s*~\s*(\d{1,2}\/\d{1,2})\([^)]*\)\)/, '($1~$2)'); // 요일 제거
+            return s.trim();
+        }
+
         function sortWeekKeys(keys) {
             var now = new Date(); now.setHours(0,0,0,0);
             var nowMs = now.getTime(); var wkMs = 7*24*60*60*1000;
@@ -3009,10 +3018,10 @@ function showKakaoModal(text, forced) {
                 });
                 var secMonth = "<details class='mb-4' "+(isThisMonth?"open":"")+">"
                     + "<summary class='flex justify-between items-center bg-slate-900 text-white px-5 py-4 rounded-[20px] cursor-pointer select-none font-black'>"
-                    + "<span class='text-[14px]'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
-                    + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
-                    + (mTotalWait>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>승인대기 "+mTotalWait+"</span>":"")
-                    + (mTotalDone>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>확정 "+mTotalDone+"</span>":"")
+                    + "<span class='text-[14px] min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
+                    + "<div class='flex items-center gap-2 flex-shrink-0'><span class='fold-hint-dark'></span>"
+                    + (mTotalWait>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black whitespace-nowrap'>승인대기 "+mTotalWait+"</span>":"")
+                    + (mTotalDone>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black whitespace-nowrap'>확정 "+mTotalDone+"</span>":"")
                     + "</div></summary>"
                     + "<div class='pl-2 mt-2 space-y-2'>";
                 sortWeekKeys(Object.keys(weeks)).forEach(function(wkKey) {
@@ -3022,10 +3031,10 @@ function showKakaoModal(text, forced) {
                     var waitCount = items.length - doneCount;
                     var secA = "<details class='mb-2' "+(isThisWkA?"open":"")+">"
                         + "<summary class='flex justify-between items-center bg-slate-700 text-white px-4 py-3 rounded-[16px] cursor-pointer select-none font-black'>"
-                        + "<span class='text-[12px]'>"+wkKey.replace(' 주간','')+(isThisWkA?" <span class='text-red-300 text-[10px]'>이번주</span>":"")+"</span>"
-                        + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
-                        + (waitCount>0?"<span class='bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>대기 "+waitCount+"</span>":"")
-                        + (doneCount>0?"<span class='bg-green-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>확정 "+doneCount+"</span>":"")
+                        + "<span class='text-[12px] min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis'>"+shortWeekLabel(wkKey)+(isThisWkA?" <span class='text-red-300 text-[10px]'>이번주</span>":"")+"</span>"
+                        + "<div class='flex items-center gap-2 flex-shrink-0'><span class='fold-hint-dark'></span>"
+                        + (waitCount>0?"<span class='bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black whitespace-nowrap'>대기 "+waitCount+"</span>":"")
+                        + (doneCount>0?"<span class='bg-green-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black whitespace-nowrap'>확정 "+doneCount+"</span>":"")
                         + "</div></summary>"
                         + "<div class='mt-2 space-y-3 px-1'>";
                     items.sort(function(a,b){ return Number(a.isDone)-Number(b.isDone) || a.date.localeCompare(b.date); }).forEach(function(item){ secA += item.html; });
