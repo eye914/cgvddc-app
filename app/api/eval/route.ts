@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requireAdmin } from '@/lib/session';
 import { sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
-import { weekInPeriod, totalScore, subReqPenalty, parseShiftDate, leadDaysBetween } from '@/lib/evalConfig';
+import { weekInPeriod, totalScore, subReqPenalty, parseShiftDate, leadDaysBetween, usesRulesV2 } from '@/lib/evalConfig';
 
 function monthRange(period: string): [string, string] {
   const [y, m] = period.split('-').map(Number);
@@ -35,6 +35,21 @@ async function computeAuto(period: string) {
   const subMap: Record<string, number> = {};
   const leadMap: Record<string, number[]> = {};
   const [py, pmNum] = period.split('-').map(Number);
+  const v2 = usesRulesV2(period);
+
+  if (!v2) {
+    // ── 구 규칙(2026-08 이전): 당시 발표된 순위가 바뀌지 않도록 예전 계산 그대로 ──
+    //    수락 가점만 집계하고, 월 판정도 당시의 방식(M/D 형식 매칭)을 유지한다.
+    const pm = period.split('-')[1];
+    (trades ?? []).forEach((t: any) => {
+      const nm = String(t.sub_name || '').trim();
+      if (!nm || nm === '모집중') return;
+      const m = String(t.shift_date || '').match(/(\d{1,2})\s*\//);
+      if (m && String(Number(m[1])).padStart(2, '0') === pm) subMap[nm] = (subMap[nm] || 0) + 1;
+    });
+    return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, v2 };
+  }
+
   (trades ?? []).forEach((t: any) => {
     const sd = parseShiftDate(t.shift_date, py);
     if (!sd || sd.getFullYear() !== py || sd.getMonth() + 1 !== pmNum) return;  // 해당 월 근무분만
@@ -47,17 +62,22 @@ async function computeAuto(period: string) {
       }
     }
   });
-  return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap };
+  return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, v2 };
 }
 function ctxFor(name: string, a: any) {
   const absentN = a.absentMap[name] || 0;
-  return {
+  const base = {
     lateN: a.lateMap[name] || 0,
     absentN,
-    missN: (a.missMap && a.missMap[name]) || 0,
     noticeReq: a.noticeReq,
     noticeSigned: a.signedMap[name] || 0,
     subN: (a.subMap && a.subMap[name]) || 0,
+  };
+  // 구 규칙 기간(2026-08 이전)은 신규 항목(미숙지 차감·대타 요청 감점)을 적용하지 않는다
+  if (!a.v2) return { ...base, missN: 0, subReqN: 0, subReqPen: 0 };
+  return {
+    ...base,
+    missN: (a.missMap && a.missMap[name]) || 0,
     subReqN: ((a.leadMap && a.leadMap[name]) || []).length,
     subReqPen: subReqPenalty((a.leadMap && a.leadMap[name]) || [], absentN),
   };

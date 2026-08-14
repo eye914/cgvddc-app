@@ -53,6 +53,13 @@ export const SUB_BONUS_PER = 3;
 export const SUB_BONUS_CAP = 12;
 export function subBonus(count: number): number { return Math.min((count || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
 
+// ★ 새 점수 규칙(대타 요청 감점 · 근무일 파서 개선 · 공지 미숙지) 적용 시작 시점.
+//   이 기준보다 이전 기간은 당시 발표된 결과가 바뀌지 않도록 예전 계산을 그대로 사용한다.
+export const RULES_V2_FROM = '2026-08';
+export function usesRulesV2(period: string): boolean {
+  return String(period || '') >= RULES_V2_FROM;   // "YYYY-MM" 문자열 비교로 충분
+}
+
 // ── 단순대타 '요청' 감점 (A안: 얼마나 미리 냈는지로 차등) ──
 //   3일 이상 전 = 정상적인 사전 조정이므로 감점 없음 / 1~2일 전 = −2 / 당일(이후) = −5
 //   ※ 맞교대(swap)는 본인도 근무하므로 대상 제외
