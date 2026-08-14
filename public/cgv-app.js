@@ -3251,7 +3251,7 @@ function showKakaoModal(text, forced) {
             var desc = document.getElementById('form-req-modal-desc');
             var note = document.getElementById('form-req-note');
             if (title) title.textContent = (FORM_TYPE_ICONS[type] || '') + ' ' + (FORM_TYPE_LABELS[type] || '') + ' 요청';
-            if (desc) desc.textContent = _formSelectedName + '님에게 ' + (FORM_TYPE_LABELS[type] || '') + ' 제출을 요청합니다.';
+            if (desc) desc.textContent = _formSelectedName + ' 님에게 ' + (FORM_TYPE_LABELS[type] || '') + ' 제출을 요청합니다.';
             if (note) note.value = '';
             var modal = document.getElementById('form-request-modal');
             if (modal) modal.classList.remove('hidden');
@@ -3308,7 +3308,7 @@ function showKakaoModal(text, forced) {
                 .then(function(r){ return r.json(); })
                 .then(function(j){
                     if (j && j.error) { alert('오류: ' + j.error); return; }
-                    alert((j && j.name ? j.name + '님에게 ' : '') + '재전송했습니다.');
+                    alert((j && j.name ? j.name + ' 님에게 ' : '') + '재전송했습니다.');
                 })
                 .catch(function(){ alert('네트워크 오류'); });
         }

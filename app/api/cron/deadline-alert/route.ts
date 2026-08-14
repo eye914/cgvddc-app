@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         (byName[r.target_name] = byName[r.target_name] || []).push(TYPE_KO[r.type] || '서류');
       });
       const summary = Object.keys(byName)
-        .map((n) => `${n}(${byName[n].join(',')})`)
+        .map((n) => `${n} 님(${byName[n].join(',')})`)
         .join(' · ');
       await sendPushToAdmins(
         '📄 근태서류 미제출 확인',

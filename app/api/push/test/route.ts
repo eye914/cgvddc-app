@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '구독 정보 없음. 먼저 🔕 알림 받기를 눌러 구독해주세요.' });
     }
 
-    await sendPushToNames([name], '🔔 CGV교대 알림 테스트', `${name}님, 알림이 정상 작동합니다!`);
+    await sendPushToNames([name], '🔔 CGV교대 알림 테스트', `${name} 님, 알림이 정상 작동합니다!`);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

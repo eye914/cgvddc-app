@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       await sendPushToAllExcept(
         [row.reqName],
         `📢 새 ${typeLabel} 공고`,
-        `${row.reqName}님의 ${shiftShort} [${row.reqPos}] 공고가 등록됐습니다.`
+        `${row.reqName} 님이 ${shiftShort} [${row.reqPos}] ${typeLabel} 공고를 등록했습니다.`
       );
     }
 
@@ -234,11 +234,11 @@ export async function PATCH(req: NextRequest) {
         }
         // 2) 상태별 푸시 알림
         if (ns === '협의중') {
-          await sendPushToNames([row.reqName], '🙋 교대 지원', `${row.subName}님이 ${row.shiftDate} 교대에 지원했습니다.`);
+          await sendPushToNames([row.reqName], '🙋 교대 지원', `${row.subName} 님이 ${row.shiftDate} 교대에 지원했습니다.`);
         } else if (ns === '승인대기') {
-          await sendPushToAdmins('📋 교대 승인 요청', `${row.reqName}↔${row.subName} ${row.shiftDate} 최종 승인이 필요합니다.`);
+          await sendPushToAdmins('📋 교대 승인 요청', `${row.reqName} 님 ↔ ${row.subName} 님 ${row.shiftDate} 최종 승인이 필요합니다.`);
         } else if (ns === '반려됨') {
-          await sendPushToNames([prevSubName], '😢 교대 거절', `${row.reqName}님이 교대 신청을 거절했습니다.`);
+          await sendPushToNames([prevSubName], '😢 교대 거절', `${row.reqName} 님이 교대 신청을 거절했습니다.`);
         } else if (ns === '승인완료') {
           await sendPushToNames([row.reqName, row.subName], '✅ 교대 확정!', `${row.shiftDate} 교대가 최종 확정되었습니다.`);
           const approver = row.approvedBy ?? '관리자';
@@ -247,7 +247,7 @@ export async function PATCH(req: NextRequest) {
             .map((r: Record<string, any>) => r.name)
             .filter((n: string) => n !== approver);
           if (otherAdmins.length) {
-            await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver}이(가) ${row.reqName}↔${row.subName} ${row.shiftDate} 교대를 승인했습니다.`);
+            await sendPushToNames(otherAdmins, '✅ 교대 승인 완료', `${approver} 님이 ${row.reqName} 님 ↔ ${row.subName} 님 ${row.shiftDate} 교대를 승인했습니다.`);
           }
         } else if (ns === '모집중' && before?.status === '승인대기') {
           await sendPushToNames([row.reqName], '🔄 교대 반려', `관리자가 ${row.shiftDate} 교대 신청을 반려했습니다. 재모집 중입니다.`);

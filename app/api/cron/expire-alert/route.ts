@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   );
 
   // 관리자 요약 알림
-  const nameList = names.join(', ');
+  const nameList = names.map((n: string) => `${n} 님`).join(', ');
   await sendPushToAdmins(
     '📋 교대 미체결 만료',
     `${nameList} 외 총 ${trades.length}건의 공고가 마감됐습니다. 결근계 제출 안내가 발송됐습니다.`

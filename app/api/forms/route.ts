@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     await sendPushToNames(
       [targetName],
       `📋 ${typeName} 제출 요청`,
-      `관리자(${requestedBy})가 ${typeName} 제출을 요청했습니다. 3일 이내에 제출해주세요.`,
+      `${requestedBy} 님이 ${typeName} 제출을 요청했습니다. 3일 이내에 제출해주세요.`,
       '/?go=forms'   // 알림 클릭 → 내 서류함
     );
     // GAS 사유서DB 기록
@@ -136,7 +136,7 @@ export async function PATCH(req: NextRequest) {
         await sendPushToNames(
           [reqRow.requested_by],
           `✅ ${typeName} 제출됨`,
-          `${reqRow.target_name}님이 ${typeName}를 제출했습니다.`
+          `${reqRow.target_name} 님이 ${typeName}를 제출했습니다.`
         );
       }
       // GAS 사유서DB 상태 업데이트
