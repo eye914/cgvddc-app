@@ -67,6 +67,43 @@ export async function GET(req: NextRequest) {
     }
   } catch (_) { /* 독려 실패해도 다른 알림은 계속 진행 */ }
 
+  // ── 근태서류 미제출 확인: 기한(요청일+3일) 지난 미제출 건을 매일 관리자에게 보고 + 당사자 독촉 ──
+  try {
+    const { data: freq } = await supabaseAdmin
+      .from('form_requests')
+      .select('id, type, target_name, requested_at, status')
+      .eq('status', 'pending');
+    const TYPE_KO: Record<string, string> = {
+      late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서',
+      privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서',
+    };
+    const overdue = (freq ?? []).filter((r: any) => {
+      if (!r.requested_at) return false;
+      return Date.now() > new Date(r.requested_at).getTime() + 3 * 86400000;
+    });
+    if (overdue.length > 0) {
+      // 관리자에게 누가 무엇을 안 냈는지 요약 보고
+      const byName: Record<string, string[]> = {};
+      overdue.forEach((r: any) => {
+        (byName[r.target_name] = byName[r.target_name] || []).push(TYPE_KO[r.type] || '서류');
+      });
+      const summary = Object.keys(byName)
+        .map((n) => `${n}(${byName[n].join(',')})`)
+        .join(' · ');
+      await sendPushToAdmins(
+        '📄 근태서류 미제출 확인',
+        `기한 초과 ${overdue.length}건 — ${summary}`,
+      );
+      // 당사자에게도 매일 1회 독촉
+      await sendPushToNames(
+        Object.keys(byName),
+        '🔔 근태서류 제출 기한 초과',
+        '제출 기한이 지난 서류가 있습니다. 앱에서 바로 제출해 주세요.',
+        '/?go=forms',
+      );
+    }
+  } catch (_) { /* 서류 확인 실패해도 나머지 알림은 계속 진행 */ }
+
   // 내일 교대인 미체결(모집중) 공고 조회
   const { data: trades, error } = await supabaseAdmin
     .from('trades')

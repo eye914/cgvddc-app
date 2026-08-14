@@ -80,10 +80,11 @@ export function subReqPenalty(leadDays: number[], absentN: number = 0): number {
 // ── 근태서류 제출 감점 ──
 //   기한(요청일 +3일) 내 제출이면 감점 없음. 늦게 냈으면 −2, 끝내 안 냈으면 −5.
 //   ※ 사직원(resign)은 퇴사 절차라 대상에서 제외한다.
+//   점수는 가볍게 두고(관리 목적은 '확인'), 미제출 파악·독촉을 우선한다.
 export const FORM_DUE_DAYS = 3;
-export const FORM_PEN_LATE: number = 2;
-export const FORM_PEN_MISSING: number = 5;
-export const FORM_PEN_CAP: number = 10;
+export const FORM_PEN_LATE: number = 1;
+export const FORM_PEN_MISSING: number = 3;
+export const FORM_PEN_CAP: number = 6;
 export function formPenalty(lateN: number, missingN: number): number {
   return Math.min(FORM_PEN_CAP, (lateN || 0) * FORM_PEN_LATE + (missingN || 0) * FORM_PEN_MISSING);
 }

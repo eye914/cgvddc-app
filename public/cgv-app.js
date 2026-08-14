@@ -3382,7 +3382,7 @@ function showKakaoModal(text, forced) {
                 if (over.length) html += '<button onclick="remindAllOverdue()" class="text-[10px] font-black bg-red-600 text-white px-2.5 py-1 rounded-lg active:scale-95">기한초과 일괄 재전송</button>';
                 html += '</div>';
                 // 이름 나열 (기한초과 먼저)
-                var names = over.map(function(x){ return '<span class="text-[10px] font-black text-red-700">' + x.r.target_name + '<span class="font-bold text-red-400">(' + (FORM_TYPE_LABELS[x.r.type] || x.r.type) + ')</span></span>'; })
+                var names = over.map(function(x){ return '<span class="text-[10px] font-black text-red-700">' + x.r.target_name + '<span class="font-bold text-red-400">(' + (FORM_TYPE_LABELS[x.r.type] || x.r.type) + ' · ' + Math.abs(x.d) + '일 경과)</span></span>'; })
                     .concat(soon.map(function(x){ return '<span class="text-[10px] font-bold text-amber-700">' + x.r.target_name + '<span class="text-amber-400">(D-' + x.d + ')</span></span>'; }));
                 html += '<div class="flex flex-wrap gap-x-2 gap-y-1">' + names.join('') + '</div>';
                 html += '</div>';
@@ -3436,7 +3436,7 @@ function showKakaoModal(text, forced) {
                         var reqD = new Date(r.requested_at);
                         var dueD = new Date(reqD); dueD.setDate(dueD.getDate() + 3);
                         var diffD = Math.ceil((dueD - new Date()) / (1000*60*60*24));
-                        if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">기한초과</span>';
+                        if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">미회신 ' + Math.abs(diffD) + '일</span>';
                         else if (diffD <= 1) dueInfo = '<span class="text-[9px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">D-' + diffD + '</span>';
                     }
                     // ── 카드 (overflow:hidden으로 절대 넘침 방지) ──
