@@ -122,6 +122,16 @@
             }).catch(function(e) { console.error('Push 구독 실패:', e); });
         }
 
+        // 알림 권한이 이미 허용된 사용자는 앱을 켤 때마다 구독을 서버에 다시 등록한다.
+        //   브라우저가 구독 주소를 갱신하면 서버의 옛 주소로는 푸시가 조용히 실패하므로,
+        //   버튼을 다시 누르지 않아도 자동으로 복구되게 한다. (세션당 1회만 실행)
+        function ensurePushSubscription(name) {
+            if (!name) return;
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            doSubscribe(name);
+        }
+
         function requestPushPermission(name) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 alert('크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기'); return;
@@ -321,6 +331,7 @@
             if (!n) return;
             updatePushBtn(n);
             updatePushBanner(); // 기기 설정 변경 반영
+            ensurePushSubscription(n);   // 복귀 시에도 구독 주소 확인(세션당 1회)
         });
 
         // ── 현황 실시간 갱신: 화면을 열어둔 채로도 새 지원·쌍방합의·승인을 반영 ──
@@ -630,6 +641,7 @@
             if (window.EV && EV.homeBoard) EV.homeBoard();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
             if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
+            ensurePushSubscription(_pName);   // 구독 주소 최신화(자동 복구)
             setTimeout(function() { checkAndShowPushBanner(_pName); }, 600);
         }
         function showAuthError(msg) {
@@ -872,6 +884,7 @@ function showKakaoModal(text, forced) {
                 fetchData(true);   // 이미 로그인 상태로 앱 재진입 시에도 전체화면 로더 없이
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
+                ensurePushSubscription(_rName);   // 구독 주소 최신화(자동 복구)
                 if (typeof consumeDeepLink === 'function') consumeDeepLink();  // 알림으로 들어온 경우
             }
         }

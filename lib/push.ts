@@ -25,9 +25,23 @@ async function pushMany(subs: string[], title: string, body: string, url?: strin
   const targets = dedupByEndpoint(subs);
   if (!targets.length) return;
   const payload = JSON.stringify({ title, body, icon: '/icons/icon-192.png', url: url || '/' });
-  await Promise.allSettled(
+  const results = await Promise.allSettled(
     targets.map((p: any) => webpush.sendNotification(p, payload))
   );
+
+  // 만료·해지된 구독(404/410)은 DB에서 제거한다.
+  //  그대로 두면 그 사람에게는 계속 조용히 발송 실패만 반복되어 "알림이 안 온다"가 된다.
+  const dead: string[] = [];
+  results.forEach((r, i) => {
+    if (r.status !== 'rejected') return;
+    const code = (r.reason as any)?.statusCode;
+    if (code === 404 || code === 410) dead.push(targets[i]?.endpoint);
+    else console.warn('[push] 발송 실패', code, (r.reason as any)?.body);
+  });
+  for (const ep of dead) {
+    if (!ep) continue;
+    await supabaseAdmin.from('push_subscriptions').delete().like('subscription', `%${ep}%`);
+  }
 }
 
 export async function sendPushToNames(names: string[], title: string, body: string, url?: string) {
