@@ -145,6 +145,30 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true, submissionId: subId });
     }
 
+    // 관리자: 미제출자에게 다시 알림(재전송/독촉)
+    if (action === 'remind') {
+      const { data: r } = await supabaseAdmin
+        .from('form_requests')
+        .select('type, target_name, status, requested_at')
+        .eq('id', id)
+        .single();
+      if (!r) return NextResponse.json({ error: '요청을 찾을 수 없습니다.' }, { status: 404 });
+      if (r.status !== 'pending') {
+        return NextResponse.json({ error: '이미 제출된 요청입니다.' }, { status: 400 });
+      }
+      const typeName = TYPE_NAMES[r.type] || '서류';
+      let msg = `${typeName} 제출이 아직 완료되지 않았습니다.`;
+      if (r.requested_at) {
+        const due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
+        const over = Date.now() > due.getTime();
+        msg = over
+          ? `${typeName} 제출 기한이 지났습니다. 오늘 중으로 제출해주세요.`
+          : `${typeName} 제출 기한은 ${due.getMonth() + 1}/${due.getDate()} 까지입니다.`;
+      }
+      await sendPushToNames([r.target_name], `🔔 ${typeName} 제출 요청 (재알림)`, msg, '/?go=forms');
+      return NextResponse.json({ ok: true, name: r.target_name });
+    }
+
     if (action === 'viewed') {
       const { error } = await supabaseAdmin
         .from('form_requests')

@@ -240,6 +240,7 @@
     CRI.forEach(function (c) { var s = c.kind === 'letter' ? (LETTER[grades[c.key]] || 0) : autoS(c.kind, ctx); t += s * c.w / 100; });
     t += subBonus(ctx.subN);                        // 대타 수락 보너스
     t -= (ctx.subReqPen || 0);                      // 단순대타 요청 감점(서버 계산값)
+    t -= (ctx.formPen || 0);                        // 근태서류 지연/미제출 감점
     return Math.max(0, Math.min(100, Math.round(t)));
   }
 
@@ -267,6 +268,11 @@
       + '· 당일 신청: 1건당 −' + SUBREQ_PEN_SAMEDAY + '점 (최대 −' + SUBREQ_PEN_CAP + '점)<br>'
       + '&nbsp;&nbsp;※ <b>맞교대는 제외</b> (본인도 근무하므로)<br>'
       + '&nbsp;&nbsp;※ <b>결근으로 생긴 대타는 자동 제외</b> (결근으로 이미 감점 → 이중처벌 방지)<br><br>'
+      + '<b>차감점 — 근태서류 제출</b><br>'
+      + '· 기한(요청일 +3일) 내 제출: 감점 없음<br>'
+      + '· 기한 초과 제출: 1건당 −2점<br>'
+      + '· 미제출: 1건당 −5점 (최대 −10점)<br>'
+      + '&nbsp;&nbsp;※ 사직원은 대상 제외<br><br>'
       + '<b>총점</b> = 가중 환산 합계 + 가산점 − 차감점 (0~100)<br>'
       + '<span style="color:#94a3b8">지각·결근·공지 점수는 저장 후에도 근태 변동에 따라 자동 갱신됩니다.</span>'
       + '</div></details>';
@@ -309,6 +315,10 @@
       + '<tr style="background:#fff7ed"><td class="l">단순대타 요청<div style="font-size:10px;color:#93a">' + (ctx.subReqN || 0) + '건 · 3일이상 전 0 / 1~2일 전 −2 / 당일 −5<br>결근으로 생긴 건은 자동 제외</div></td>'
       + '<td style="color:#c2410c;font-weight:800">자동</td><td>-</td><td>차감</td>'
       + '<td id="ev-penalty" style="font-weight:900;color:#c2410c">−' + (ctx.subReqPen || 0) + '</td></tr>'
+      // 근태서류 지연·미제출 감점
+      + '<tr style="background:#fdf4ff"><td class="l">근태서류 제출<div style="font-size:10px;color:#93a">지연 ' + (ctx.formLateN || 0) + '건 · 미제출 ' + (ctx.formMissN || 0) + '건<br>기한(요청+3일) 초과 −2 / 미제출 −5</div></td>'
+      + '<td style="color:#a21caf;font-weight:800">자동</td><td>-</td><td>차감</td>'
+      + '<td id="ev-formpen" style="font-weight:900;color:#a21caf">−' + (ctx.formPen || 0) + '</td></tr>'
       + '<tr style="background:#fdf2f2;font-weight:900;color:#c00000"><td colspan="4" style="text-align:right;padding-right:8px">총점 <span style="font-size:10px;font-weight:700;color:#9aa0a6">(상한 100)</span></td><td id="ev-tot">' + (locked ? calcTotal(grades, ctx) : 0) + '</td></tr></tbody></table>'
       + guideHtml()
       + foot;
@@ -328,6 +338,8 @@
     if (bn) tot += (parseInt(bn.textContent.replace(/[^0-9]/g, ''), 10) || 0);   // 대타 수락 가산
     var pn = document.getElementById('ev-penalty');
     if (pn) tot -= (parseInt(pn.textContent.replace(/[^0-9]/g, ''), 10) || 0);   // 대타 요청 차감
+    var fp = document.getElementById('ev-formpen');
+    if (fp) tot -= (parseInt(fp.textContent.replace(/[^0-9]/g, ''), 10) || 0);   // 근태서류 차감
     document.getElementById('ev-tot').textContent = Math.max(0, Math.min(100, tot));
   };
   EV.saveScore = function (miso) {

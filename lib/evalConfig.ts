@@ -77,6 +77,17 @@ export function subReqPenalty(leadDays: number[], absentN: number = 0): number {
   return Math.min(SUBREQ_PEN_CAP, kept.reduce((s, p) => s + p, 0));
 }
 
+// ── 근태서류 제출 감점 ──
+//   기한(요청일 +3일) 내 제출이면 감점 없음. 늦게 냈으면 −2, 끝내 안 냈으면 −5.
+//   ※ 사직원(resign)은 퇴사 절차라 대상에서 제외한다.
+export const FORM_DUE_DAYS = 3;
+export const FORM_PEN_LATE: number = 2;
+export const FORM_PEN_MISSING: number = 5;
+export const FORM_PEN_CAP: number = 10;
+export function formPenalty(lateN: number, missingN: number): number {
+  return Math.min(FORM_PEN_CAP, (lateN || 0) * FORM_PEN_LATE + (missingN || 0) * FORM_PEN_MISSING);
+}
+
 // 근무일 문자열 → Date. "2026-08-10(월) / D1", "8/10(월) / D1" 두 형식 모두 지원.
 export function parseShiftDate(shiftDate: string, fallbackYear?: number): Date | null {
   const s = String(shiftDate || '');
@@ -94,7 +105,7 @@ export function leadDaysBetween(created: Date, shift: Date): number {
 }
 
 // 한 사람의 총점 계산 (grades = {kakao,service,active,rule,groom}, ctx = 자동값)
-export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number; missN?: number; subReqPen?: number }): number {
+export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number; missN?: number; subReqPen?: number; formPen?: number }): number {
   let total = 0;
   for (const c of CRITERIA) {
     const s = c.kind === 'letter' ? letterScore(grades[c.key]) : autoScore(c.kind, ctx);
@@ -102,5 +113,6 @@ export function totalScore(grades: Record<string, string>, ctx: { lateN: number;
   }
   total += subBonus(ctx.subN || 0);   // 대타 수락 = 적극적 참여 보너스
   total -= (ctx.subReqPen || 0);      // 단순대타 요청 = 임박도에 따른 감점
+  total -= (ctx.formPen || 0);        // 근태서류 지연/미제출 감점
   return Math.max(0, Math.min(100, Math.round(total)));
 }

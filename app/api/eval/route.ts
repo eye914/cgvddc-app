@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { requireAuth, requireAdmin } from '@/lib/session';
 import { sendPushToAdmins, sendPushToAllExcept } from '@/lib/push';
-import { weekInPeriod, totalScore, subReqPenalty, parseShiftDate, leadDaysBetween, usesRulesV2 } from '@/lib/evalConfig';
+import { weekInPeriod, totalScore, subReqPenalty, parseShiftDate, leadDaysBetween, usesRulesV2, formPenalty, FORM_DUE_DAYS } from '@/lib/evalConfig';
 
 function monthRange(period: string): [string, string] {
   const [y, m] = period.split('-').map(Number);
@@ -37,6 +37,39 @@ async function computeAuto(period: string) {
   const [py, pmNum] = period.split('-').map(Number);
   const v2 = usesRulesV2(period);
 
+  // ── 근태서류 제출 현황 (요청일 기준 해당 월) ──
+  //    기한 초과 제출 / 미제출 건수를 사람별로 집계. 사직원은 제외.
+  const formLateMap: Record<string, number> = {}, formMissMap: Record<string, number> = {};
+  if (v2) {
+    const { data: freqs } = await supabaseAdmin
+      .from('form_requests')
+      .select('id, type, target_name, status, requested_at')
+      .gte('requested_at', s).lt('requested_at', e);
+    const reqs = (freqs ?? []).filter((r: any) => r.type !== 'resign');
+    if (reqs.length) {
+      const ids = reqs.map((r: any) => r.id);
+      const { data: subsRows } = await supabaseAdmin
+        .from('form_submissions').select('request_id, submitted_at').in('request_id', ids);
+      const subAt: Record<string, string> = {};
+      (subsRows ?? []).forEach((x: any) => {
+        // 같은 요청에 여러 제출이 있으면 가장 이른 것을 기준으로
+        if (!subAt[x.request_id] || x.submitted_at < subAt[x.request_id]) subAt[x.request_id] = x.submitted_at;
+      });
+      const now = Date.now();
+      reqs.forEach((r: any) => {
+        const nm = String(r.target_name || '').trim();
+        if (!nm || !r.requested_at) return;
+        const due = new Date(r.requested_at).getTime() + FORM_DUE_DAYS * 86400000;
+        const at = subAt[r.id];
+        if (at) {
+          if (new Date(at).getTime() > due) formLateMap[nm] = (formLateMap[nm] || 0) + 1;  // 늦게 제출
+        } else if (now > due) {
+          formMissMap[nm] = (formMissMap[nm] || 0) + 1;                                     // 기한 지나도 미제출
+        }
+      });
+    }
+  }
+
   if (!v2) {
     // ── 구 규칙(2026-08 이전): 당시 발표된 순위가 바뀌지 않도록 예전 계산 그대로 ──
     //    수락 가점만 집계하고, 월 판정도 당시의 방식(M/D 형식 매칭)을 유지한다.
@@ -47,7 +80,7 @@ async function computeAuto(period: string) {
       const m = String(t.shift_date || '').match(/(\d{1,2})\s*\//);
       if (m && String(Number(m[1])).padStart(2, '0') === pm) subMap[nm] = (subMap[nm] || 0) + 1;
     });
-    return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, v2 };
+    return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, formLateMap, formMissMap, v2 };
   }
 
   (trades ?? []).forEach((t: any) => {
@@ -73,13 +106,18 @@ function ctxFor(name: string, a: any) {
     noticeSigned: a.signedMap[name] || 0,
     subN: (a.subMap && a.subMap[name]) || 0,
   };
-  // 구 규칙 기간(2026-08 이전)은 신규 항목(미숙지 차감·대타 요청 감점)을 적용하지 않는다
-  if (!a.v2) return { ...base, missN: 0, subReqN: 0, subReqPen: 0 };
+  // 구 규칙 기간(2026-08 이전)은 신규 항목(미숙지·대타 요청·서류 감점)을 적용하지 않는다
+  if (!a.v2) return { ...base, missN: 0, subReqN: 0, subReqPen: 0, formLateN: 0, formMissN: 0, formPen: 0 };
+  const formLateN = (a.formLateMap && a.formLateMap[name]) || 0;
+  const formMissN = (a.formMissMap && a.formMissMap[name]) || 0;
   return {
     ...base,
     missN: (a.missMap && a.missMap[name]) || 0,
     subReqN: ((a.leadMap && a.leadMap[name]) || []).length,
     subReqPen: subReqPenalty((a.leadMap && a.leadMap[name]) || [], absentN),
+    formLateN,
+    formMissN,
+    formPen: formPenalty(formLateN, formMissN),
   };
 }
 // 동점 처리: 총점↓ → 결근↑(적은) → 지각↑(적은) → 공지서명률↓(높은) → 이름

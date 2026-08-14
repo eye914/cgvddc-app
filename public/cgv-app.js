@@ -3300,12 +3300,48 @@ function showKakaoModal(text, forced) {
                 .getFormRequests(null);
         }
 
+        // 서류 제출 재전송(독촉) — 해당 미소지기에게 알림을 다시 보낸다
+        function remindFormReq(id) {
+            if (!confirm('제출 요청 알림을 다시 보낼까요?')) return;
+            fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ id: id, action: 'remind' }) })
+                .then(function(r){ return r.json(); })
+                .then(function(j){
+                    if (j && j.error) { alert('오류: ' + j.error); return; }
+                    alert((j && j.name ? j.name + '님에게 ' : '') + '재전송했습니다.');
+                })
+                .catch(function(){ alert('네트워크 오류'); });
+        }
+        // 기한초과 건 일괄 재전송
+        function remindAllOverdue() {
+            var ids = window._overdueFormIds || [];
+            if (!ids.length) { alert('기한초과 건이 없습니다.'); return; }
+            if (!confirm('기한초과 ' + ids.length + '건에 대해 알림을 다시 보낼까요?')) return;
+            var done = 0, fail = 0;
+            var next = function(i) {
+                if (i >= ids.length) { alert('재전송 완료 ' + done + '건' + (fail ? (' / 실패 ' + fail + '건') : '')); return; }
+                fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ id: ids[i], action: 'remind' }) })
+                    .then(function(r){ return r.json(); })
+                    .then(function(j){ if (j && j.error) fail++; else done++; })
+                    .catch(function(){ fail++; })
+                    .then(function(){ next(i + 1); });
+            };
+            next(0);
+        }
+
         function updateFormPendingBadge(list) {
             var badge = document.getElementById('form-pending-badge');
             if (!badge) return;
-            var pending = (list || []).filter(function(r) { return r.status === 'pending'; }).length;
-            if (pending > 0) {
-                badge.textContent = pending;
+            var pend = (list || []).filter(function(r) { return r.status === 'pending'; });
+            var overdue = pend.filter(function(r) {
+                if (!r.requested_at) return false;
+                var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
+                return new Date() > due;
+            }).length;
+            if (pend.length > 0) {
+                // 기한초과가 있으면 "3 (초과2)" 형태로 강조
+                badge.textContent = overdue ? (pend.length + ' · 초과' + overdue) : String(pend.length);
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');
@@ -3328,6 +3364,31 @@ function showKakaoModal(text, forced) {
             });
             monthOrder.sort(function(a, b) { return b.localeCompare(a); });
             var html = '';
+
+            // ── 미제출 현황 요약 (기한초과 우선) ──
+            var pend = list.filter(function(r){ return r.status === 'pending' && r.requested_at; });
+            var over = [], soon = [];
+            pend.forEach(function(r){
+                var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
+                var d = Math.ceil((due - new Date()) / (1000*60*60*24));
+                (d < 0 ? over : soon).push({ r: r, d: d });
+            });
+            if (pend.length) {
+                html += '<div class="rounded-xl border-2 ' + (over.length ? 'border-red-300 bg-red-50' : 'border-amber-200 bg-amber-50') + ' px-3 py-2.5 mb-3">';
+                html += '<div class="flex items-center gap-2 mb-1.5">';
+                html += '<span class="text-[12px] font-black ' + (over.length ? 'text-red-700' : 'text-amber-700') + '">📌 미제출 ' + pend.length + '건</span>';
+                if (over.length) html += '<span class="text-[10px] font-black text-white bg-red-500 px-2 py-0.5 rounded-full">기한초과 ' + over.length + '</span>';
+                html += '<div class="flex-1"></div>';
+                if (over.length) html += '<button onclick="remindAllOverdue()" class="text-[10px] font-black bg-red-600 text-white px-2.5 py-1 rounded-lg active:scale-95">기한초과 일괄 재전송</button>';
+                html += '</div>';
+                // 이름 나열 (기한초과 먼저)
+                var names = over.map(function(x){ return '<span class="text-[10px] font-black text-red-700">' + x.r.target_name + '<span class="font-bold text-red-400">(' + (FORM_TYPE_LABELS[x.r.type] || x.r.type) + ')</span></span>'; })
+                    .concat(soon.map(function(x){ return '<span class="text-[10px] font-bold text-amber-700">' + x.r.target_name + '<span class="text-amber-400">(D-' + x.d + ')</span></span>'; }));
+                html += '<div class="flex flex-wrap gap-x-2 gap-y-1">' + names.join('') + '</div>';
+                html += '</div>';
+            }
+            // 기한초과 목록을 전역에 보관 → 일괄 재전송에서 사용
+            window._overdueFormIds = over.map(function(x){ return x.r.id; });
             monthOrder.forEach(function(month) {
                 var forms = months[month];
                 var parts = month.split('-');
@@ -3393,6 +3454,8 @@ function showKakaoModal(text, forced) {
                     if (dueInfo) html += dueInfo;
                     html += '<div class="flex-1"></div>';
                     if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg active:scale-95">열람</button>';
+                    // 미제출(pending) 이면 재전송(독촉) 가능
+                    if (r.status === 'pending') html += '<button onclick="remindFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-amber-500 text-white px-3 py-1.5 rounded-lg active:scale-95">재전송</button>';
                     html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg active:scale-95">취소</button>';
                     html += '</div>';
                     html += '</div>';
