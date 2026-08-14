@@ -8,6 +8,11 @@
         <div style="font-size:14px;color:#616161;font-weight:600">개인 PIN 번호를 입력하세요</div>
         <div id="auth-pin-desc" style="font-size:11px;color:#BDBDBD;margin-top:3px">이름을 먼저 선택해 주세요</div>
         <button id="auth-name-btn" onclick="openNameSheet()" style="margin-top:22px;display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:999px;background:#F5F5F5;border:none;font-size:14px;font-weight:600;color:#616161;cursor:pointer">👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span></button>
+        <!-- PIN 기억하기: 체크 시 다음 실행부터 자동 로그인 (본인 기기에서만 사용) -->
+        <label id="auth-remember-wrap" style="margin-top:16px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#757575;cursor:pointer">
+            <input type="checkbox" id="auth-remember" style="width:17px;height:17px;accent-color:#D6001C;margin:0">
+            PIN 기억하기 <span style="font-size:11px;color:#BDBDBD">(본인 기기만)</span>
+        </label>
         <p id="auth-pin-error" class="text-red-500 text-xs font-bold text-center" style="margin-top:14px;min-height:1.2rem"></p>
         <input type="tel" id="auth-pin-input" maxlength="5" inputmode="numeric" pattern="[0-9]*"
                class="opacity-0 absolute w-0 h-0" oninput="onPinInput()" autocomplete="off">
@@ -293,8 +298,13 @@
         <div id="view-manager" class="hidden space-y-4 pb-20 w-full">
             <div class="max-w-3xl mx-auto px-5">
                 <div class="bg-slate-900 rounded-[20px] p-5 text-white relative overflow-hidden shadow-xl border-b-[4px] border-red-600">
-                    <h2 class="text-2xl font-black italic tracking-tighter mb-1 text-red-500 font-mono">ADMIN</h2>
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-80 mb-0">Final Approval Queue</p>
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h2 class="text-2xl font-black italic tracking-tighter mb-1 text-red-500 font-mono">ADMIN</h2>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-80 mb-0">Final Approval Queue</p>
+                        </div>
+                        <button onclick="cgvLogout()" class="flex-shrink-0 text-[11px] font-black px-3 py-1.5 rounded-lg bg-white/10 text-slate-200 border border-white/15 active:scale-95">로그아웃</button>
+                    </div>
                 </div>
             </div>
             <div class="max-w-3xl mx-auto px-5">

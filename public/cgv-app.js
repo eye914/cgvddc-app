@@ -549,8 +549,61 @@
                     showAuthError(e&&e.message?e.message:'서버 오류');
                     if(i) i.value=''; renderPinBoxes('',len);
                 })
-                .checkPinAuth(authIsAdmin?'':authSelectedName, pin, authIsAdmin?'admin':'staff');
+                .checkPinAuth(authIsAdmin?'':authSelectedName, pin, authIsAdmin?'admin':'staff', isRememberChecked());
         }
+        // ── PIN 기억하기 / 자동 로그인 ──
+        //   PIN 자체를 저장하지 않고, 서버가 발급한 30일 토큰만 localStorage 에 보관한다.
+        //   (토큰은 서명·만료가 있어 위조 불가. 계정이 비활성화되면 서버가 자동 로그인을 거부)
+        var REMEMBER_KEY = 'cgv_remember_v1';
+        function isRememberChecked() {
+            var c = document.getElementById('auth-remember');
+            return !!(c && c.checked);
+        }
+        function saveRemember(r, name) {
+            if (!isRememberChecked() || !r || !r.token) return;
+            try {
+                localStorage.setItem(REMEMBER_KEY, JSON.stringify({
+                    token: r.token, name: name, role: r.role, pd: !!r.pinDefault, ts: Date.now()
+                }));
+            } catch (e) {}
+        }
+        function clearRemember() { try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {} }
+        function getRemember() {
+            try { return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); } catch (e) { return null; }
+        }
+        // 저장된 토큰으로 세션 복원 시도. 성공 시 true.
+        function tryAutoLogin(done) {
+            var rm = getRemember();
+            if (!rm || !rm.token || !rm.name) { done(false); return; }
+            fetch('/api/auth', { headers: { 'Authorization': 'Bearer ' + rm.token } })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok || !res.j || !res.j.ok) { clearRemember(); done(false); return; }
+                    var j = res.j;
+                    sessionStorage.setItem('cgv_auth', 'true');
+                    sessionStorage.setItem('cgv_token', rm.token);
+                    sessionStorage.setItem('cgv_pin_default', j.pinDefault ? 'true' : 'false');
+                    if (j.role === 'admin') {
+                        isAdmin = true;
+                        sessionStorage.setItem('cgv_admin', 'true');
+                        sessionStorage.setItem('cgv_admin_name', j.name || '관리자');
+                    } else {
+                        sessionStorage.setItem('cgv_currentUser', j.name);
+                        sessionStorage.setItem('cgv_locked_user', j.name);
+                        try { localStorage.setItem('cgv_last_name', j.name); } catch (e) {}
+                    }
+                    done(true);
+                })
+                .catch(function () { done(false); });   // 네트워크 오류 시 토큰은 보존, 수동 로그인
+        }
+        // 로그아웃 — 세션·기억하기 모두 정리 후 PIN 화면으로
+        window.cgvLogout = function () {
+            if (!confirm('로그아웃하시겠습니까?\nPIN 기억하기도 해제됩니다.')) return;
+            clearRemember();
+            ['cgv_auth','cgv_token','cgv_admin','cgv_admin_name','cgv_currentUser','cgv_locked_user','cgv_pin_default','cgv_go']
+                .forEach(function (k) { try { sessionStorage.removeItem(k); } catch (e) {} });
+            location.reload();
+        };
         function authSuccess(r) {
             var ov = document.getElementById('auth-overlay');
             ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
@@ -561,6 +614,8 @@
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
+            // PIN 기억하기 체크 시 30일 토큰 보관 (체크 안 하면 저장 안 됨)
+            saveRemember(r, r.role === 'admin' ? (r.name || '관리자') : authSelectedName);
             if (r.role === 'admin') {
                 isAdmin = true;
                 sessionStorage.setItem('cgv_admin','true');
@@ -763,13 +818,43 @@ function showKakaoModal(text, forced) {
             var now = new Date();
             var ri = document.getElementById("req-date-input");
             if (ri) ri.min = getLocalYYYYMMDD(now); // 당일(오늘) 대타도 신청 가능
+            // 세션이 없으면 'PIN 기억하기' 토큰으로 자동 로그인 시도 → 성공 시 PIN 화면 생략
+            if (sessionStorage.getItem("cgv_auth") !== "true" && getRemember()) {
+                var _ovA = document.getElementById("auth-overlay");
+                if (_ovA) {   // 자동 로그인 시도 중임을 알림 (깜빡임 방지)
+                    var _d = document.getElementById('auth-pin-desc');
+                    if (_d) _d.innerText = '자동 로그인 중…';
+                }
+                tryAutoLogin(function (ok) {
+                    if (ok) { __bootAuthed__(); }
+                    else {
+                        var _d2 = document.getElementById('auth-pin-desc');
+                        if (_d2) _d2.innerText = '이름을 먼저 선택해 주세요';
+                        loadMisoForAuth();
+                    }
+                });
+                __initPtr__();
+                return;
+            }
             if (sessionStorage.getItem("cgv_auth") === "true") {
+                __bootAuthed__();
+                __initPtr__();
+                return;
+            }
+            loadMisoForAuth();
+            __initPtr__();
+        }
+
+        // 로그인된 상태에서의 초기화(세션 복원·자동 로그인 공통)
+        function __bootAuthed__() {
+            {
                 var ov = document.getElementById("auth-overlay");
                 if (ov) ov.style.display = "none";
                 if (sessionStorage.getItem("cgv_admin") === "true") isAdmin = true;
                 var saved = sessionStorage.getItem("cgv_currentUser");
                 if (saved) selectUser(saved);
                 // 15초 안에 로더가 안 꺼지면 세션 초기화 후 로그인 화면으로 복귀
+                //   (네트워크 문제일 수 있어 '기억하기' 토큰은 지우지 않는다 — 다음 실행에 다시 자동 로그인)
                 var _authRecovery = setTimeout(function() {
                     var ldr = document.getElementById("loader");
                     if (ldr && ldr.style.display !== "none") {
@@ -787,10 +872,15 @@ function showKakaoModal(text, forced) {
                 fetchData(true);   // 이미 로그인 상태로 앱 재진입 시에도 전체화면 로더 없이
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
-            } else {
-                loadMisoForAuth();
+                if (typeof consumeDeepLink === 'function') consumeDeepLink();  // 알림으로 들어온 경우
             }
-            // Pull-to-refresh — 페이지 최상단에서 시작한 당김에만 반응
+        }
+
+        // Pull-to-refresh 초기화 (로그인 경로와 무관하게 1회만 등록)
+        var _ptrInited = false;
+        function __initPtr__() {
+            if (_ptrInited) return; _ptrInited = true;
+            // 페이지 최상단에서 시작한 당김에만 반응
             //   (모달/시트 등 자체 스크롤 영역 안에서의 스와이프는 제외 → 글 읽다 튕기는 문제 방지)
             var ptrStart = 0; var ptrActive = false; var ptrEligible = false;
             function ptrInScrollable(el) {
@@ -966,9 +1056,13 @@ function showKakaoModal(text, forced) {
         }
 
         function openUserSelectModal(){
-            // PIN 로그인 후 이름 변경 차단
+            // PIN 로그인 후에는 이름 변경 불가 → 대신 로그아웃 안내
             if (sessionStorage.getItem('cgv_locked_user')) {
-                alert('PIN 로그인 후에는 본인 계정만 사용 가능합니다.');
+                var who = sessionStorage.getItem('cgv_currentUser') || '';
+                var remembered = !!getRemember();
+                if (confirm(who + '님으로 로그인되어 있습니다.\n'
+                    + (remembered ? 'PIN 기억하기가 켜져 있어 자동 로그인됩니다.\n\n' : '\n')
+                    + '로그아웃하시겠습니까?')) cgvLogout();
                 return;
             }
             // 미리보기/로컬 환경에서 MISO_DATA가 비어있으면 fallback 채움

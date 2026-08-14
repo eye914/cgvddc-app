@@ -47,8 +47,8 @@
       },
 
       // ── 인증 ──
-      checkPinAuth: function(name, pin, role) {
-        fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pin:pin, role:role}) })
+      checkPinAuth: function(name, pin, role, remember) {
+        fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:name, pin:pin, role:role, remember:!!remember}) })
           .then(function(r){ return r.json(); }).then(function(d){ if(d.error) throw new Error(d.error); _success(d); }).catch(_failure);
       },
       updateStaffPin: function(name, pin) {
