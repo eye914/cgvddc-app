@@ -463,6 +463,7 @@
         }
         function backToNameSelect() { openNameSheet(); }
         function onPinInput() {
+            if (_autoAnimTimer) return;   // 자동 로그인 진행 중에는 입력 무시
             if (!authSelectedName && !authIsAdmin) { return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
@@ -532,6 +533,60 @@
                 el.innerHTML += '<div style="width:15px;height:15px;border-radius:50%;transition:all .15s;' + (f?'background:#D32F2F;border:1px solid #D32F2F':'background:transparent;border:1.5px solid #D1D1D6') + '"></div>';
             }
         }
+        // ── 자동 로그인 연출 ──
+        //   토큰 검증에 1~2초가 걸리는 동안 빈 화면이면 "안 되는 줄 알고" 화면을 누르게 된다.
+        //   PIN 점이 하나씩 채워지는 모습을 보여줘 진행 중임을 명확히 알린다.
+        var _autoAnimTimer = null, _autoAnimDone = false;
+        function startAutoLoginAnim() {
+            _autoAnimDone = false;
+            var rm = getRemember();
+            var nameEl = document.getElementById('auth-pin-name');
+            var descEl = document.getElementById('auth-pin-desc');
+            var btnEl  = document.getElementById('auth-name-btn');
+            var remWrap = document.getElementById('auth-remember-wrap');
+            var pad = document.getElementById('auth-numpad');
+            // 이름 표시 + 안내 문구 교체, 입력 요소는 잠시 숨겨 오조작 방지
+            if (btnEl && rm && rm.name) {
+                btnEl.innerHTML = '👤 <span style="color:#212121;font-weight:700">' + rm.name + '</span>';
+                btnEl.style.pointerEvents = 'none';
+            }
+            if (descEl) descEl.innerText = '자동 로그인 중…';
+            if (remWrap) remWrap.style.visibility = 'hidden';
+            if (pad) { pad.style.opacity = '0.25'; pad.style.pointerEvents = 'none'; }
+            if (nameEl) nameEl.style.display = 'none';
+            // 점을 하나씩 채우고, 다 차면 다시 처음부터 반복(응답이 늦어도 계속 살아있게)
+            var len = PIN_LENGTH_STAFF, i = 0;
+            renderPinBoxes('', len);
+            _autoAnimTimer = setInterval(function () {
+                if (_autoAnimDone) return;
+                i = (i % len) + 1;
+                renderPinBoxes(new Array(i + 1).join('•'), len);
+            }, 180);
+        }
+        // 성공: 남은 점을 한 번에 채우고 잠깐 보여준 뒤 진행
+        function finishAutoLoginAnim(cb) {
+            _autoAnimDone = true;
+            if (_autoAnimTimer) { clearInterval(_autoAnimTimer); _autoAnimTimer = null; }
+            renderPinBoxes(new Array(PIN_LENGTH_STAFF + 1).join('•'), PIN_LENGTH_STAFF);
+            var descEl = document.getElementById('auth-pin-desc');
+            if (descEl) descEl.innerText = '로그인 완료';
+            setTimeout(function () { if (typeof cb === 'function') cb(); }, 220);
+        }
+        // 실패/만료: 원래 PIN 입력 화면으로 되돌린다
+        function stopAutoLoginAnim() {
+            _autoAnimDone = true;
+            if (_autoAnimTimer) { clearInterval(_autoAnimTimer); _autoAnimTimer = null; }
+            renderPinBoxes('', PIN_LENGTH_STAFF);
+            var descEl = document.getElementById('auth-pin-desc');
+            var btnEl  = document.getElementById('auth-name-btn');
+            var remWrap = document.getElementById('auth-remember-wrap');
+            var pad = document.getElementById('auth-numpad');
+            if (descEl) descEl.innerText = '이름을 먼저 선택해 주세요';
+            if (btnEl) { btnEl.style.pointerEvents = ''; btnEl.innerHTML = '👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span>'; }
+            if (remWrap) remWrap.style.visibility = '';
+            if (pad) { pad.style.opacity = ''; pad.style.pointerEvents = ''; }
+        }
+
         function buildNumpad(containerId, pinLen, pressFunc) {
             var pad = document.getElementById(containerId); if (!pad) return;
             var keys = ['1','2','3','4','5','6','7','8','9','','0','x'];
@@ -832,16 +887,20 @@ function showKakaoModal(text, forced) {
             if (ri) ri.min = getLocalYYYYMMDD(now); // 당일(오늘) 대타도 신청 가능
             // 세션이 없으면 'PIN 기억하기' 토큰으로 자동 로그인 시도 → 성공 시 PIN 화면 생략
             if (sessionStorage.getItem("cgv_auth") !== "true" && getRemember()) {
-                var _ovA = document.getElementById("auth-overlay");
-                if (_ovA) {   // 자동 로그인 시도 중임을 알림 (깜빡임 방지)
-                    var _d = document.getElementById('auth-pin-desc');
-                    if (_d) _d.innerText = '자동 로그인 중…';
-                }
+                startAutoLoginAnim();   // PIN이 자동으로 채워지는 연출 (빈 화면 대기감 제거)
+                // 응답이 끝내 없으면 8초 후 수동 로그인으로 전환 (연출이 무한 반복되지 않도록)
+                var _autoGiveUp = setTimeout(function () {
+                    if (_autoAnimDone) return;
+                    stopAutoLoginAnim();
+                    loadMisoForAuth();
+                }, 8000);
                 tryAutoLogin(function (ok) {
-                    if (ok) { __bootAuthed__(); }
-                    else {
-                        var _d2 = document.getElementById('auth-pin-desc');
-                        if (_d2) _d2.innerText = '이름을 먼저 선택해 주세요';
+                    if (_autoAnimDone) return;      // 이미 시간초과로 전환됐으면 무시
+                    clearTimeout(_autoGiveUp);
+                    if (ok) {
+                        finishAutoLoginAnim(function () { __bootAuthed__(); });
+                    } else {
+                        stopAutoLoginAnim();
                         loadMisoForAuth();
                     }
                 });
