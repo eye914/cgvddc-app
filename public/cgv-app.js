@@ -1196,6 +1196,28 @@ function showKakaoModal(text, forced) {
             var rs = document.getElementById("reason-select"); if (rs) rs.value = "";
         }
 
+        // ★ 미소지기DB 로드 완료 후 본인 포지션 정보를 다시 채운다.
+        //   자동 로그인(PIN 기억하기) 경로는 이름목록 로드를 건너뛰므로,
+        //   selectUser() 시점에 MISO_DATA 가 비어 currentUserPos 가 [] 로 남는다.
+        //   → 그러면 모든 직무 선택이 "역량 밖" 으로 막히므로 여기서 복구한다.
+        //   (작성 중 입력을 지우지 않도록 잠금 상태만 갱신)
+        function refreshCurrentUserPos() {
+            var nm = currentUser || sessionStorage.getItem('cgv_currentUser');
+            if (!nm || !MISO_DATA || !MISO_DATA.length) return;
+            var person = MISO_DATA.find(function(m){ return m.name === nm; });
+            if (!person) return;
+            currentUser = nm;
+            currentUserPos = person.pos || [];
+            var isTotal = currentUserPos.indexOf("통합") > -1;
+            var canMM = isTotal || currentUserPos.indexOf("매점마감") > -1 || currentUserPos.indexOf("매점") > -1;
+            ["통합","매점","매점마감","플로어"].forEach(function(p) {
+                var btn = document.getElementById("req-pos-"+p);
+                if (!btn) return;
+                var capable = isTotal || currentUserPos.indexOf(p) > -1 || (p === "매점마감" && canMM);
+                if (capable) btn.classList.remove("locked"); else btn.classList.add("locked");
+            });
+        }
+
         function updatePosButtonLock() {
             if (!currentUser) return;
             var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
@@ -1538,7 +1560,9 @@ function showKakaoModal(text, forced) {
 
         function setReqPosition(pos) {
             var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
-            if (!isTotal && currentUserPos.indexOf(pos) === -1){ alert("\uBCF8\uC778 \uC5ED\uB7C9 \uBC16\uC758 \uD3EC\uC9C0\uC158\uC785\uB2C8\uB2E4."); return; }
+            // \uB9E4\uC810 \uB2F4\uB2F9\uC790\uB294 \uB9E4\uC810\uB9C8\uAC10\uB3C4 \uAC00\uB2A5 (\uBC84\uD2BC \uC7A0\uAE08 \uADDC\uCE59 updatePosButtonLock \uACFC \uB3D9\uC77C\uD558\uAC8C \uB9DE\uCDA4)
+            var canMM = pos === "\uB9E4\uC810\uB9C8\uAC10" && currentUserPos.indexOf("\uB9E4\uC810") > -1;
+            if (!isTotal && !canMM && currentUserPos.indexOf(pos) === -1){ alert("\uBCF8\uC778 \uC5ED\uB7C9 \uBC16\uC758 \uD3EC\uC9C0\uC158\uC785\uB2C8\uB2E4."); return; }
             var rc = document.getElementById("req-selected-code").value;
             var grp = document.getElementById("req-selected-group") ? document.getElementById("req-selected-group").value : "";
             var curGroup = document.querySelector(".req-time-group.selected");
@@ -2078,6 +2102,7 @@ function showKakaoModal(text, forced) {
                     if (loaded >= total && !_fetchDone) {
                         _fetchDone = true;
                         showLoader(false); buildUserGrid(); renderList();
+                        refreshCurrentUserPos();   // 자동 로그인 시 비어 있던 본인 포지션 복구
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
                             renderMyDocbox();
@@ -2087,7 +2112,7 @@ function showKakaoModal(text, forced) {
                 }
                 // 12초 이내 응답 없으면 강제 완료
                 setTimeout(function() {
-                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); }
+                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); refreshCurrentUserPos(); }
                 }, 12000);
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
