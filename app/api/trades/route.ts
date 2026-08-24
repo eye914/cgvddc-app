@@ -63,6 +63,16 @@ export async function POST(req: NextRequest) {
       if (t.last_remind_at && kstDay(t.last_remind_at) >= kstDay(new Date())) {
         return NextResponse.json({ error: '오늘은 이미 재알림을 보냈습니다. 내일 다시 보낼 수 있습니다.' }, { status: 429 });
       }
+      // ★ 발송 전에 '오늘 보냄'을 먼저 기록해 하루 1회 제한을 확보한다.
+      //   (기록이 실패하면 제한이 무력화돼 전 직원에게 반복 발송될 수 있으므로 발송하지 않는다)
+      const { error: markErr } = await supabaseAdmin
+        .from('trades').update({ last_remind_at: new Date().toISOString() }).eq('id', id);
+      if (markErr) {
+        console.error('[trades remind] last_remind_at 기록 실패:', markErr.message);
+        return NextResponse.json({
+          error: '재알림 기록에 실패해 발송을 중단했습니다. (trades.last_remind_at 컬럼 확인 필요)',
+        }, { status: 500 });
+      }
       const row = toCamel(t);
       const typeLabel = row.tradeType === 'sub' ? '대타' : '맞교대';
       const shiftShort = (row.shiftDate ?? '').split(' / ')[0];
@@ -73,7 +83,6 @@ export async function POST(req: NextRequest) {
         `🔔 ${typeLabel} 공고 재안내`,
         `${shiftShort} [${row.reqPos}] ${typeLabel} 아직 모집 중입니다. 가능하신 분은 지금 앱에서 지원해 주세요!`
       );
-      await supabaseAdmin.from('trades').update({ last_remind_at: new Date().toISOString() }).eq('id', id);
       return NextResponse.json({ ok: true });
     }
 

@@ -757,6 +757,12 @@
                         if(i) i.value=''; renderAdminModalBoxes(''); return;
                     }
                     isAdmin = true; sessionStorage.setItem('cgv_admin','true');
+                    // ★ 서버 인증 토큰도 관리자용으로 교체해야 한다.
+                    //   이전에는 클라이언트 플래그만 세워, 공지·매뉴얼 등록/월말평가 저장 등
+                    //   requireAdmin 이 걸린 API 가 403 으로 거부됐다. 작성자(author) 기록도 불가.
+                    if (r.token) sessionStorage.setItem('cgv_token', r.token);
+                    sessionStorage.setItem('cgv_admin_name', r.name || '관리자');
+                    sessionStorage.setItem('cgv_pin_default', 'false');
                     closeAdminPinModal();
                     if (pendingAdminTab) { pendingAdminTab=false; switchTab('manager'); }
                 })
@@ -919,6 +925,22 @@ function showKakaoModal(text, forced) {
         // 로그인된 상태에서의 초기화(세션 복원·자동 로그인 공통)
         function __bootAuthed__() {
             {
+                // ★ selectUser() 전에 명단을 먼저 채운다.
+                //   자동 로그인/세션 복원은 이름 선택 화면을 거치지 않아 MISO_DATA 가 비어 있고,
+                //   그 상태로 selectUser() 하면 본인 포지션이 [] 이 되어 직무 선택이 전부 막힌다.
+                if (!MISO_DATA.length) {
+                    try {
+                        var _c = JSON.parse(sessionStorage.getItem('cgv_miso') || 'null');
+                        var _cl = Array.isArray(_c) ? _c : (_c && _c.data ? _c.data : null);
+                        if (_cl && _cl.length) MISO_DATA = _cl;
+                    } catch (e) {}
+                }
+                if (!MISO_DATA.length) {
+                    try {
+                        var _ls = JSON.parse(localStorage.getItem('cgv_miso_list') || 'null');
+                        if (Array.isArray(_ls) && _ls.length) MISO_DATA = _ls;
+                    } catch (e) {}
+                }
                 var ov = document.getElementById("auth-overlay");
                 if (ov) ov.style.display = "none";
                 if (sessionStorage.getItem("cgv_admin") === "true") isAdmin = true;
@@ -966,12 +988,18 @@ function showKakaoModal(text, forced) {
             }
             // 모달·시트·사진확대가 열려 있으면 당겨서 새로고침 자체를 끔
             //  (이때 body가 position:fixed 로 잠기며 scrollY가 0이 되어 '최상단'으로 오판되던 문제)
+            // 화면에 실제로 보이는지 판정 (display:none·.hidden 모두 커버, position:fixed 에서도 정확)
+            function _ptrVisible(el) { return !!(el && el.getClientRects && el.getClientRects().length > 0); }
             function ptrBlocked() {
                 var b = document.body.style;
                 if (b.position === "fixed" || b.overflow === "hidden") return true;   // lockBody 중
                 if (document.getElementById("nm-zoom") || document.getElementById("nm-sheet-ov")) return true;
-                if (document.querySelector('[id$="-modal"]:not(.hidden)')) return true;
                 if (document.getElementById("urgent-sub-wrap") || document.getElementById("ev-ov")) return true;
+                // ★ 클래스(.hidden)가 아니라 '실제 표시 여부'로 판정한다.
+                //   support/user-select/kakao 모달은 .hidden 을 쓰지 않고 display 로 숨기므로
+                //   클래스 기준으로 보면 항상 '열림'이 되어 당겨서 새로고침이 영구히 막혔었다.
+                var ovs = document.querySelectorAll('[id$="-modal"], .modal-overlay, #auth-overlay, #auth-name-sheet');
+                for (var i = 0; i < ovs.length; i++) if (_ptrVisible(ovs[i])) return true;
                 return false;
             }
             document.addEventListener("touchstart", function(e){
@@ -4568,6 +4596,7 @@ function showKakaoModal(text, forced) {
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 지각 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('실제 근로시간의 시작/종료 시간이 같습니다.'); return; }
+                if (!formData.sign) { alert('확인 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'absent') {
                 var reasons = [];
                 if (chk('ff-r1')) reasons.push('경고');
@@ -4584,6 +4613,7 @@ function showKakaoModal(text, forced) {
                     submitterSign: window._submitterSignDataURL || ''
                 };
                 if (!formData.name || !formData.date || !formData.why) { alert('이름, 날짜, 이유(왜)는 필수입니다.'); return; }
+                if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'resign') {
                 var returnItems = [];
                 if (chk('ff-c1')) returnItems.push('유니폼');
@@ -4607,6 +4637,7 @@ function showKakaoModal(text, forced) {
                     agreeSign: window._agreementSignDataURL || ''
                 };
                 if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
+                if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'earlyLeave') {
                 formData = {
                     name: v('ff-name'), date: v('ff-date'),
@@ -4618,6 +4649,7 @@ function showKakaoModal(text, forced) {
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 조퇴 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
+                if (!formData.sign) { alert('확인 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'privacy') {
                 formData = {
                     name: v('ff-name'), phone: v('ff-phone'), birth: v('ff-birth'),

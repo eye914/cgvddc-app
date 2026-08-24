@@ -47,7 +47,14 @@ export async function POST(req: NextRequest) {
       sort: Number(b.sort) || 0,
       author: admin.name || '관리자',
     };
-    const { data, error } = await supabaseAdmin.from('manuals').insert(row).select().single();
+    // ★ author 컬럼이 없는 DB에서도 매뉴얼 등록은 반드시 되어야 한다 → 실패 시 author 제외 재시도
+    let { data, error } = await supabaseAdmin.from('manuals').insert(row).select().single();
+    if (error) {
+      console.warn('[manuals] author 포함 등록 실패 → author 제외하고 재시도:', error.message);
+      const { author, ...noAuthor } = row as any;
+      const retry = await supabaseAdmin.from('manuals').insert(noAuthor).select().single();
+      data = retry.data; error = retry.error;
+    }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, manual: data });
   } catch (e: any) {

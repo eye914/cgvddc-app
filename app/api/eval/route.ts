@@ -10,9 +10,22 @@ function monthRange(period: string): [string, string] {
 }
 
 async function computeAuto(period: string) {
-  const { data: att } = await supabaseAdmin.from('attendance').select('name, week, late, absent, miss');
+  // ★ miss 컬럼이 아직 없는 DB에서도 지각·결근 집계가 절대 깨지지 않도록 폴백을 둔다.
+  //   (예전엔 select 가 실패하면 att=null 이 되어 지각·결근이 전부 0으로 조용히 계산됐음)
+  let att: any[] = [];
+  {
+    const r1 = await supabaseAdmin.from('attendance').select('name, week, late, absent, miss');
+    if (r1.error) {
+      console.warn('[eval] attendance.miss 조회 실패 → miss 제외하고 재조회:', r1.error.message);
+      const r2 = await supabaseAdmin.from('attendance').select('name, week, late, absent');
+      if (r2.error) console.error('[eval] attendance 조회 실패:', r2.error.message);
+      att = r2.data ?? [];
+    } else {
+      att = r1.data ?? [];
+    }
+  }
   const lateMap: Record<string, number> = {}, absentMap: Record<string, number> = {}, missMap: Record<string, number> = {};
-  (att ?? []).forEach((r: any) => {
+  att.forEach((r: any) => {
     if (weekInPeriod(r.week, period)) {
       lateMap[r.name] = (lateMap[r.name] || 0) + (Number(r.late) || 0);
       absentMap[r.name] = (absentMap[r.name] || 0) + (Number(r.absent) || 0);
