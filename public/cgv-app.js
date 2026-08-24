@@ -3285,6 +3285,7 @@ function showKakaoModal(text, forced) {
         var _formSelectedName = '';
         var _formCurrentReqId = '';
         var _formCurrentType = '';
+        var _formRequestedBy = '';   // 서류를 보낸 관리자 이름 (하단 확인란에 표기)
         var _formCollapsed = {};
 
         var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서', privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서' };
@@ -3850,7 +3851,7 @@ function showKakaoModal(text, forced) {
                     + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:900;color:#0f172a">' + label + ' 제출 요청</div>'
                     + (dueStr ? '<div style="font-size:11px;font-weight:800;color:' + (overdue ? '#dc2626' : '#b45309') + '">⏰ ' + dueStr + '</div>' : '')
                     + '</div>'
-                    + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" style="flex-shrink:0;padding:9px 16px;background:#D6001C;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✏️ 작성</button>'
+                    + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\',\'' + String(r.requested_by || '').replace(/'/g, "\\'") + '\')" style="flex-shrink:0;padding:9px 16px;background:#D6001C;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✏️ 작성</button>'
                     + '</div>';
             });
             // 근로계약서
@@ -3935,7 +3936,7 @@ function showKakaoModal(text, forced) {
                             + '</div>'
                             + (dueStr ? '<div class="text-xs font-black ' + (isOverdue ? 'text-red-600 bg-red-100' : 'text-amber-700 bg-amber-100') + ' rounded-xl px-3 py-2 mb-2">' + dueStr + '</div>' : '')
                             + (r.note ? '<p class="text-xs text-slate-600 font-bold bg-white rounded-xl px-3 py-2 mb-3 border border-yellow-200">' + r.note + '</p>' : '')
-                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">✏️ 작성하기</button>'
+                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\',\'' + String(r.requested_by || '').replace(/'/g, "\\'") + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">✏️ 작성하기</button>'
                             + '</div>';
                     }).join('');
                 })
@@ -3956,10 +3957,12 @@ function showKakaoModal(text, forced) {
         window._submitterSignDataURL = null;
         window._agreementSignDataURL = null;
 
-        function openFormFillModal(reqId, type) {
+        function openFormFillModal(reqId, type, requestedBy) {
             lockBodyScroll();
             _formCurrentReqId = reqId;
             _formCurrentType = type;
+            // 서류 하단 관리자 확인란에는 '이 서류를 보낸 관리자' 이름이 들어가야 한다
+            _formRequestedBy = requestedBy || '';
             window._signDataURL = null;
             window._submitterSignDataURL = null;
             window._agreementSignDataURL = null;
@@ -3978,7 +3981,7 @@ function showKakaoModal(text, forced) {
             } else if (type === 'resign') {
                 body.innerHTML = buildResignForm(myName, today);
             } else if (type === 'earlyLeave') {
-                body.innerHTML = buildEarlyLeaveForm(myName, today);
+                body.innerHTML = buildEarlyLeaveForm(myName, today, _formRequestedBy);
             } else if (type === 'privacy') {
                 body.innerHTML = buildPrivacyForm(myName, today);
             } else if (type === 'overtime') {
@@ -4240,6 +4243,28 @@ function showKakaoModal(text, forced) {
             + '.doc-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}'
             + '</style>';
 
+        // 작성 화면 전용 세로형 입력 스타일 (출력물 표 스타일과 별개)
+        //  · 가로 표(min-width 480px)는 폰에서 오른쪽 '확인 서명' 칸이 잘려 보이지 않았다.
+        //  · 라벨-입력을 세로로 쌓아 잘림 없이 모든 항목이 보이게 한다.
+        var FORM_ROW_STYLE = '<style>'
+            + '.fv{border:1px solid #555;border-radius:6px;overflow:hidden;margin-bottom:16px}'
+            + '.fv-row{display:flex;align-items:stretch;border-bottom:1px solid #555}'
+            + '.fv-row:last-child{border-bottom:none}'
+            + '.fv-lb{width:104px;min-width:104px;background:#e8e8e8;border-right:1px solid #555;'
+            +   'display:flex;flex-direction:column;align-items:center;justify-content:center;'
+            +   'padding:10px 4px;font-size:11.5px;font-weight:900;color:#333;text-align:center;line-height:1.35}'
+            + '.fv-lb small{display:block;font-size:9.5px;font-weight:700;color:#666;margin-top:2px}'
+            + '.fv-in{flex:1;min-width:0;background:#eef4ff;padding:10px 12px;display:flex;'
+            +   'flex-direction:column;justify-content:center}'
+            + '.fv-in .di{font-size:13px}'
+            + '.fv-time{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}'
+            + '.fv-time .tbtn{font-size:12px;font-weight:900;padding:8px 10px;border-radius:8px;'
+            +   'background:#fff;border:1.5px solid #aac;cursor:pointer;min-width:74px}'
+            + '.fv-time .tw{font-size:12px;font-weight:800;color:#555}'
+            + '.sbtn{font-size:12px;font-weight:900;padding:10px 12px;border-radius:9px;background:#fff;'
+            +   'border:1.5px dashed #888;cursor:pointer;white-space:nowrap;align-self:flex-start}'
+            + '</style>';
+
         function buildLateForm(name, today) {
             return DOC_STYLE
                 + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 지각확인서</div>'
@@ -4292,7 +4317,18 @@ function showKakaoModal(text, forced) {
                 + '</div>';
         }
 
-        function buildEarlyLeaveForm(name, today) {
+        // 관리자 확인란 — 이 서류를 보낸 관리자 이름을 넣는다(미지정 시 '관리자')
+        //   이름 사이를 벌려 서명란처럼 보이게: "이 경 연"
+        function admConfirmLine(adminName) {
+            var nm = String(adminName || '').trim() || '관리자';
+            var spaced = nm.split('').join(' ');
+            return '<div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :'
+                + '<span style="letter-spacing:0.15em;margin-left:6px">' + spaced + '</span>'
+                + '<span style="margin-left:2px">(서명)</span>'
+                + '<img src="/admin-sig.png" onerror="this.style.display=\'none\'"></div>';
+        }
+
+        function buildEarlyLeaveForm(name, today, adminName) {
             return DOC_STYLE
                 + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
                 + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
@@ -4308,39 +4344,33 @@ function showKakaoModal(text, forced) {
                 + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="조퇴 사유를 구체적으로 작성하세요"></textarea></div>'
                 + '</div>'
                 + '</div>'
-                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래에 날짜와 시간 정보도 꼭 입력해 주세요</div>'
-                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
-                + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
-                + '<th style="min-width:72px">이  름</th>'
-                + '<th style="min-width:100px">날  짜</th>'
-                + '<th style="min-width:110px">약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th>'
-                + '<th style="min-width:110px">희망 퇴근 시간</th>'
-                + '<th style="min-width:88px">확인 서명</th>'
-                + '</tr></thead><tbody><tr style="height:64px">'
-                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:72px">'
-                +   '<input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center;min-width:64px"></td>'
-                + '<td class="fc" style="vertical-align:middle;min-width:100px">'
-                +   '<input id="ff-date" type="date" class="di" placeholder="날짜">'
-                +   '<div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
-                +   '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
-                +   '<input type="hidden" id="ff-sch-start" value="">'
-                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
-                +   '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
-                +   '<input type="hidden" id="ff-sch-end" value=""></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
-                +   '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
-                +   '<input type="hidden" id="ff-act-start" value="">'
-                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
-                +   '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
-                +   '<input type="hidden" id="ff-act-end" value=""></td>'
-                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
-                +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
-                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
-                + '</tr></tbody></table>'
+                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래 항목을 모두 입력해 주세요</div>'
+                // ★ 작성 화면은 세로형(라벨-입력 행) — 가로 표는 폰에서 서명칸이 잘려 보이지 않았음.
+                //   출력물(인쇄/PDF)은 기존 가로 표 그대로 유지된다.
+                + FORM_ROW_STYLE
+                + '<div class="fv">'
+                +   '<div class="fv-row"><div class="fv-lb">이름</div><div class="fv-in">'
+                +     '<input id="ff-name" class="di" value="' + name + '" placeholder="이름"></div></div>'
+                +   '<div class="fv-row"><div class="fv-lb">날짜</div><div class="fv-in">'
+                +     '<input id="ff-date" type="date" class="di"></div></div>'
+                +   '<div class="fv-row"><div class="fv-lb">약정 근로시간<small>(스케줄)</small></div><div class="fv-in fv-time">'
+                +     '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" class="tbtn">-- : --</button>'
+                +     '<input type="hidden" id="ff-sch-start" value="">'
+                +     '<span class="tw">~</span>'
+                +     '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" class="tbtn">-- : --</button>'
+                +     '<input type="hidden" id="ff-sch-end" value=""></div></div>'
+                +   '<div class="fv-row"><div class="fv-lb">희망 퇴근 시간</div><div class="fv-in fv-time">'
+                +     '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" class="tbtn">-- : --</button>'
+                +     '<input type="hidden" id="ff-act-start" value="">'
+                +     '<span class="tw">~</span>'
+                +     '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" class="tbtn">-- : --</button>'
+                +     '<input type="hidden" id="ff-act-end" value=""></div></div>'
+                +   '<div class="fv-row"><div class="fv-lb">확인 서명<small style="color:#D6001C">필수</small></div><div class="fv-in">'
+                +     '<button type="button" id="ff-sign-btn" onclick="openSignPad()" class="sbtn">✏️ 서명하기</button>'
+                +     '<img id="ff-sign-img" src="" style="display:none;max-height:40px;max-width:120px;margin-top:6px;border:1px solid #ccc;border-radius:4px;background:#fff"></div></div>'
                 + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
-                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '<div>' + admConfirmLine(adminName) + '</div>'
                 + '</div>';
         }
 
@@ -5016,7 +5046,9 @@ function showKakaoModal(text, forced) {
             var type = sub.type || (req && req.type) || '';
             var sig = '';
             try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
-            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
+            // ★ 하단 확인란은 '이 서류를 보낸 관리자'(requested_by) 기준.
+            //   열람 중인 관리자 이름을 쓰면 서류마다 확인자가 뒤바뀐다.
+            var adminName = (req && req.requested_by) || sessionStorage.getItem('cgv_admin_name') || '관리자';
             var today = sub.submitted_at ? sub.submitted_at.substring(0,10) : getLocalYYYYMMDD(new Date());
 
             // 서류 원본 레이아웃으로 직접 표시 (가로 스크롤 허용)
