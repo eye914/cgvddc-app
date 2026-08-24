@@ -111,6 +111,21 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: '요청을 찾을 수 없습니다.' }, { status: 404 });
       }
 
+      // ★ 중복 제출 방지(멱등)
+      //   status 가 pending 인 건만 submitted 로 '선점'한다. 이미 처리된 요청이면 0건이 갱신되고,
+      //   그 경우 제출 기록도 남기지 않고 알림도 보내지 않는다.
+      //   (제출 버튼이 두 번 눌리면 제출 2건 + 관리자 알림 2번이 가던 문제)
+      const { data: claimed, error: claimErr } = await supabaseAdmin
+        .from('form_requests')
+        .update({ status: 'submitted' })
+        .eq('id', id)
+        .eq('status', 'pending')
+        .select('id');
+      if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 });
+      if (!claimed || claimed.length === 0) {
+        return NextResponse.json({ ok: true, duplicate: true });   // 이미 제출됨 → 조용히 성공 처리
+      }
+
       const subId = makeId('SUB');
       const { error: subError } = await supabaseAdmin
         .from('form_submissions')
@@ -122,14 +137,12 @@ export async function PATCH(req: NextRequest) {
           form_data: formData,
         }]);
 
-      if (subError) return NextResponse.json({ error: subError.message }, { status: 500 });
-
-      const { error } = await supabaseAdmin
-        .from('form_requests')
-        .update({ status: 'submitted' })
-        .eq('id', id);
-
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (subError) {
+        // 기록 실패 시 선점을 되돌려 재제출이 가능하게 한다
+        await supabaseAdmin.from('form_requests').update({ status: 'pending' }).eq('id', id);
+        return NextResponse.json({ error: subError.message }, { status: 500 });
+      }
+      // 상태는 위에서 이미 submitted 로 선점됨
 
       const typeName = TYPE_NAMES[reqRow.type] || '서류';
       if (reqRow.requested_by) {

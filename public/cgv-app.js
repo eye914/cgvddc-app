@@ -3286,6 +3286,8 @@ function showKakaoModal(text, forced) {
         var _formCurrentReqId = '';
         var _formCurrentType = '';
         var _formRequestedBy = '';   // 서류를 보낸 관리자 이름 (하단 확인란에 표기)
+        var _formSubmitting = false; // 제출 진행 중 플래그 (연타로 인한 중복 제출 방지)
+        var _driveSaving = false;    // 드라이브 저장 진행 중 플래그
         var _formCollapsed = {};
 
         var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서', privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서' };
@@ -3659,7 +3661,27 @@ function showKakaoModal(text, forced) {
                 + '<style>body{font-family:"Apple SD Gothic Neo","Malgun Gothic","나눔고딕",sans-serif;background:#fff;width:210mm;margin:0 auto;padding:18mm 16mm;box-sizing:border-box;color:#111}'
                 + 'table{border-collapse:collapse}img{max-width:100%}</style></head><body>' + inner + '</body></html>';
         }
+        // 드라이브 저장 결과 패널 — 자동 이동 대신 링크를 탭하게 해서 앱(PWA)이 종료되지 않게 한다
+        function showDriveResult(title, desc, url) {
+            var old = document.getElementById('drive-result-wrap'); if (old) old.remove();
+            var w = document.createElement('div');
+            w.id = 'drive-result-wrap';
+            w.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(15,23,42,.55);display:flex;align-items:flex-end;justify-content:center';
+            w.innerHTML = '<div style="width:100%;max-width:460px;background:#fff;border-radius:22px 22px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom))">'
+                + '<div style="font-size:17px;font-weight:900;color:#0f172a;margin-bottom:6px">' + title + '</div>'
+                + '<div style="font-size:12.5px;font-weight:700;color:#64748b;margin-bottom:14px">' + desc + '</div>'
+                + '<a href="' + url + '" target="_blank" rel="noopener noreferrer" '
+                +   'style="display:block;text-align:center;padding:14px;background:#1d4ed8;color:#fff;border-radius:14px;font-weight:900;font-size:14px;text-decoration:none">📁 드라이브 폴더 열기</a>'
+                + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-align:center;margin-top:8px">폴더는 새 창에서 열립니다</div>'
+                + '<button onclick="document.getElementById(\'drive-result-wrap\').remove()" '
+                +   'style="width:100%;margin-top:10px;padding:13px;background:#f1f5f9;color:#475569;border:none;border-radius:14px;font-weight:900;font-size:14px">닫기</button>'
+                + '</div>';
+            w.addEventListener('click', function (e) { if (e.target === w) w.remove(); });
+            document.body.appendChild(w);
+        }
+
         function saveSelectedFormsToDrive(month) {
+            if (_driveSaving) return;   // 연타 방지 (PDF 생성이 오래 걸려 중복 실행되기 쉬움)
             var all = document.querySelectorAll('input[data-month="' + month + '"]:not(:disabled)');
             var ids = [];
             for (var i = 0; i < all.length; i++) { if (all[i].checked) ids.push(all[i].getAttribute('data-form-id')); }
@@ -3671,7 +3693,8 @@ function showKakaoModal(text, forced) {
             var nameMap = {};
             selected.forEach(function(r) { if (!nameMap[r.target_name]) nameMap[r.target_name] = []; nameMap[r.target_name].push(r); });
             var names = Object.keys(nameMap), allSubs = {}, remaining = names.length;
-            showLoader(true, '서류 불러오는 중...');
+            _driveSaving = true;
+            showLoader(true, '서류 불러오는 중... (' + selected.length + '건)');
             names.forEach(function(name) {
                 google.script.run
                     .withSuccessHandler(function(subs) { (subs || []).forEach(function(s) { var _ex = allSubs[s.request_id]; if (!_ex || String(s.submitted_at || '') > String(_ex.submitted_at || '')) allSubs[s.request_id] = s; }); if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
@@ -3684,7 +3707,7 @@ function showKakaoModal(text, forced) {
             var s = document.createElement('script');
             s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
             s.onload = cb;
-            s.onerror = function() { showLoader(false); alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
+            s.onerror = function() { showLoader(false); _driveSaving = false; alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
             document.head.appendChild(s);
         }
         // 캡처 전 모든 이미지(서명·관리자도장)를 완전히 디코딩까지 대기 → PDF에 서명 누락 방지
@@ -3707,7 +3730,7 @@ function showKakaoModal(text, forced) {
                 var sub = allSubs[req.id]; if (!sub) return;
                 parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
             });
-            if (!parts.length) { showLoader(false); alert('저장할 제출 내용이 없습니다.'); return; }
+            if (!parts.length) { showLoader(false); _driveSaving = false; alert('저장할 제출 내용이 없습니다.'); return; }
             // 각 서류를 A4 한 장으로 감싸 상(제목)·중(본문)·하(서명·날짜) 분산 배치 (여러 건이어도 장마다 동일 적용)
             var _pageStyle = 'width:794px;height:1092px;overflow:hidden;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111;display:flex;flex-direction:column;justify-content:space-between';
             var combined = parts.map(function(p, i) { return '<div style="' + _pageStyle + (i > 0 ? ';page-break-before:always' : '') + '">' + p + '</div>'; }).join('');
@@ -3736,19 +3759,21 @@ function showKakaoModal(text, forced) {
                     fetch('/api/gas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok }, body: JSON.stringify({ action: 'saveFormPdfBase64', params: [fileName, folder, base64] }), signal: _ctl.signal })
                         .then(function(r) { return r.json(); })
                         .then(function(res) {
-                            clearTimeout(_to); showLoader(false);
+                            clearTimeout(_to); showLoader(false); _driveSaving = false;
                             var _parentFolderUrl = 'https://drive.google.com/drive/folders/1Wwn-6713MD0F9y8y3tUZEJuZTlWU8ug-';
+                            // ★ window.open 으로 자동 이동하지 않는다.
+                            //   PWA(홈화면 앱)에서는 앱이 통째로 이탈·재시작되어 로그인 화면으로 돌아갔다.
+                            //   결과 패널의 링크를 직접 탭하도록 바꿔 앱이 유지되게 한다.
                             if (res && res.ok) {
-                                if (confirm('✅ 구글드라이브에 저장 완료 (서류 ' + parts.length + '건 · PDF 1개).\n폴더를 여시겠어요?') && res.folderUrl) window.open(res.folderUrl, '_blank');
+                                showDriveResult('✅ 구글드라이브에 저장 완료', '서류 ' + parts.length + '건 · PDF 1개', res.folderUrl || _parentFolderUrl);
                             } else if (res && res.parseError) {
-                                // 전송 구간 파싱 실패지만 드라이브에는 대개 저장됨
-                                if (confirm('📄 저장 요청을 전송했고, 드라이브에 저장된 것으로 보입니다.\n(응답 확인은 지연됐어요.) 폴더를 열어 확인하시겠어요?')) window.open(_parentFolderUrl, '_blank');
+                                showDriveResult('📄 저장 요청 전송됨', '드라이브에 저장된 것으로 보입니다. (응답 확인 지연)', _parentFolderUrl);
                             } else {
                                 alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormPdfBase64 함수가 재배포됐는지 확인해 주세요)');
                             }
                         })
-                        .catch(function(e) { clearTimeout(_to); showLoader(false); alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
-                }).catch(function(e) { if (holder.parentNode) document.body.removeChild(holder); showLoader(false); alert('PDF 생성 오류: ' + (e && e.message ? e.message : e)); });
+                        .catch(function(e) { clearTimeout(_to); showLoader(false); _driveSaving = false; alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
+                }).catch(function(e) { if (holder.parentNode) document.body.removeChild(holder); showLoader(false); _driveSaving = false; alert('PDF 생성 오류: ' + (e && e.message ? e.message : e)); });
                 }); // _waitImages
             }); // _ensureHtml2Pdf
         }
@@ -4713,9 +4738,13 @@ function showKakaoModal(text, forced) {
             }
 
             if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
+            // ★ 연타 방지: 제출이 끝나기 전 다시 누르면 제출 2건 + 관리자 알림 2번이 갔다
+            if (_formSubmitting) return;
+            _formSubmitting = true;
             showLoader(true, '제출 중...');
             google.script.run
                 .withSuccessHandler(function() {
+                    _formSubmitting = false;
                     showLoader(false);
                     closeFormFillModal();
                     closeMyFormsModal();
@@ -4725,6 +4754,7 @@ function showKakaoModal(text, forced) {
                     alert('제출이 완료되었습니다. 수고하셨습니다!');
                 })
                 .withFailureHandler(function(e) {
+                    _formSubmitting = false;
                     showLoader(false);
                     alert('제출 실패: ' + (e && e.message ? e.message : e));
                 })
