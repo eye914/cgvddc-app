@@ -2134,6 +2134,7 @@ function showKakaoModal(text, forced) {
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
                             renderMyDocbox();
+                            if (window.RD && RD.renderOpen) RD.renderOpen();   // 쉼데이 모집중
                             consumeDeepLink();   // 푸시 알림으로 들어온 경우 해당 화면 열기
                         }
                     }
@@ -3784,6 +3785,17 @@ function showKakaoModal(text, forced) {
                 .withSuccessHandler(function() { loadAdminForms(); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .cancelFormRequest(id);
+        }
+
+        // ── 쉼데이 관리 패널 (관리자) ──
+        function toggleRestdayPanel() {
+            var p = document.getElementById('rd-panel');
+            var a = document.getElementById('rd-panel-arrow');
+            if (!p) return;
+            var willOpen = p.classList.contains('hidden');
+            p.classList.toggle('hidden');
+            if (a) a.textContent = willOpen ? '▲' : '▼';
+            if (willOpen && window.RD && RD.renderAdmin) RD.renderAdmin();
         }
 
         // ── 푸시 알림 딥링크 (?go=contract | ?go=forms) ──
