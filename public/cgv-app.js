@@ -4015,6 +4015,7 @@ function showKakaoModal(text, forced) {
                 body.innerHTML = buildWorkConditionForm(myName, today);
             }
             modal.classList.remove('hidden');
+            if (type === 'earlyLeave' && typeof onEarlyLeaveKindChange === 'function') onEarlyLeaveKindChange(); // 초기 선택 표시
             ensureSignPadModal();
             ensureTimePickerModal();
         }
@@ -4268,6 +4269,32 @@ function showKakaoModal(text, forced) {
             + '.doc-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}'
             + '</style>';
 
+        // 구분(희망조퇴/희망휴무) 선택 — 2열 카드형. 한 줄에 나열하면 폰에서 줄바꿈이 깨진다.
+        var KIND_STYLE = '<style>'
+            + '.kind-box{border:1.5px solid #555;border-radius:9px;padding:10px 11px;margin-bottom:12px;background:#fafafa}'
+            + '.kind-tt{font-size:11.5px;font-weight:900;color:#333;margin-bottom:8px}'
+            + '.kind-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
+            + '.kind-op{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;'
+            +   'padding:10px 6px;border:1.5px solid #cbd5e1;border-radius:9px;background:#fff;cursor:pointer;text-align:center}'
+            + '.kind-op input{position:absolute;opacity:0;width:0;height:0}'
+            + '.kind-nm{font-size:13px;font-weight:900;color:#334155;white-space:nowrap}'
+            + '.kind-sub{font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap}'
+            + '.kr{position:absolute;opacity:0;width:0;height:0}'
+            // 선택 표시는 CSS(:checked)로 처리 → 스크립트가 막혀도 항상 동작
+            + '.kr:checked + .kind-op{border-color:#D6001C;background:#fff1f2;box-shadow:0 0 0 2px rgba(214,0,28,.12)}'
+            + '.kr:checked + .kind-op .kind-nm{color:#D6001C}'
+            + '.kr:checked + .kind-op .kind-sub{color:#b91c1c}'
+            // 구분에 따른 문구 전환 (희망조퇴 ↔ 희망휴무)
+            + '.kw-o{display:none}'
+            + '.el-doc:has(#ff-kind-off:checked) .kw-e{display:none}'
+            + '.el-doc:has(#ff-kind-off:checked) .kw-o{display:inline}'
+            // 희망휴무 선택 시 '희망 퇴근 시간' 행 비활성
+            + '.el-doc:has(#ff-kind-off:checked) #ff-act-row{background:#f1f5f9}'
+            + '.el-doc:has(#ff-kind-off:checked) #ff-act-row .fv-in{opacity:.4;pointer-events:none}'
+            + '.el-doc:has(#ff-kind-off:checked) #ff-act-na{display:block}'
+            + '#ff-act-na{display:none;font-size:9.5px;font-weight:700;color:#94a3b8;margin-top:2px}'
+            + '</style>';
+
         // 작성 화면 전용 세로형 입력 스타일 (출력물 표 스타일과 별개)
         //  · 가로 표(min-width 480px)는 폰에서 오른쪽 '확인 서명' 칸이 잘려 보이지 않았다.
         //  · 라벨-입력을 세로로 쌓아 잘림 없이 모든 항목이 보이게 한다.
@@ -4342,6 +4369,20 @@ function showKakaoModal(text, forced) {
                 + '</div>';
         }
 
+        // 희망조퇴/휴무 구분 전환 — 전일 휴무면 '희망 퇴근 시간'은 의미가 없어 비활성화한다
+        function onEarlyLeaveKindChange() {
+            var off = document.getElementById('ff-kind-off');
+            var isOff = !!(off && off.checked);
+            // 표시 전환(문구·비활성)은 CSS(:has)가 처리한다. JS는 값 정리와 안내문만 담당.
+            if (isOff) {   // 희망휴무면 '희망 퇴근 시간' 입력값을 비운다
+                ['ff-act-start', 'ff-act-end'].forEach(function (id) { var h = document.getElementById(id); if (h) h.value = ''; });
+                ['ff-act-start-btn', 'ff-act-end-btn'].forEach(function (id) { var b = document.getElementById(id); if (b) b.textContent = '-- : --'; });
+            }
+            // 사유 입력 안내 문구도 맞춰준다
+            var ta = document.getElementById('ff-content');
+            if (ta) ta.placeholder = (isOff ? '휴무' : '조퇴') + ' 사유를 구체적으로 작성하세요';
+        }
+
         // 관리자 확인란 — 이 서류를 보낸 관리자 이름을 넣는다(미지정 시 '관리자')
         //   이름 사이를 벌려 서명란처럼 보이게: "이 경 연"
         function admConfirmLine(adminName) {
@@ -4354,15 +4395,35 @@ function showKakaoModal(text, forced) {
         }
 
         function buildEarlyLeaveForm(name, today, adminName) {
-            return DOC_STYLE
-                + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
+            return '<div class="el-doc">' + DOC_STYLE
+                // 제목은 2줄 고정 — 한 줄로 두면 '확/인서' 처럼 단어 중간에서 깨진다
+                + '<div style="text-align:center;margin-bottom:12px;margin-top:8px;line-height:1.3">'
+                +   '<div style="font-size:15px;font-weight:800;color:#444;letter-spacing:0.04em">미소지기</div>'
+                +   '<div style="font-size:22px;font-weight:900;letter-spacing:0.02em;word-break:keep-all">희망 조퇴 · 휴무 확인서</div>'
+                + '</div>'
+                // ★ 구분 선택 — 조퇴(출근 후 조기퇴근) / 전일 휴무(미출근)
+                //   전일 휴무를 고르면 '희망 퇴근 시간'은 해당없음으로 처리되어 서류가 사실과 일치한다.
+                + KIND_STYLE
+                // 라디오를 label 바로 앞에 두고 :checked + label 로 선택 표시 → 스크립트 없이도 동작
+                + '<div class="kind-box">'
+                +   '<div class="kind-tt">구분</div>'
+                +   '<div class="kind-grid">'
+                +     '<div><input type="radio" class="kr" name="ff-kind" id="ff-kind-early" value="조퇴" checked onchange="onEarlyLeaveKindChange()">'
+                +       '<label class="kind-op" for="ff-kind-early">'
+                +       '<span class="kind-nm">희망조퇴</span><span class="kind-sub">일부 근무 후 퇴근</span></label></div>'
+                +     '<div><input type="radio" class="kr" name="ff-kind" id="ff-kind-off" value="전일휴무" onchange="onEarlyLeaveKindChange()">'
+                +       '<label class="kind-op" for="ff-kind-off">'
+                +       '<span class="kind-nm">희망휴무</span><span class="kind-sub">근무 없음</span></label></div>'
+                +   '</div>'
+                + '</div>'
                 + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                 + '미소지기 <span style="border-bottom:1.5px solid #222;display:inline-block;min-width:60px;text-align:center;background:#eef4ff">' + name + '</span>'
-                + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                + ' 은(는) 아래와 같이 <span class="kw-e">조퇴</span><span class="kw-o">휴무</span> 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
                 + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                 + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                 + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>'
-                + '<div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
+                + '<div id="ff-kind-cell" style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333;text-align:center;line-height:1.3">'
+                +   '<span class="kw-e">희망조퇴</span><span class="kw-o">희망휴무</span></div>'
                 + '</div>'
                 + '<div style="flex:1;display:flex;flex-direction:column">'
                 + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">내  용</div>'
@@ -4384,7 +4445,7 @@ function showKakaoModal(text, forced) {
                 +     '<span class="tw">~</span>'
                 +     '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" class="tbtn">-- : --</button>'
                 +     '<input type="hidden" id="ff-sch-end" value=""></div></div>'
-                +   '<div class="fv-row"><div class="fv-lb">희망 퇴근 시간</div><div class="fv-in fv-time">'
+                +   '<div class="fv-row" id="ff-act-row"><div class="fv-lb" id="ff-act-lb">희망 퇴근 시간<span id="ff-act-na">해당없음</span></div><div class="fv-in fv-time">'
                 +     '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" class="tbtn">-- : --</button>'
                 +     '<input type="hidden" id="ff-act-start" value="">'
                 +     '<span class="tw">~</span>'
@@ -4394,9 +4455,22 @@ function showKakaoModal(text, forced) {
                 +     '<button type="button" id="ff-sign-btn" onclick="openSignPad()" class="sbtn">✏️ 서명하기</button>'
                 +     '<img id="ff-sign-img" src="" style="display:none;max-height:40px;max-width:120px;margin-top:6px;border:1px solid #ccc;border-radius:4px;background:#fff"></div></div>'
                 + '</div>'
+                // ★ 자발적 신청 · 무급 · 주휴수당 영향 고지 (동의 체크 필수)
+                + '<div style="border:1.5px solid #555;border-radius:8px;padding:11px 13px;margin-bottom:14px;background:#fbfbfb">'
+                +   '<div style="font-size:11.5px;font-weight:900;color:#333;margin-bottom:7px">확인 사항</div>'
+                +   '<p style="font-size:10.5px;font-weight:600;color:#333;line-height:1.75;margin:0 0 9px">'
+                +     '본인은 위 일자의 <b>근로시간 단축(또는 휴무)을 본인의 자유로운 의사에 따라 자발적으로 신청</b>하며, '
+                +     '회사의 지시나 강요에 의한 것이 아님을 확인합니다.<br>'
+                +     '아울러 해당 시간은 <b>무급</b>으로 처리되며, 이로 인해 '
+                +     '<b>주휴수당 지급요건(주 15시간 이상 근무 및 소정근로일 만근)에 영향이 있을 수 있음</b>을 '
+                +     '안내받아 이해하였습니다.</p>'
+                +   '<label style="display:flex;align-items:flex-start;gap:7px;font-size:11.5px;font-weight:800;color:#111;cursor:pointer">'
+                +     '<input type="checkbox" id="ff-consent" style="width:17px;height:17px;accent-color:#D6001C;margin-top:1px;flex-shrink:0">'
+                +     '<span>위 내용을 모두 확인하였으며 이에 동의합니다. <span style="color:#D6001C">(필수)</span></span></label>'
+                + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
                 + '<div>' + admConfirmLine(adminName) + '</div>'
-                + '</div>';
+                + '</div></div>';
         }
 
         function buildAbsentForm(name, today) {
@@ -4694,16 +4768,20 @@ function showKakaoModal(text, forced) {
                 if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
                 if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'earlyLeave') {
+                var _isOff = !!(document.getElementById('ff-kind-off') && document.getElementById('ff-kind-off').checked);
                 formData = {
+                    kind: _isOff ? '희망휴무' : '희망조퇴',
                     name: v('ff-name'), date: v('ff-date'),
                     content: v('ff-content'),
                     schStart: v('ff-sch-start'), schEnd: v('ff-sch-end'),
-                    actStart: v('ff-act-start'), actEnd: v('ff-act-end'),
+                    actStart: _isOff ? '' : v('ff-act-start'), actEnd: _isOff ? '' : v('ff-act-end'),
+                    consent: chk('ff-consent'),
                     sign: window._signDataURL || ''
                 };
-                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 조퇴 사유는 필수입니다.'); return; }
+                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, ' + (_isOff ? '휴무' : '조퇴') + ' 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
+                if (!formData.consent) { alert('확인 사항에 동의해 주세요.\n(무급 처리 · 주휴수당 영향 안내)'); return; }
                 if (!formData.sign) { alert('확인 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'privacy') {
                 formData = {
@@ -4848,15 +4926,21 @@ function showKakaoModal(text, forced) {
                 var elSign = fd.sign && fd.sign.indexOf('data:') === 0
                     ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
                     : tv(fd.sign || '');
+                // 구분(희망조퇴/희망휴무) — 제출 데이터에 없으면 기존 문서로 보고 '희망조퇴'로 처리
+                var elKind = fd.kind === '희망휴무' ? '희망휴무' : '희망조퇴';
+                var elWord = elKind === '희망휴무' ? '휴무' : '조퇴';
                 return DOC_STYLE
-                    + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
+                    + '<div style="text-align:center;margin-bottom:14px;margin-top:8px;line-height:1.3">'
+                    +   '<div style="font-size:15px;font-weight:800;color:#444;letter-spacing:0.04em">미소지기</div>'
+                    +   '<div style="font-size:23px;font-weight:900;letter-spacing:0.02em;word-break:keep-all">희망 조퇴 · 휴무 확인서</div>'
+                    + '</div>'
                     + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                     + '미소지기 ' + tf(fd.name)
-                    + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                    + ' 은(는) 아래와 같이 개인 사정으로 인하여 ' + elWord + ' 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
                     + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                     + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                     + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">사유</div>'
-                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
+                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">' + elKind + '</div>'
                     + '</div>'
                     + '<div style="flex:1;display:flex;flex-direction:column">'
                     + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">내&nbsp;&nbsp;용</div>'
@@ -4874,9 +4958,21 @@ function showKakaoModal(text, forced) {
                     + '<td class="fc" style="text-align:center">' + tv(fd.name) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv(fd.date) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
-                    + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
+                    + '<td class="fc" style="text-align:center">'
+                    +   (elKind === '희망휴무' ? '<span style="color:#888;font-weight:700">해당없음</span>'
+                                               : tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:''))) + '</td>'
                     + '<td class="fc" style="text-align:center">' + elSign + '</td>'
                     + '</tr></tbody></table>'
+                    + '</div>'
+                    // 확인 사항 — 자발적 신청·무급·주휴수당 영향 고지 (동의 여부 표시)
+                    + '<div style="border:1px solid #555;border-radius:6px;padding:10px 12px;margin-bottom:14px;background:#fbfbfb">'
+                    +   '<div style="font-size:11px;font-weight:900;color:#333;margin-bottom:6px">확인 사항</div>'
+                    +   '<p style="font-size:10px;font-weight:600;color:#333;line-height:1.7;margin:0 0 7px">'
+                    +     '본인은 위 일자의 근로시간 단축(또는 휴무)을 본인의 자유로운 의사에 따라 자발적으로 신청하며, '
+                    +     '회사의 지시나 강요에 의한 것이 아님을 확인합니다. 아울러 해당 시간은 무급으로 처리되며, '
+                    +     '이로 인해 주휴수당 지급요건(주 15시간 이상 근무 및 소정근로일 만근)에 영향이 있을 수 있음을 안내받아 이해하였습니다.</p>'
+                    +   '<div style="font-size:10.5px;font-weight:900;color:' + (fd.consent ? '#166534' : '#b91c1c') + '">'
+                    +     (fd.consent ? '☑ 위 내용을 모두 확인하였으며 이에 동의함' : '☐ 미동의') + '</div>'
                     + '</div>'
                     + '<div class="doc-footer" style="margin-top:20px"><div></div><div>' + adm + '</div></div>';
             }
