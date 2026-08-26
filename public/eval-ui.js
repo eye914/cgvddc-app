@@ -11,7 +11,10 @@
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   var LETTERS = ['S', 'A', 'B', 'C', 'D', 'F'];
   var LETTER = { S: 100, A: 90, B: 80, C: 70, D: 60, F: 50 };
-  var CRI = [
+  // 배점은 서버(lib/evalConfig.ts)와 반드시 동일해야 화면 총점과 확정 순위가 일치한다.
+  //  · 구(2026-08 이전): 정성 70 + 자동 30 = 100
+  //  · 신(2026-08 부터): 정성 60 + 자동 30 = 90  → 나머지 10점은 대타 수락 가산으로
+  var CRI_V1 = [
     { key: 'notice', sub: '이벤트·공지사항 숙지', w: 10, kind: 'notice' },
     { key: 'kakao', sub: '카톡공지 숙지', w: 10, kind: 'letter' },
     { key: 'service', sub: '서비스 태도', w: 20, kind: 'letter' },
@@ -21,6 +24,21 @@
     { key: 'late', sub: '지각', w: 10, kind: 'late' },
     { key: 'absent', sub: '결근', w: 10, kind: 'absent' }
   ];
+  var CRI_V2 = [
+    { key: 'notice', sub: '이벤트·공지사항 숙지', w: 10, kind: 'notice' },
+    { key: 'kakao', sub: '카톡공지 숙지', w: 9, kind: 'letter' },
+    { key: 'service', sub: '서비스 태도', w: 17, kind: 'letter' },
+    { key: 'active', sub: '적극적 태도', w: 17, kind: 'letter' },
+    { key: 'rule', sub: '내부 규정 준수', w: 9, kind: 'letter' },
+    { key: 'groom', sub: '유니폼·개인위생', w: 8, kind: 'letter' },
+    { key: 'late', sub: '지각', w: 10, kind: 'late' },
+    { key: 'absent', sub: '결근', w: 10, kind: 'absent' }
+  ];
+  var RULES_V2_FROM = '2026-08';
+  function isV2(p) { return String(p || '') >= RULES_V2_FROM; }
+  // 현재 보고 있는 기간 기준 배점
+  function CRI_OF() { return isV2(_period) ? CRI_V2 : CRI_V1; }
+  var CRI = CRI_V2;   // 기본(하위 호환)
   function autoS(kind, c) {
     if (kind === 'late') return Math.max(0, 100 - 15 * (c.lateN || 0));
     if (kind === 'absent') return Math.max(0, 100 - 50 * (c.absentN || 0));
@@ -237,7 +255,7 @@
   }
   function calcTotal(grades, ctx) {
     var t = 0;
-    CRI.forEach(function (c) { var s = c.kind === 'letter' ? (LETTER[grades[c.key]] || 0) : autoS(c.kind, ctx); t += s * c.w / 100; });
+    CRI_OF().forEach(function (c) { var s = c.kind === 'letter' ? (LETTER[grades[c.key]] || 0) : autoS(c.kind, ctx); t += s * c.w / 100; });
     t += subBonus(ctx.subN);                        // 대타 수락 보너스
     t -= (ctx.subReqPen || 0);                      // 단순대타 요청 감점(서버 계산값)
     t -= (ctx.formPen || 0);                        // 근태서류 지연/미제출 감점
@@ -251,8 +269,9 @@
       + '<summary style="padding:10px 12px;font-size:12px;font-weight:800;color:#334155;cursor:pointer">ℹ️ 점수 산정 기준 (탭하여 보기)</summary>'
       + '<div style="padding:0 12px 12px;font-size:11.5px;line-height:1.65;color:#475569">'
       + '<b>등급 점수</b><br>' + letters + '<br><br>'
-      + '<b>가중치 (합계 100%)</b><br>'
-      + CRI.map(function (c) { return '· ' + c.sub + ' <b>' + c.w + '%</b>' + (c.kind !== 'letter' ? ' <span style="color:#2563a8">(자동)</span>' : ''); }).join('<br>')
+      + '<b>가중치 (합계 ' + CRI_OF().reduce(function (s, c) { return s + c.w; }, 0) + '%)</b>'
+      + (isV2(_period) ? '<br><span style="color:#D6001C">전 항목 S + 무결점이어도 90점. 남은 10점은 대타 수락 가산으로 채웁니다.</span>' : '') + '<br>'
+      + CRI_OF().map(function (c) { return '· ' + c.sub + ' <b>' + c.w + '%</b>' + (c.kind !== 'letter' ? ' <span style="color:#2563a8">(자동)</span>' : ''); }).join('<br>')
       + '<br><br><b>자동 산정 항목</b><br>'
       + '· 지각: 100 − 15×횟수<br>'
       + '· 결근: 100 − 50×횟수<br>'
@@ -285,7 +304,7 @@
     var locked = (!!scoreRow && !_data.isSuper) || closed;
     var grades = (scoreRow || {}).grades || {};
     var ctx = (_data.auto || {})[miso] || { lateN: 0, absentN: 0, noticeReq: 0, noticeSigned: 0, subN: 0 };
-    var rows = CRI.map(function (c) {
+    var rows = CRI_OF().map(function (c) {
       if (c.kind === 'letter') {
         var sc = LETTER[grades[c.key]] || 0;
         var cell = locked

@@ -5,7 +5,9 @@ export const LETTERS = ['S', 'A', 'B', 'C', 'D', 'F'];
 export type CriKind = 'letter' | 'notice' | 'late' | 'absent';
 export interface Criterion { key: string; mid: string; sub: string; weight: number; kind: CriKind; }
 
-export const CRITERIA: Criterion[] = [
+// 구 배점(2026-08 이전): 정성 70 + 자동 30 = 100
+//   → 관리자가 5개 전부 S 를 주면 그 자체로 100점이 되어 가산점이 상한에 막혀 무의미했다.
+export const CRITERIA_V1: Criterion[] = [
   { key: 'notice',  mid: '현장관리',       sub: '이벤트·공지사항 숙지', weight: 10, kind: 'notice' },
   { key: 'kakao',   mid: '현장관리',       sub: '카톡공지 숙지',        weight: 10, kind: 'letter' },
   { key: 'service', mid: '현장관리',       sub: '서비스 태도',          weight: 20, kind: 'letter' },
@@ -15,6 +17,26 @@ export const CRITERIA: Criterion[] = [
   { key: 'late',    mid: '근무태도(정량)', sub: '지각',                 weight: 10, kind: 'late' },
   { key: 'absent',  mid: '근무태도(정량)', sub: '결근',                 weight: 10, kind: 'absent' },
 ];
+
+// 신 배점(2026-08 부터): 정성 60 + 자동 30 = 90
+//   → 완벽 근무 + 전부 S 라도 90점. 나머지 10점은 대타 수락 가산(1건 +3, 4건이면 +12)으로 채운다.
+//     대타를 서준 사람과 아닌 사람이 모두 100점이 되던 문제를 해소.
+export const CRITERIA_V2: Criterion[] = [
+  { key: 'notice',  mid: '현장관리',       sub: '이벤트·공지사항 숙지', weight: 10, kind: 'notice' },
+  { key: 'kakao',   mid: '현장관리',       sub: '카톡공지 숙지',        weight:  9, kind: 'letter' },
+  { key: 'service', mid: '현장관리',       sub: '서비스 태도',          weight: 17, kind: 'letter' },
+  { key: 'active',  mid: '근무태도(정성)', sub: '적극적 태도',          weight: 17, kind: 'letter' },
+  { key: 'rule',    mid: '근무태도(정성)', sub: '내부 규정 준수',       weight:  9, kind: 'letter' },
+  { key: 'groom',   mid: '용모/청결',      sub: '유니폼·개인위생',      weight:  8, kind: 'letter' },
+  { key: 'late',    mid: '근무태도(정량)', sub: '지각',                 weight: 10, kind: 'late' },
+  { key: 'absent',  mid: '근무태도(정량)', sub: '결근',                 weight: 10, kind: 'absent' },
+];
+
+// 기본값은 신 배점(화면 기본 표시용). 기간별 조회는 criteriaFor() 사용.
+export const CRITERIA: Criterion[] = CRITERIA_V2;
+export function criteriaFor(period?: string): Criterion[] {
+  return period && !usesRulesV2(period) ? CRITERIA_V1 : CRITERIA_V2;
+}
 
 export function letterScore(g?: string): number { return g && LETTER[g] != null ? LETTER[g] : 0; }
 export function lateScore(count: number): number { return Math.max(0, 100 - 15 * count); }
@@ -106,9 +128,9 @@ export function leadDaysBetween(created: Date, shift: Date): number {
 }
 
 // 한 사람의 총점 계산 (grades = {kakao,service,active,rule,groom}, ctx = 자동값)
-export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number; missN?: number; subReqPen?: number; formPen?: number }): number {
+export function totalScore(grades: Record<string, string>, ctx: { lateN: number; absentN: number; noticeReq: number; noticeSigned: number; subN?: number; missN?: number; subReqPen?: number; formPen?: number; period?: string }): number {
   let total = 0;
-  for (const c of CRITERIA) {
+  for (const c of criteriaFor(ctx.period)) {   // 기간에 맞는 배점(구:70 / 신:60)
     const s = c.kind === 'letter' ? letterScore(grades[c.key]) : autoScore(c.kind, ctx);
     total += s * c.weight / 100;
   }

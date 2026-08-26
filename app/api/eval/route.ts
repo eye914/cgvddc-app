@@ -93,7 +93,7 @@ async function computeAuto(period: string) {
       const m = String(t.shift_date || '').match(/(\d{1,2})\s*\//);
       if (m && String(Number(m[1])).padStart(2, '0') === pm) subMap[nm] = (subMap[nm] || 0) + 1;
     });
-    return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, formLateMap, formMissMap, v2 };
+    return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, formLateMap, formMissMap, v2, period };
   }
 
   (trades ?? []).forEach((t: any) => {
@@ -108,7 +108,7 @@ async function computeAuto(period: string) {
       }
     }
   });
-  return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, v2 };
+  return { lateMap, absentMap, missMap, noticeReq: nIds.length, signedMap, subMap, leadMap, formLateMap, formMissMap, v2, period };
 }
 function ctxFor(name: string, a: any) {
   const absentN = a.absentMap[name] || 0;
@@ -118,6 +118,7 @@ function ctxFor(name: string, a: any) {
     noticeReq: a.noticeReq,
     noticeSigned: a.signedMap[name] || 0,
     subN: (a.subMap && a.subMap[name]) || 0,
+    period: a.period,          // 기간별 배점(구 70 / 신 60) 선택에 사용
   };
   // 구 규칙 기간(2026-08 이전)은 신규 항목(미숙지·대타 요청·서류 감점)을 적용하지 않는다
   if (!a.v2) return { ...base, missN: 0, subReqN: 0, subReqPen: 0, formLateN: 0, formMissN: 0, formPen: 0 };
