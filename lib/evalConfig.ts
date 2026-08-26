@@ -71,9 +71,19 @@ export function autoScore(kind: CriKind, ctx: { lateN: number; absentN: number; 
 }
 
 // 대타/교대 수락 보너스(적극적 참여): 1건당 +3점, 최대 +12점
+// 구(2026-08 이전): 1건당 +3, 최대 +12
 export const SUB_BONUS_PER = 3;
 export const SUB_BONUS_CAP = 12;
-export function subBonus(count: number): number { return Math.min((count || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
+// 신(2026-08 부터): 1건당 +5, 최대 +10
+//   정성 60 + 자동 30 = 90 이므로 대타 2건이면 100점. 1건은 95점으로 명확히 구분된다.
+export const SUB_BONUS_PER_V2 = 5;
+export const SUB_BONUS_CAP_V2 = 10;
+export function subBonus(count: number, period?: string): number {
+  const v2 = !period || usesRulesV2(period);
+  const per = v2 ? SUB_BONUS_PER_V2 : SUB_BONUS_PER;
+  const cap = v2 ? SUB_BONUS_CAP_V2 : SUB_BONUS_CAP;
+  return Math.min((count || 0) * per, cap);
+}
 
 // ★ 새 점수 규칙(대타 요청 감점 · 근무일 파서 개선 · 공지 미숙지) 적용 시작 시점.
 //   이 기준보다 이전 기간은 당시 발표된 결과가 바뀌지 않도록 예전 계산을 그대로 사용한다.
@@ -134,7 +144,7 @@ export function totalScore(grades: Record<string, string>, ctx: { lateN: number;
     const s = c.kind === 'letter' ? letterScore(grades[c.key]) : autoScore(c.kind, ctx);
     total += s * c.weight / 100;
   }
-  total += subBonus(ctx.subN || 0);   // 대타 수락 = 적극적 참여 보너스
+  total += subBonus(ctx.subN || 0, ctx.period);   // 대타 수락 = 적극적 참여 보너스
   total -= (ctx.subReqPen || 0);      // 단순대타 요청 = 임박도에 따른 감점
   total -= (ctx.formPen || 0);        // 근태서류 지연/미제출 감점
   return Math.max(0, Math.min(100, Math.round(total)));

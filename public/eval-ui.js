@@ -49,10 +49,13 @@
     return 0;
   }
   // 아래 상수·계산은 서버(lib/evalConfig.ts)와 반드시 동일해야 최종 순위와 어긋나지 않음
-  var SUB_BONUS_PER = 3, SUB_BONUS_CAP = 12;
+  var SUB_BONUS_PER = 3, SUB_BONUS_CAP = 12;            // 구(2026-08 이전)
+  var SUB_BONUS_PER_V2 = 5, SUB_BONUS_CAP_V2 = 10;      // 신: 2건이면 100점
+  function bonusPer() { return isV2(_period) ? SUB_BONUS_PER_V2 : SUB_BONUS_PER; }
+  function bonusCap() { return isV2(_period) ? SUB_BONUS_CAP_V2 : SUB_BONUS_CAP; }
   var NOTICE_MISS_PENALTY = 25;
   var SUBREQ_FREE_LEAD = 3, SUBREQ_PEN_NEAR = 2, SUBREQ_PEN_SAMEDAY = 5, SUBREQ_PEN_CAP = 10;
-  function subBonus(n) { return Math.min((n || 0) * SUB_BONUS_PER, SUB_BONUS_CAP); }
+  function subBonus(n) { return Math.min((n || 0) * bonusPer(), bonusCap()); }
   var _period, _data, _tab = 'targets', _managers = [];
 
   EV.open = function () {
@@ -270,7 +273,7 @@
       + '<div style="padding:0 12px 12px;font-size:11.5px;line-height:1.65;color:#475569">'
       + '<b>등급 점수</b><br>' + letters + '<br><br>'
       + '<b>가중치 (합계 ' + CRI_OF().reduce(function (s, c) { return s + c.w; }, 0) + '%)</b>'
-      + (isV2(_period) ? '<br><span style="color:#D6001C">전 항목 S + 무결점이어도 90점. 남은 10점은 대타 수락 가산으로 채웁니다.</span>' : '') + '<br>'
+      + (isV2(_period) ? '<br><span style="color:#D6001C">전 항목 S + 무결점이어도 90점. 대타 2건을 수락하면 100점이 됩니다.</span>' : '') + '<br>'
       + CRI_OF().map(function (c) { return '· ' + c.sub + ' <b>' + c.w + '%</b>' + (c.kind !== 'letter' ? ' <span style="color:#2563a8">(자동)</span>' : ''); }).join('<br>')
       + '<br><br><b>자동 산정 항목</b><br>'
       + '· 지각: 100 − 15×횟수<br>'
@@ -279,7 +282,7 @@
       + '&nbsp;&nbsp;※ <b>미숙지</b> = 서명은 했으나 현장 확인(질문/테스트)에서 내용을 모른 경우<br>'
       + '&nbsp;&nbsp;※ 인력풀 현황에서 지각·결근과 함께 관리자가 기록<br><br>'
       + '<b>가산점</b><br>'
-      + '· 대타·교대 <u>수락</u> 1건당 +' + SUB_BONUS_PER + '점 (최대 +' + SUB_BONUS_CAP + '점)<br>'
+      + '· 대타·교대 <u>수락</u> 1건당 +' + bonusPer() + '점 (최대 +' + bonusCap() + '점)<br>'
       + '&nbsp;&nbsp;※ 승인완료된 건 중 해당 월 근무분만 집계<br><br>'
       + '<b>차감점 — 단순대타 <u>요청</u></b><br>'
       + '· 근무일 ' + SUBREQ_FREE_LEAD + '일 이상 전 신청: 감점 없음 (정상적인 사전 조정)<br>'
@@ -327,7 +330,7 @@
       + '<div style="font-size:11px;color:#9aa0a6;margin-bottom:10px">' + _period + ' · 평가자 ' + esc((scoreRow && scoreRow.manager_name) || me()) + '</div>'
       + '<style>' + css + '</style><table><thead><tr><th style="width:36%">소구분</th><th>평가</th><th>점수</th><th>가중</th><th>환산</th></tr></thead><tbody>' + rows
       // 대타/교대 수락 보너스 — 가중치와 무관하게 총점에 가산
-      + '<tr style="background:#f0f9ff"><td class="l">대타·교대 수락<div style="font-size:10px;color:#93a">' + (ctx.subN || 0) + '건 · 1건당 +' + SUB_BONUS_PER + '점(최대 +' + SUB_BONUS_CAP + ')</div></td>'
+      + '<tr style="background:#f0f9ff"><td class="l">대타·교대 수락<div style="font-size:10px;color:#93a">' + (ctx.subN || 0) + '건 · 1건당 +' + bonusPer() + '점(최대 +' + bonusCap() + ')</div></td>'
       + '<td style="color:#2563a8;font-weight:800">자동</td><td>-</td><td>가산</td>'
       + '<td id="ev-bonus" style="font-weight:900;color:#2563a8">+' + subBonus(ctx.subN) + '</td></tr>'
       // 단순대타 요청 감점 — 임박도(리드타임)에 따라 차등, 결근분은 자동 상쇄
