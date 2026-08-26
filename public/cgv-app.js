@@ -3791,15 +3791,19 @@ function showKakaoModal(text, forced) {
         // ── 관리자 서브탭 (승인/인력/서류/스케줄/쉼데이/평가) ──
         //   기능이 늘면서 한 화면에 전부 쌓여 스크롤이 길어지는 문제 → 그룹별로 나눠 표시
         var _admTab = 'approval';
+        var ADM_ORDER = ['approval', 'staff', 'docs', 'schedule', 'restday', 'eval'];
         function switchAdminTab(sec) {
+            // 탭 순서로 이동 방향 결정 → 오른쪽 탭이면 오른쪽에서 슬라이드 인
+            var from = ADM_ORDER.indexOf(_admTab);
+            var to = ADM_ORDER.indexOf(sec);
+            var cls = (to >= from) ? 'slide-r' : 'slide-l';
             _admTab = sec;
             try { sessionStorage.setItem('cgv_adm_tab', sec); } catch (e) {}
             document.querySelectorAll('.adm-sec').forEach(function (el) {
                 var on = el.getAttribute('data-sec') === sec;
                 el.style.display = on ? '' : 'none';
-                if (on) {   // 전환 시 살짝 페이드인 (애니메이션 재생을 위해 클래스 재적용)
-                    el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade');
-                }
+                el.classList.remove('slide-r', 'slide-l');
+                if (on) { void el.offsetWidth; el.classList.add(cls); }   // 애니메이션 재생
             });
             document.querySelectorAll('.adm-tab').forEach(function (b) {
                 var on = b.id === 'atab-' + sec;

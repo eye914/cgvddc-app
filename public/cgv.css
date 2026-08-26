@@ -206,18 +206,39 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 #flt-all { background: #0f172a !important; color: #fff !important; }
 
 /* ── 탭 버튼 pill 모양 강화 ── */
+/* ═══ 탭 전환 슬라이드 (iOS 느낌) ═══
+   오른쪽 탭으로 이동 → 새 화면이 오른쪽에서 들어옴
+   왼쪽 탭으로 이동  → 새 화면이 왼쪽에서 들어옴
+   translate3d 로 GPU 합성 → 모바일에서 부드럽게 */
+@keyframes cgvSlideInR {
+    from { opacity: 0; transform: translate3d(26px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes cgvSlideInL {
+    from { opacity: 0; transform: translate3d(-26px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.cgv-tab-in-r { animation: cgvSlideInR .34s cubic-bezier(.32,.72,0,1) both; will-change: transform, opacity; }
+.cgv-tab-in-l { animation: cgvSlideInL .34s cubic-bezier(.32,.72,0,1) both; will-change: transform, opacity; }
+
+/* 화면 전환 중 가로 스크롤바가 잠깐 생기지 않도록 */
+#app-content { overflow-x: clip; }
+
+/* 움직임 최소화를 켠 사용자에게는 애니메이션 없이 */
+@media (prefers-reduced-motion: reduce) {
+    .cgv-tab-in-r, .cgv-tab-in-l, .adm-sec.fade, .adm-bar.drop { animation: none !important; }
+}
+
 /* 관리자 서브탭 — 관리자 탭 진입 시 위에서 아래로 펼쳐지는 효과 */
 @keyframes admBarDrop {
     from { opacity: 0; transform: translateY(-12px) scaleY(.85); }
     to   { opacity: 1; transform: translateY(0)     scaleY(1); }
 }
-@keyframes admSecFade {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
 .adm-bar { transform-origin: top center; }
 .adm-bar.drop { animation: admBarDrop .32s cubic-bezier(.22,1,.36,1) both; }
-.adm-sec.fade { animation: admSecFade .22s ease-out both; }
+/* 서브탭도 메인 탭과 동일한 좌우 슬라이드 */
+.adm-sec.slide-r { animation: cgvSlideInR .3s cubic-bezier(.32,.72,0,1) both; }
+.adm-sec.slide-l { animation: cgvSlideInL .3s cubic-bezier(.32,.72,0,1) both; }
 
 .adm-tab { border-radius: 10px; transition: all .15s; background: transparent; border: none; cursor: pointer; }
 .adm-tab.active {
