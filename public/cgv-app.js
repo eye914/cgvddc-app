@@ -2374,6 +2374,7 @@ function showKakaoModal(text, forced) {
             if (tab === "notice" && window.NM && NM.renderNotices) NM.renderNotices();
             if (tab === "manual" && window.NM && NM.renderManuals) NM.renderManuals();
             if (tab === "trade" && window.EV && EV.homeBoard) EV.homeBoard();
+            if (tab === "manager") initAdminTabs();   // 관리자 서브탭 복원
             renderList();
         }
 
@@ -3785,6 +3786,39 @@ function showKakaoModal(text, forced) {
                 .withSuccessHandler(function() { loadAdminForms(); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .cancelFormRequest(id);
+        }
+
+        // ── 관리자 서브탭 (승인/인력/서류/스케줄/쉼데이/평가) ──
+        //   기능이 늘면서 한 화면에 전부 쌓여 스크롤이 길어지는 문제 → 그룹별로 나눠 표시
+        var _admTab = 'approval';
+        function switchAdminTab(sec) {
+            _admTab = sec;
+            try { sessionStorage.setItem('cgv_adm_tab', sec); } catch (e) {}
+            document.querySelectorAll('.adm-sec').forEach(function (el) {
+                var on = el.getAttribute('data-sec') === sec;
+                el.style.display = on ? '' : 'none';
+                if (on) {   // 전환 시 살짝 페이드인 (애니메이션 재생을 위해 클래스 재적용)
+                    el.classList.remove('fade'); void el.offsetWidth; el.classList.add('fade');
+                }
+            });
+            document.querySelectorAll('.adm-tab').forEach(function (b) {
+                var on = b.id === 'atab-' + sec;
+                b.classList.toggle('active', on);
+                b.classList.toggle('text-slate-500', !on);
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            // 탭 진입 시 필요한 것만 로드
+            if (sec === 'restday' && window.RD && RD.renderAdmin) RD.renderAdmin();
+            if (sec === 'schedule' && typeof loadAvailOpenStatus === 'function') loadAvailOpenStatus();
+        }
+        function initAdminTabs() {
+            var saved = 'approval';
+            try { saved = sessionStorage.getItem('cgv_adm_tab') || 'approval'; } catch (e) {}
+            if (!document.getElementById('atab-' + saved)) saved = 'approval';
+            switchAdminTab(saved);
+            // 탭 바가 위에서 아래로 펼쳐지는 효과 (진입할 때마다 재생)
+            var bar = document.getElementById('adm-tabbar');
+            if (bar) { bar.classList.remove('drop'); void bar.offsetWidth; bar.classList.add('drop'); }
         }
 
         // ── 쉼데이 관리 패널 (관리자) ──

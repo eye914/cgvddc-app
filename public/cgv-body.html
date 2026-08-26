@@ -310,11 +310,24 @@
                     </div>
                 </div>
             </div>
-            <div class="max-w-3xl mx-auto px-5">
+            <!-- ── 관리자 서브탭 ── -->
+            <div class="max-w-3xl mx-auto px-4">
+                <div id="adm-tabbar" class="adm-bar flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none">
+                    <button onclick="switchAdminTab('approval')" id="atab-approval" class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap">승인</button>
+                    <button onclick="switchAdminTab('staff')"    id="atab-staff"    class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap text-slate-500">인력</button>
+                    <button onclick="switchAdminTab('docs')"     id="atab-docs"     class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap text-slate-500">서류</button>
+                    <button onclick="switchAdminTab('schedule')" id="atab-schedule" class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap text-slate-500">스케줄</button>
+                    <button onclick="switchAdminTab('restday')"  id="atab-restday"  class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap text-slate-500">쉼데이</button>
+                    <button onclick="switchAdminTab('eval')"     id="atab-eval"     class="adm-tab flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg whitespace-nowrap text-slate-500">평가</button>
+                </div>
+            </div>
+
+            <!-- ═══ 평가 ═══ -->
+            <div class="adm-sec max-w-3xl mx-auto px-5" data-sec="eval" style="display:none">
                 <button onclick="EV.open()" class="w-full py-4 bg-indigo-600 text-white rounded-[18px] font-black text-[15px] active:scale-95 transition-all shadow-lg border-b-4 border-indigo-800">📋 월말평가 (배정·평가·순위)</button>
             </div>
-            <!-- 쉼데이 모집·승인 -->
-            <div class="max-w-3xl mx-auto px-5 mt-2">
+            <!-- ═══ 쉼데이 ═══ -->
+            <div class="adm-sec max-w-3xl mx-auto px-5" data-sec="restday" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleRestdayPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
                         <span class="font-black text-slate-800 text-base">🌿 쉼데이 관리</span>
@@ -325,8 +338,11 @@
                     </div>
                 </div>
             </div>
-            <div id="manager-list-board" class="max-w-3xl mx-auto space-y-8 px-4"></div>
-            <div class="max-w-3xl mx-auto px-5 mt-2">
+            <!-- ═══ 승인 (교대 승인 대기/확정) ═══ -->
+            <div id="manager-list-board" class="adm-sec max-w-3xl mx-auto space-y-8 px-4" data-sec="approval"></div>
+
+            <!-- ═══ 인력 ═══ -->
+            <div class="adm-sec max-w-3xl mx-auto px-5" data-sec="staff" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleMisojigiPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
                         <span class="font-black text-slate-800 text-base">👤 미소지기 관리</span>
@@ -364,7 +380,7 @@
                     </div>
                 </div>
             </div>
-            <div class="max-w-3xl mx-auto px-5 mt-4">
+            <div class="adm-sec max-w-3xl mx-auto px-5 mt-4" data-sec="staff" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleStatsPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
                         <span class="font-black text-slate-800 text-base">📊 인력풀 현황</span>
@@ -383,7 +399,7 @@
             </div>
 
             <!-- ── 근태 서류 관리 섹션 ── -->
-            <div class="max-w-3xl mx-auto px-5 mt-4">
+            <div class="adm-sec max-w-3xl mx-auto px-5 mt-4" data-sec="docs" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleFormPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
                         <div class="flex items-center gap-2">
@@ -461,7 +477,7 @@
                 </div>
             </div>
             <!-- ── 근로계약서 관리 (관리자) ── -->
-            <div class="max-w-3xl mx-auto px-5 mt-4">
+            <div class="adm-sec max-w-3xl mx-auto px-5 mt-4" data-sec="docs" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <button onclick="toggleContractPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
                         <div class="flex items-center gap-2">
@@ -493,7 +509,7 @@
             </div>
 
             <!-- ── 스케줄 신청 관리 ── -->
-            <div class="max-w-3xl mx-auto px-5 mt-2">
+            <div class="adm-sec max-w-3xl mx-auto px-5 mt-2" data-sec="schedule" style="display:none">
                 <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
                     <div class="px-5 py-4">
                         <div class="flex items-center justify-between mb-3">

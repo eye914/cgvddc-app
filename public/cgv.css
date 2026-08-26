@@ -206,6 +206,27 @@ header { background: rgba(255,255,255,0.97) !important; backdrop-filter: blur(16
 #flt-all { background: #0f172a !important; color: #fff !important; }
 
 /* ── 탭 버튼 pill 모양 강화 ── */
+/* 관리자 서브탭 — 관리자 탭 진입 시 위에서 아래로 펼쳐지는 효과 */
+@keyframes admBarDrop {
+    from { opacity: 0; transform: translateY(-12px) scaleY(.85); }
+    to   { opacity: 1; transform: translateY(0)     scaleY(1); }
+}
+@keyframes admSecFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.adm-bar { transform-origin: top center; }
+.adm-bar.drop { animation: admBarDrop .32s cubic-bezier(.22,1,.36,1) both; }
+.adm-sec.fade { animation: admSecFade .22s ease-out both; }
+
+.adm-tab { border-radius: 10px; transition: all .15s; background: transparent; border: none; cursor: pointer; }
+.adm-tab.active {
+    background: #ffffff !important;
+    color: #D6001C !important;
+    box-shadow: 0 1px 4px rgba(15,23,42,.12) !important;
+    font-weight: 900 !important;
+}
+
 .tab-btn { border-radius: 10px !important; }
 .tab-btn.active {
     background: linear-gradient(160deg, #D6001C 0%, #A8001C 100%) !important;
