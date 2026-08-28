@@ -4033,11 +4033,16 @@ function showKakaoModal(text, forced) {
         window._agreementSignDataURL = null;
 
         function openFormFillModal(reqId, type, requestedBy) {
-            lockBodyScroll();
             _formCurrentReqId = reqId;
             _formCurrentType = type;
             // 서류 하단 관리자 확인란에는 '이 서류를 보낸 관리자' 이름이 들어가야 한다
             _formRequestedBy = requestedBy || '';
+            // ★ 단계별 입력(한 번에 하나씩 → 최종 확인)으로 처리. 실패 시에만 기존 서식 폼으로.
+            if (window.FW && FW.open) {
+                var _mn = sessionStorage.getItem('cgv_currentUser') || '';
+                if (FW.open(reqId, type, _mn, _formRequestedBy)) return;
+            }
+            lockBodyScroll();
             window._signDataURL = null;
             window._submitterSignDataURL = null;
             window._agreementSignDataURL = null;
@@ -4054,7 +4059,7 @@ function showKakaoModal(text, forced) {
             } else if (type === 'absent') {
                 body.innerHTML = buildAbsentForm(myName, today);
             } else if (type === 'resign') {
-                body.innerHTML = buildResignForm(myName, today);
+                body.innerHTML = buildResignForm(myName, today, _formRequestedBy);
             } else if (type === 'earlyLeave') {
                 body.innerHTML = buildEarlyLeaveForm(myName, today, _formRequestedBy);
             } else if (type === 'privacy') {
@@ -4531,8 +4536,8 @@ function showKakaoModal(text, forced) {
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
                 + '<table class="dt" style="min-width:300px"><tbody>'
-                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
-                + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
+                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명<span class="need">필수</span></th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
+                + '<th style="width:26%">주민번호<br>앞자리<span class="need">필수</span></th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
                 + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc"><input id="ff-date" type="date" class="di"><div style="font-size:9px;color:#aaa;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>제출사유</th><td colspan="3" class="fc"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-r1"> 경고</label>'
@@ -4562,7 +4567,40 @@ function showKakaoModal(text, forced) {
                 + '</div>';
         }
 
-        function buildResignForm(name, today) {
+        // 사직원 — 퇴직일 입력 시 상단 문구를 자동 반영 (같은 날짜를 두 번 적지 않도록)
+        function onResignDateChange() {
+            var el = document.getElementById('ff-resign-date');
+            var out = document.getElementById('ff-resign-ymd-txt');
+            if (!el || !out) return;
+            var v = el.value;
+            if (!v) { out.innerHTML = '<span style="color:#bbb">____년 __월 __일</span>'; return; }
+            var p = v.split('-');
+            out.innerHTML = '<b>' + Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일</b>';
+        }
+        // 반납 물품 — '분실'을 고르면 반납 체크는 해제하고, 분실도 처리 완료로 인정
+        function onResignItemChange(key) {
+            var ret = document.getElementById('ff-' + key);
+            var lost = document.getElementById('ff-' + key + '-lost');
+            if (!ret || !lost) return;
+            if (ret.checked) lost.checked = false;
+            else if (lost.checked) ret.checked = false;
+        }
+
+        // 사직원 작성 화면 전용 — 입력해야 할 칸을 눈에 띄게 (미소지기가 어디를 채울지 명확히)
+        var RESIGN_STYLE = '<style>'
+            + '#ff-resign .fc{background:#eef4ff !important;box-shadow:inset 0 0 0 1.5px #93c5fd}'
+            + '#ff-resign .fc .di{background:transparent}'
+            + '#ff-resign .di::placeholder{color:#9db8dd;font-weight:600}'
+            + '#ff-resign .ac{background:#f7f7f8 !important}'          /* 관리자/자동 영역 */
+            + '#ff-resign .adm-fill{background:#f2f4f7 !important;color:#64748b}'
+            + '#ff-resign p, #ff-resign .agree-box{word-break:keep-all;overflow-wrap:break-word}'
+            + '#ff-resign .need{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:#D6001C;'
+            +   'border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:1px}'
+            + '#ff-resign .guide{display:flex;align-items:center;gap:7px;background:#eff6ff;border:1.5px solid #bfdbfe;'
+            +   'border-radius:11px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;font-weight:800;color:#1d4ed8;line-height:1.6}'
+            + '</style>';
+
+        function buildResignForm(name, today, adminName) {
             // 제출자 서명 버튼
             var subSignBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
                 + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
@@ -4574,64 +4612,84 @@ function showKakaoModal(text, forced) {
             var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
             var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
             var adminOnlyStyle = 'background:#f9f9f9;color:#aaa;font-size:11px;cursor:not-allowed';
-            return DOC_STYLE
+            return '<div id="ff-resign">' + DOC_STYLE + RESIGN_STYLE
                 + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사  직  원</div>'
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
+                // 작성 안내 — 파란 칸만 채우면 됨
+                + '<div class="guide"><span style="font-size:15px">✍️</span>'
+                +   '<span><b style="color:#1e40af">파란색 칸</b>만 작성해 주세요. 회색 칸은 관리자가 채웁니다.</span></div>'
                 // 상기 문구
+                // 퇴직일 한 곳만 입력받고 여기에 자동 반영 (중복 입력·불일치 방지)
                 + '<p style="font-size:11px;font-weight:700;color:#222;line-height:1.8;margin-bottom:14px;text-align:center">'
-                + '상기 본인은&nbsp;&nbsp;'
-                + '<input id="ff-resign-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
-                + '<input id="ff-resign-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
-                + '<input id="ff-resign-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + '상기 본인은&nbsp;&nbsp;<span id="ff-resign-ymd-txt"><span style="color:#bbb">____년 __월 __일</span></span>'
                 + '&nbsp;&nbsp;자로 당 사를 사직하고자 하오니 재가하여 주시기 바랍니다.'
+                + '<span style="display:block;font-size:9.5px;color:#aaa;font-weight:600;margin-top:3px">아래 표의 퇴직일을 입력하면 자동으로 채워집니다</span>'
                 + '</p>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
                 + '<table class="dt" style="min-width:300px"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
-                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
-                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
+                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일<span class="need">필수</span></th><td class="fc"><input id="ff-hire-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
+                + '<th>퇴직일<span class="need">필수</span><br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" onchange="onResignDateChange()"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
-                + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
+                + '<tr><th>퇴 사 사 유<span class="need">필수</span></th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
                 // 관리자 전용 필드
                 + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th>'
-                + '<td colspan="3" style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 기입란 — 제출 후 작성</div></td></tr>'
-                + '<tr><th>체&nbsp;&nbsp;&nbsp;크</th><td colspan="3" class="ac"><div class="ck-row">'
-                + '<label><input type="checkbox" id="ff-c1"> 유니폼</label>'
-                + '<label><input type="checkbox" id="ff-c2"> 명찰</label>'
-                + '<label><input type="checkbox" id="ff-c3"> ID카드</label>'
-                + '<label><input type="checkbox" id="ff-c4"> 락커Key</label>'
-                + '<label><input type="checkbox" id="ff-c5"> 기타</label>'
-                + '</div></td></tr>'
-                + '<tr><th>지 급 방 법</th><td colspan="3" class="fc">'
+                + '<td colspan="3" class="adm-fill" style="border:1px solid #555;padding:5px 8px"><div style="font-size:10px">관리자 기입란 — 제출 후 작성</div></td></tr>'
+                // 반납 물품 — 항목마다 [반납] 또는 [분실] 중 하나를 반드시 선택
+                + '<tr><th>반납 물품<br><small style="font-weight:600;color:#D6001C">필수</small></th><td colspan="3" class="ac">'
+                + [['c1', '유니폼'], ['c2', '명찰'], ['c4', '락커Key']].map(function (it) {
+                    return '<div style="display:flex;align-items:center;gap:10px;padding:5px 2px;border-bottom:1px dashed #e5e5e5">'
+                        + '<span style="font-size:12px;font-weight:800;color:#333;min-width:58px">' + it[1] + '</span>'
+                        + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;cursor:pointer">'
+                        +   '<input type="checkbox" id="ff-' + it[0] + '" onchange="onResignItemChange(\'' + it[0] + '\')"> 반납</label>'
+                        + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#b91c1c;cursor:pointer">'
+                        +   '<input type="checkbox" id="ff-' + it[0] + '-lost" onchange="onResignItemChange(\'' + it[0] + '\')"> 분실</label>'
+                        + '</div>';
+                }).join('')
+                + '<div style="display:flex;align-items:center;gap:10px;padding:5px 2px">'
+                +   '<span style="font-size:12px;font-weight:800;color:#333;min-width:58px">기타</span>'
+                +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;cursor:pointer">'
+                +     '<input type="checkbox" id="ff-c5"> 반납</label>'
+                +   '<span style="font-size:10px;color:#aaa;font-weight:600">(선택)</span>'
+                + '</div>'
+                + '<div style="font-size:9.5px;color:#aaa;font-weight:600;margin-top:4px">분실 물품은 규정에 따라 변상 처리됩니다.</div>'
+                + '</td></tr>'
+                + '<tr><th>지 급 방 법<span class="need">필수</span></th><td colspan="3" class="fc">'
                 + '<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;width:100%">'
                 + '<input id="ff-bank" class="di" placeholder="은행명" style="width:62px;min-width:0;flex-shrink:0">'
                 + '<span style="font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">은행 (계좌번호:</span>'
                 + '<input id="ff-account" class="di" placeholder="계좌번호" style="flex:1;min-width:0">'
                 + '<span style="font-size:11px;font-weight:700;flex-shrink:0">)</span></div></td></tr>'
+                // 면담 직원 = 사직원을 요청한 관리자 (자동)
+                // 면담 직원 = 사직원 요청 관리자 (이름 + 서명 자동)
                 + '<tr><th>면담 직원</th>'
-                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td>'
+                + '<td class="ac" style="border:1px solid #555;padding:4px 8px">'
+                +   '<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">'
+                +     '<span style="font-size:11.5px;font-weight:800;color:#222;white-space:nowrap">' + (adminName || '관리자') + '</span>'
+                +     '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:26px;object-fit:contain">'
+                +   '</div></td>'
                 + '<th>물품접수 확인자</th>'
-                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td></tr>'
+                + '<td class="adm-fill" style="border:1px solid #555;padding:5px 8px"><div style="font-size:10px">관리자 작성</div></td></tr>'
                 + '</tbody></table>'
                 + '</div>'
                 // 합의문 — 서명 란 포함
-                + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
+                + '<div class="agree-box" style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
                 + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
                 + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px">'
                 + '<span style="font-weight:800">확인 :</span>'
                 + '<input id="ff-agree-name" class="di" placeholder="이름" style="width:70px;border-bottom:1.5px solid #555;background:#eef4ff;text-align:center">'
                 + '<span style="font-weight:800">(서명)</span>'
                 + agreeSignBtn
+                + '<span style="font-size:9.5px;font-weight:800;color:#D6001C">필수</span>'
                 + '</div>'
+                + '<div style="font-size:9.5px;color:#888;font-weight:600;margin-top:6px">합의가 어려우시면 제출 전 관리자에게 문의해 주세요.</div>'
                 + '</div>'
                 // 제출 문구
                 + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
-                // 제출 날짜
+                // 제출 날짜 — 오늘 날짜 자동 (수기 입력 제거)
                 + '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">'
-                + '<input id="ff-submit-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
-                + '<input id="ff-submit-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
-                + '<input id="ff-submit-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
+                + (function () { var p = String(today).split('-'); return Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일'; })()
                 + '</p>'
                 // 제출자 + 관리자 확인 세로 배치
                 + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
@@ -4640,9 +4698,10 @@ function showKakaoModal(text, forced) {
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
                 + subSignBtn
+                + '<span class="need">필수</span>'
                 + '</div>'
-                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
-                + '</div>';
+                + '<div>' + admConfirmLine(adminName) + '</div>'
+                + '</div></div>';
         }
 
         // ── 개인정보보호 서약서 ──
@@ -4794,28 +4853,43 @@ function showKakaoModal(text, forced) {
                 if (!formData.name || !formData.date || !formData.why) { alert('이름, 날짜, 이유(왜)는 필수입니다.'); return; }
                 if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'resign') {
-                var returnItems = [];
-                if (chk('ff-c1')) returnItems.push('유니폼');
-                if (chk('ff-c2')) returnItems.push('명찰');
-                if (chk('ff-c3')) returnItems.push('ID카드');
-                if (chk('ff-c4')) returnItems.push('락커Key');
+                // 반납 물품 — 항목마다 반납/분실 중 하나를 반드시 선택
+                var ITEMS = [['c1', '유니폼'], ['c2', '명찰'], ['c4', '락커Key']];
+                var returnItems = [], lostItems = [], notPicked = [];
+                ITEMS.forEach(function (it) {
+                    var r = chk('ff-' + it[0]), l = chk('ff-' + it[0] + '-lost');
+                    if (r) returnItems.push(it[1]);
+                    else if (l) lostItems.push(it[1]);
+                    else notPicked.push(it[1]);
+                });
                 if (chk('ff-c5')) returnItems.push('기타');
-                var resignYear = v('ff-resign-year'), resignMonth = v('ff-resign-month'), resignDay = v('ff-resign-day');
-                var submitYear = v('ff-submit-year'), submitMonth = v('ff-submit-month'), submitDay = v('ff-submit-day');
+                var _ymd = function (s) { var p = String(s || '').split('-'); return p.length === 3 ? Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일' : ''; };
+                var _rd = v('ff-resign-date');
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
-                    hireDate: v('ff-hire-date'), resignDate: v('ff-resign-date'),
-                    resignYMD: (resignYear && resignMonth && resignDay) ? resignYear + '년 ' + resignMonth + '월 ' + resignDay + '일' : '',
+                    hireDate: v('ff-hire-date'), resignDate: _rd,
+                    resignYMD: _ymd(_rd),                      // 퇴직일에서 자동 생성
                     phone: v('ff-phone'), reason: v('ff-resign-reason'),
                     returnItems: returnItems.join(', '),
+                    lostItems: lostItems.join(', '),           // 분실 물품(변상 대상)
                     bank: v('ff-bank'), account: v('ff-account'),
                     submitter: v('ff-name'),
-                    submitYMD: (submitYear && submitMonth && submitDay) ? submitYear + '년 ' + submitMonth + '월 ' + submitDay + '일' : '',
+                    submitYMD: _ymd(getLocalYYYYMMDD(new Date())),   // 제출일 자동
+                    interviewer: _formRequestedBy || '',        // 면담 직원 = 사직원 요청 관리자
                     submitterSign: window._submitterSignDataURL || '',
                     agreeName: v('ff-agree-name'),
                     agreeSign: window._agreementSignDataURL || ''
                 };
-                if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
+                if (!formData.name)        { alert('성명을 입력해주세요.'); return; }
+                if (!formData.birth)       { alert('주민번호 앞자리를 입력해주세요.'); return; }
+                if (!formData.hireDate)    { alert('입사일을 선택해주세요.'); return; }
+                if (!formData.resignDate)  { alert('퇴직일(마지막 근무일)을 선택해주세요.'); return; }
+                if (!formData.reason)      { alert('퇴사 사유를 작성해주세요.'); return; }
+                if (notPicked.length)      { alert('반납 물품을 확인해주세요.\n' + notPicked.join(', ') + ' — 반납 또는 분실을 선택해야 합니다.'); return; }
+                if (!formData.bank)        { alert('지급받을 은행명을 입력해주세요.'); return; }
+                if (!formData.account)     { alert('계좌번호를 입력해주세요.'); return; }
+                if (!formData.agreeName)   { alert('금품청산 합의 확인란에 이름을 입력해주세요.'); return; }
+                if (!formData.agreeSign)   { alert('금품청산 합의 확인란에 서명해주세요. (✏️ 서명하기)'); return; }
                 if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'earlyLeave') {
                 var _isOff = !!(document.getElementById('ff-kind-off') && document.getElementById('ff-kind-off').checked);
@@ -5079,7 +5153,9 @@ function showKakaoModal(text, forced) {
                     + '<tr><th>퇴사사유</th><td colspan="3" class="fc" style="white-space:pre-wrap">' + tv(fd.reason) + '</td></tr>'
                     + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap;color:#888;font-size:11px">'
                     + (fd.interviewNote ? tv(fd.interviewNote) : '<span style="color:#ccc">관리자 미기입</span>') + '</td></tr>'
-                    + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems) + '</td></tr>'
+                    + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems)
+                    + (fd.lostItems ? '<div style="margin-top:3px;font-size:11px;font-weight:800;color:#b91c1c">분실 : ' + fd.lostItems + ' <span style="font-weight:600;color:#888">(변상 대상)</span></div>' : '')
+                    + '</td></tr>'
                     + '<tr><th>지급 방법</th><td colspan="3" class="fc">' + tv(fd.bank ? fd.bank + ' 은행  계좌: ' + (fd.account||'') : '') + '</td></tr>'
                     + '<tr><th>면담 직원</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.interviewer || '관리자 미기입') + '</span></td>'
                     + '<th>물품접수 확인자</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.receiver || '관리자 미기입') + '</span></td></tr>'
