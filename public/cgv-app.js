@@ -4124,10 +4124,22 @@ function showKakaoModal(text, forced) {
 
             _signPadCanvas = document.getElementById('sign-pad-canvas');
             if (!_signPadCanvas) return;
+            // ★ 캔버스 해상도를 화면 크기 × 기기 픽셀비로 맞춘다.
+            //   340x160 고정이던 탓에 넓은 화면에서 늘려 그려져 서명이 뭉개졌다.
+            //   추가로 2배 오버샘플링해 서류에 확대 삽입해도 또렷하게 남게 한다.
+            (function () {
+                var r = _signPadCanvas.getBoundingClientRect();
+                var dpr = (window.devicePixelRatio || 1) * 2;          // 선명도 확보용 2배
+                var w = Math.max(320, Math.round(r.width || 340));
+                var h = Math.max(150, Math.round(r.height || 160));
+                _signPadCanvas.width = Math.round(w * dpr);
+                _signPadCanvas.height = Math.round(h * dpr);
+            })();
             _signPadCtx = _signPadCanvas.getContext('2d');
             _signPadCtx.clearRect(0, 0, _signPadCanvas.width, _signPadCanvas.height);
             _signPadCtx.strokeStyle = '#0f172a';
-            _signPadCtx.lineWidth = 5;
+            // 선 굵기는 캔버스 실제 해상도에 비례해야 화면상 두께가 일정하다
+            _signPadCtx.lineWidth = Math.max(4, _signPadCanvas.width / 340 * 2.6);
             _signPadCtx.lineCap = 'round';
             _signPadCtx.lineJoin = 'round';
 
@@ -4318,7 +4330,7 @@ function showKakaoModal(text, forced) {
             + '.doc-legend span{display:flex;align-items:center;gap:4px}'
             + '.doc-legend b{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid #ccc}'
             + '.adm-line{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#222;flex-wrap:nowrap;white-space:nowrap}'
-            + '.adm-line img{height:38px;object-fit:contain;vertical-align:middle}'
+            + '.adm-line img{height:48px;object-fit:contain;vertical-align:middle}'
             + '.seal{border:1px solid #888;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;font-weight:600;margin:0 auto}'
             + '.sub-date{text-align:center;font-size:12px;font-weight:700;color:#222;margin:10px 0 4px}'
             + '.doc-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}'
@@ -4416,7 +4428,7 @@ function showKakaoModal(text, forced) {
                 +   '<input type="hidden" id="ff-act-end" value=""></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
                 +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
-                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
+                +   '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
                 + '</tr></tbody></table>'
                 + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
@@ -4606,7 +4618,7 @@ function showKakaoModal(text, forced) {
                 + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
             // 합의문 서명 버튼
             var agreeSignBtn = '<button type="button" id="ff-agree-sign-btn" onclick="openSignPad(\'agreement\')" style="font-size:10px;font-weight:900;padding:4px 7px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-agree-sign-img" src="" style="display:none;max-height:28px;max-width:70px;margin-left:4px;border:1px solid #ccc;border-radius:3px">';
+                + '<img id="ff-agree-sign-img" src="" style="display:none;max-height:40px;max-width:95px;margin-left:4px;border:1px solid #ccc;border-radius:3px">';
             // 연/월/일 입력 길이 제한 inline oninput
             var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
             var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
@@ -4665,7 +4677,7 @@ function showKakaoModal(text, forced) {
                         + '<div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
                         +   '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + (adminName || '관리자') + '</span>'
                         +   '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>'
-                        +   '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:24px;object-fit:contain">'
+                        +   '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:34px;object-fit:contain">'
                         + '</div></td>';
                     return '<tr><th>면담 직원</th>' + cell + '<th>물품접수<br>확인자</th>' + cell + '</tr>';
                 })()
@@ -4726,7 +4738,7 @@ function showKakaoModal(text, forced) {
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:12px;font-weight:700">(서명)</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
                 + '</div>'
                 + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
         }
@@ -4753,7 +4765,7 @@ function showKakaoModal(text, forced) {
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:12px;font-weight:700">(인)</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
                 + '</div>'
                 + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
         }
@@ -4797,7 +4809,7 @@ function showKakaoModal(text, forced) {
                 + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
                 + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
                 + '<span style="font-size:12px;font-weight:700">(인)</span>'
                 + '</div>'
                 + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
@@ -4999,8 +5011,8 @@ function showKakaoModal(text, forced) {
             var today = sub && sub.submitted_at ? sub.submitted_at.substring(0, 10) : getLocalYYYYMMDD(new Date());
             // localStorage에 base64 있으면 사용, 없으면 static 파일 fallback
             var sigImg = adminSigBase64
-                ? '<img src="' + adminSigBase64 + '" style="height:38px;object-fit:contain;vertical-align:middle">'
-                : '<img src="/admin-sig.png" style="height:38px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
+                ? '<img src="' + adminSigBase64 + '" style="height:48px;object-fit:contain;vertical-align:middle">'
+                : '<img src="/admin-sig.png" style="height:48px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
             function tv(v) { return v ? '<span style="font-weight:700;color:#111">' + v + '</span>' : '<span style="color:#bbb">-</span>'; }
             function tf(v) { return '<span style="display:inline-block;min-width:60px;border-bottom:1.5px solid #333;text-align:center;background:#eef4ff;padding:0 6px;font-weight:700">' + (v || '') + '</span>'; }
 
@@ -5010,7 +5022,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'late') {
                 var signCell = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
+                    ? '<img src="' + fd.sign + '" style="max-height:56px;max-width:120px;display:block;margin:0 auto">'
                     : tv(fd.sign || '');
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 지각확인서</div>'
@@ -5047,7 +5059,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'earlyLeave') {
                 var elSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
+                    ? '<img src="' + fd.sign + '" style="max-height:56px;max-width:120px;display:block;margin:0 auto">'
                     : tv(fd.sign || '');
                 // 구분(희망조퇴/희망휴무) — 제출 데이터에 없으면 기존 문서로 보고 '희망조퇴'로 처리
                 var elKind = fd.kind === '희망휴무' ? '희망휴무' : '희망조퇴';
@@ -5102,7 +5114,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'absent') {
                 var subSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
-                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:48px;max-width:110px;display:block;margin-top:2px">'
                     : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
@@ -5136,7 +5148,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'resign') {
                 var rSubSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
-                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;vertical-align:middle">'
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:48px;max-width:110px;vertical-align:middle">'
                     : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
@@ -5159,8 +5171,8 @@ function showKakaoModal(text, forced) {
                         var nm = fd.interviewer || adminName || '관리자';
                         // 표 안이라 서명 이미지는 작게
                         var sm = adminSigBase64
-                            ? '<img src="' + adminSigBase64 + '" style="height:24px;object-fit:contain;vertical-align:middle">'
-                            : '<img src="/admin-sig.png" style="height:24px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
+                            ? '<img src="' + adminSigBase64 + '" style="height:34px;object-fit:contain;vertical-align:middle">'
+                            : '<img src="/admin-sig.png" style="height:34px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
                         var c = '<td class="ac" style="padding:4px 6px"><div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
                             + '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + nm + '</span>'
                             + '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>' + sm + '</div></td>';
@@ -5175,7 +5187,7 @@ function showKakaoModal(text, forced) {
                     + '<span style="font-weight:800;font-size:11.5px">확인 :</span>'
                     + (fd.agreeName ? tf(fd.agreeName) : '<span style="color:#ccc;border-bottom:1px solid #ccc;min-width:50px;display:inline-block">&nbsp;</span>')
                     + '<span style="font-weight:800;font-size:11.5px">(서명)</span>'
-                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:28px;max-width:70px;margin-left:2px;vertical-align:middle">' : '')
+                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:40px;max-width:95px;margin-left:2px;vertical-align:middle">' : '')
                     + '</div>'
                     + '</div>'
                     + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
@@ -5194,7 +5206,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'privacy') {
                 var pvSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="max-height:48px;max-width:110px;display:block;margin-left:4px">'
                     : '';
                 var pvDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
@@ -5224,7 +5236,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'overtime') {
                 var otSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="max-height:48px;max-width:110px;display:block;margin-left:4px">'
                     : '';
                 var otDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
