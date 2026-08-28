@@ -238,7 +238,7 @@
   }
 
   function agreeHtml() {
-    return '<div style="font-size:12px;line-height:1.85;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:13px;word-break:keep-all">'
+    return '<div style="font-size:13.5px;line-height:1.9;color:#1f2937;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:13px;word-break:keep-all">'
       + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 <b>퇴사하는 월의 익월 급여일까지 연장</b>하여 청산하는 것을 합의합니다.</div>'
       + '<input type="text" id="fw-in" placeholder="확인 이름" value="' + esc(_d.agreeName || '') + '" style="margin-bottom:11px">'
       + signHtml('agreement')

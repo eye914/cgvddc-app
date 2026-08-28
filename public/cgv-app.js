@@ -4420,7 +4420,7 @@ function showKakaoModal(text, forced) {
                 + '</tr></tbody></table>'
                 + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
-                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '<div><div class="adm-line">CGV동두천 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
 
@@ -4443,7 +4443,7 @@ function showKakaoModal(text, forced) {
         function admConfirmLine(adminName) {
             var nm = String(adminName || '').trim() || '관리자';
             var spaced = nm.split('').join(' ');
-            return '<div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :'
+            return '<div class="adm-line">CGV동두천 (관리자) 확인 :'
                 + '<span style="letter-spacing:0.15em;margin-left:6px">' + spaced + '</span>'
                 + '<span style="margin-left:2px">(서명)</span>'
                 + '<img src="/admin-sig.png" onerror="this.style.display=\'none\'"></div>';
@@ -4563,7 +4563,7 @@ function showKakaoModal(text, forced) {
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
                 + signBtn
                 + '</div>'
-                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '<div><div class="adm-line">CGV동두천 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
 
@@ -4633,9 +4633,6 @@ function showKakaoModal(text, forced) {
                 + '<th>퇴직일<span class="need">필수</span><br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" onchange="onResignDateChange()"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
                 + '<tr><th>퇴 사 사 유<span class="need">필수</span></th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
-                // 관리자 전용 필드
-                + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th>'
-                + '<td colspan="3" class="adm-fill" style="border:1px solid #555;padding:5px 8px"><div style="font-size:10px">관리자 기입란 — 제출 후 작성</div></td></tr>'
                 // 반납 물품 — 항목마다 [반납] 또는 [분실] 중 하나를 반드시 선택
                 + '<tr><th>반납 물품<br><small style="font-weight:600;color:#D6001C">필수</small></th><td colspan="3" class="ac">'
                 + [['c1', '유니폼'], ['c2', '명찰'], ['c4', '락커Key']].map(function (it) {
@@ -4662,28 +4659,30 @@ function showKakaoModal(text, forced) {
                 + '<input id="ff-account" class="di" placeholder="계좌번호" style="flex:1;min-width:0">'
                 + '<span style="font-size:11px;font-weight:700;flex-shrink:0">)</span></div></td></tr>'
                 // 면담 직원 = 사직원을 요청한 관리자 (자동)
-                // 면담 직원 = 사직원 요청 관리자 (이름 + 서명 자동)
-                + '<tr><th>면담 직원</th>'
-                + '<td class="ac" style="border:1px solid #555;padding:4px 8px">'
-                +   '<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">'
-                +     '<span style="font-size:11.5px;font-weight:800;color:#222;white-space:nowrap">' + (adminName || '관리자') + '</span>'
-                +     '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:26px;object-fit:contain">'
-                +   '</div></td>'
-                + '<th>물품접수 확인자</th>'
-                + '<td class="adm-fill" style="border:1px solid #555;padding:5px 8px"><div style="font-size:10px">관리자 작성</div></td></tr>'
+                // 면담 직원 · 물품접수 확인자 = 사직원 요청 관리자 (이름 + 서명 자동)
+                + (function () {
+                    var cell = '<td class="ac" style="border:1px solid #555;padding:4px 6px">'
+                        + '<div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
+                        +   '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + (adminName || '관리자') + '</span>'
+                        +   '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>'
+                        +   '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:24px;object-fit:contain">'
+                        + '</div></td>';
+                    return '<tr><th>면담 직원</th>' + cell + '<th>물품접수<br>확인자</th>' + cell + '</tr>';
+                })()
                 + '</tbody></table>'
                 + '</div>'
                 // 합의문 — 서명 란 포함
-                + '<div class="agree-box" style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
+                + '<div class="agree-box" style="font-size:12px;color:#333;line-height:1.85;border:1px solid #ccc;padding:12px 14px;margin:14px 0 12px">'
                 + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
-                + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px">'
-                + '<span style="font-weight:800">확인 :</span>'
+                // 확인·서명은 우측 정렬
+                + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:flex-end">'
+                + '<span style="font-weight:800;font-size:11.5px">확인 :</span>'
                 + '<input id="ff-agree-name" class="di" placeholder="이름" style="width:70px;border-bottom:1.5px solid #555;background:#eef4ff;text-align:center">'
-                + '<span style="font-weight:800">(서명)</span>'
+                + '<span style="font-weight:800;font-size:11.5px">(서명)</span>'
                 + agreeSignBtn
                 + '<span style="font-size:9.5px;font-weight:800;color:#D6001C">필수</span>'
                 + '</div>'
-                + '<div style="font-size:9.5px;color:#888;font-weight:600;margin-top:6px">합의가 어려우시면 제출 전 관리자에게 문의해 주세요.</div>'
+                + '<div style="font-size:10px;color:#888;font-weight:600;margin-top:7px;text-align:right">합의가 어려우시면 제출 전 관리자에게 문의해 주세요.</div>'
                 + '</div>'
                 // 제출 문구
                 + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
@@ -4691,9 +4690,9 @@ function showKakaoModal(text, forced) {
                 + '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">'
                 + (function () { var p = String(today).split('-'); return Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일'; })()
                 + '</p>'
-                // 제출자 + 관리자 확인 세로 배치
-                + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
-                + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+                // 제출자 + 관리자 확인 — 문서 서식대로 우측 정렬
+                + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;margin-top:4px">'
+                + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
                 + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
@@ -5005,7 +5004,7 @@ function showKakaoModal(text, forced) {
             function tv(v) { return v ? '<span style="font-weight:700;color:#111">' + v + '</span>' : '<span style="color:#bbb">-</span>'; }
             function tf(v) { return '<span style="display:inline-block;min-width:60px;border-bottom:1.5px solid #333;text-align:center;background:#eef4ff;padding:0 6px;font-weight:700">' + (v || '') + '</span>'; }
 
-            var adm = '<div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :'
+            var adm = '<div class="adm-line">CGV동두천 (관리자) 확인 :'
                 + '<span style="letter-spacing:0.15em;margin-left:6px">' + adminName + '</span>'
                 + '<span style="margin-left:2px">(서명)</span>' + sigImg + '</div>';
 
@@ -5137,7 +5136,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'resign') {
                 var rSubSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
-                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;vertical-align:middle">'
                     : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
@@ -5151,29 +5150,39 @@ function showKakaoModal(text, forced) {
                     + '<th>퇴직일</th><td class="fc">' + tv(fd.resignDate) + '</td></tr>'
                     + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc">' + tv(fd.phone) + '</td></tr>'
                     + '<tr><th>퇴사사유</th><td colspan="3" class="fc" style="white-space:pre-wrap">' + tv(fd.reason) + '</td></tr>'
-                    + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap;color:#888;font-size:11px">'
-                    + (fd.interviewNote ? tv(fd.interviewNote) : '<span style="color:#ccc">관리자 미기입</span>') + '</td></tr>'
                     + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems)
                     + (fd.lostItems ? '<div style="margin-top:3px;font-size:11px;font-weight:800;color:#b91c1c">분실 : ' + fd.lostItems + ' <span style="font-weight:600;color:#888">(변상 대상)</span></div>' : '')
                     + '</td></tr>'
                     + '<tr><th>지급 방법</th><td colspan="3" class="fc">' + tv(fd.bank ? fd.bank + ' 은행  계좌: ' + (fd.account||'') : '') + '</td></tr>'
-                    + '<tr><th>면담 직원</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.interviewer || '관리자 미기입') + '</span></td>'
-                    + '<th>물품접수 확인자</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.receiver || '관리자 미기입') + '</span></td></tr>'
+                    // 면담 직원 · 물품접수 확인자 — 사직원을 요청한 관리자 (이름 + 서명)
+                    + (function () {
+                        var nm = fd.interviewer || adminName || '관리자';
+                        // 표 안이라 서명 이미지는 작게
+                        var sm = adminSigBase64
+                            ? '<img src="' + adminSigBase64 + '" style="height:24px;object-fit:contain;vertical-align:middle">'
+                            : '<img src="/admin-sig.png" style="height:24px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
+                        var c = '<td class="ac" style="padding:4px 6px"><div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
+                            + '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + nm + '</span>'
+                            + '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>' + sm + '</div></td>';
+                        return '<tr><th>면담 직원</th>' + c + '<th>물품접수<br>확인자</th>' + c + '</tr>';
+                    })()
                     + '</tbody></table>'
                     + '</div>'
-                    + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
+                    + '<div style="font-size:12px;color:#333;line-height:1.85;border:1px solid #ccc;padding:12px 14px;margin:14px 0 12px;word-break:keep-all">'
                     + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
-                    + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px">'
-                    + '<span style="font-weight:800">확인 :</span>'
+                    // 확인·서명은 우측 정렬
+                    + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:flex-end">'
+                    + '<span style="font-weight:800;font-size:11.5px">확인 :</span>'
                     + (fd.agreeName ? tf(fd.agreeName) : '<span style="color:#ccc;border-bottom:1px solid #ccc;min-width:50px;display:inline-block">&nbsp;</span>')
-                    + '<span style="font-weight:800">(서명)</span>'
-                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:28px;max-width:70px;margin-left:2px">' : '')
+                    + '<span style="font-weight:800;font-size:11.5px">(서명)</span>'
+                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:28px;max-width:70px;margin-left:2px;vertical-align:middle">' : '')
                     + '</div>'
                     + '</div>'
                     + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
                     + (fd.submitYMD ? '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">' + fd.submitYMD + '</p>' : '<p style="text-align:center;font-size:11px;color:#aaa;margin-bottom:14px">제출일: ' + today + '</p>')
-                    + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
-                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+                    // 제출자 · 관리자 확인 — 문서 서식대로 우측 정렬
+                    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;margin-top:4px">'
+                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
                     + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                     + tf(fd.submitter || fd.name)
                     + '<span style="font-size:11px;font-weight:700">(서명)</span>'
