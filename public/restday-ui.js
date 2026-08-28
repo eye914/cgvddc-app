@@ -159,8 +159,24 @@
     }).join('');
     var names = (p.claims || []).map(function (c) {
       var ok = c.status === 'approved';
+      // 승인 후 진행 상태: 확인서 서명 / 시트 반영
+      var tail = '';
+      if (ok) {
+        tail += c.formStatus === 'submitted'
+          ? ' <span title="확인서 서명 완료" style="color:#15803d">서명✓</span>'
+          : ' <span title="확인서 서명 대기" style="color:#b45309">서명대기</span>';
+        tail += c.sheetDone
+          ? ' <span title="스케줄 시트 반영 완료" style="color:#15803d">시트✓</span>'
+          : ' <span title="스케줄 시트 미반영" style="color:#dc2626">시트미반영</span>';
+      }
       return '<span class="rd-chip ' + (ok ? 'rd-ok' : '') + '"><b>' + esc(c.name) + '</b> ' + esc(c.position)
-        + (ok ? ' ✓' : '') + '</span>';
+        + (ok ? ' ✓' : '') + tail + '</span>';
+    }).join('');
+    // 승인됐지만 시트에 아직 안 들어간 건 → 재시도 버튼
+    var retry = (p.claims || []).filter(function (c) {
+      return c.status === 'approved' && !c.sheetDone;
+    }).map(function (c) {
+      return '<button onclick="RD.applySheet(' + c.id + ',\'' + esc(c.name) + '\')" style="margin:0 5px 6px 0;padding:8px 12px;background:#fff;color:#dc2626;border:1.5px solid #fecaca;border-radius:10px;font-size:11.5px;font-weight:900">↻ ' + esc(c.name) + ' 시트 반영</button>';
     }).join('');
     var acts = (p.claims || []).filter(function (c) { return c.status === 'claimed'; }).map(function (c) {
       return '<button onclick="RD.approve(' + c.id + ')" style="margin:0 5px 6px 0;padding:8px 12px;background:#0f172a;color:#fff;border:none;border-radius:10px;font-size:11.5px;font-weight:900">✓ ' + esc(c.name) + ' 승인</button>'
@@ -174,6 +190,7 @@
       + '<div class="rd-grid">' + slots + '</div>'
       + (names ? '<div class="rd-names">' + names + '</div>' : '<div class="rd-names" style="color:#94a3b8">신청자 없음</div>')
       + (acts ? '<div style="margin-top:9px">' + acts + '</div>' : '')
+      + (retry ? '<div style="margin-top:4px">' + retry + '</div>' : '')
       + '<button onclick="RD.del(\'' + p.id + '\')" style="width:100%;margin-top:6px;padding:6px;background:transparent;border:none;color:#cbd5e1;font-size:10px;font-weight:900">모집 삭제</button>'
       + '</div>';
   }
@@ -199,13 +216,30 @@
   }
 
   RD.approve = function (claimId) {
-    if (!confirm('승인하시겠습니까?\n승인 후 확인서 서명 요청이 발송됩니다.')) return;
+    if (!confirm('승인하시겠습니까?\n확인서 서명 요청이 발송되고, 스케줄 시트에 쉼데이로 반영됩니다.')) return;
     api('/api/restday', { method: 'POST', body: JSON.stringify({ action: 'approve', claimId: claimId }) })
-      .then(function (j) { if (j && j.error) { alert(j.error); return; } RD.loadList(); })
+      .then(function (j) {
+        if (j && j.error) { alert(j.error); return; }
+        // 승인은 됐지만 시트 반영만 실패한 경우 — 원인을 알려주고 재시도할 수 있게 한다
+        if (j && j.sheet && !j.sheet.ok) {
+          alert('승인 완료 · 확인서 발송됨\n\n다만 스케줄 시트 반영은 실패했습니다.\n사유: ' + (j.sheet.msg || '알 수 없음')
+            + '\n\n해당 주차 시트가 만들어진 뒤 [↻ 시트 반영] 버튼을 눌러주세요.');
+        }
+        RD.loadList();
+      })
+      .catch(function () { alert('네트워크 오류'); });
+  };
+  RD.applySheet = function (claimId, name) {
+    api('/api/restday', { method: 'POST', body: JSON.stringify({ action: 'applySheet', claimId: claimId }) })
+      .then(function (j) {
+        if (j && j.error) { alert((name || '') + ' 시트 반영 실패\n\n' + j.error); return; }
+        alert((name || '') + ' 님 쉼데이를 시트에 반영했습니다.' + (j && j.sheet ? '\n(' + j.sheet + ')' : ''));
+        RD.loadList();
+      })
       .catch(function () { alert('네트워크 오류'); });
   };
   RD.cancelClaim = function (claimId, name) {
-    if (!confirm((name || '') + ' 님의 신청을 취소할까요?')) return;
+    if (!confirm((name || '') + ' 님의 신청을 취소할까요?\n시트에 이미 반영됐다면 원래 근무자로 되돌립니다.')) return;
     api('/api/restday', { method: 'POST', body: JSON.stringify({ action: 'cancelClaim', claimId: claimId }) })
       .then(function (j) { if (j && j.error) { alert(j.error); return; } RD.loadList(); })
       .catch(function () { alert('네트워크 오류'); });

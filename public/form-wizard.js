@@ -68,6 +68,7 @@
   }
 
   var _type, _steps, _i, _d, _name, _admin, _reqId;
+  var _rest = null;      // 쉼데이 승인건이면 근무일(YYYY-MM-DD)
 
   function injectStyle() {
     if (document.getElementById('fw-style')) return;
@@ -110,13 +111,24 @@
   function visible(s) { return !(s.skipIfOff && isOff()); }
   function vSteps() { return _steps.filter(visible); }
 
-  FW.open = function (reqId, type, name, adminName) {
+  FW.open = function (reqId, type, name, adminName, note) {
     injectStyle();
     _type = type; _reqId = reqId; _name = name || ''; _admin = adminName || '';
     _steps = stepsOf(type);
     if (!_steps.length) return false;      // 정의 없는 유형은 기존 방식 사용
     _i = 0;
     _d = { name: _name, kind: '희망조퇴', items: {} };
+
+    // 쉼데이 승인건은 구분·날짜가 이미 정해져 있다 → 해당 단계는 묻지 않고 미리 채운다
+    _rest = null;
+    var m = /^\[쉼데이\](\d{4}-\d{2}-\d{2})/.exec(String(note || ''));
+    if (m && type === 'earlyLeave') {
+      _rest = m[1];
+      _d.kind = '희망휴무';
+      _d.date = _rest;
+      _d.content = '관람객 저조에 따른 쉼데이(무급휴무) 모집에 본인 동의하에 신청하여 승인되었습니다.';
+      _steps = _steps.filter(function (s) { return s.k !== 'kind' && s.k !== 'date'; });
+    }
     window._signDataURL = null; window._submitterSignDataURL = null; window._agreementSignDataURL = null;
 
     var wrap = el('fw-modal');
@@ -158,8 +170,10 @@
     el('fw-pgf').style.width = (_i / (list.length - 1) * 100) + '%';
     el('fw-pgt').textContent = (_i + 1) + ' / ' + list.length + (s.type === 'review' ? ' · 마지막 단계' : '');
     el('fw-q').textContent = s.t;
-    el('fw-h').textContent = s.h || '';
-    el('fw-h').style.display = s.h ? '' : 'none';
+    var hint = s.h || '';
+    if (_rest) hint = '쉼데이 승인건 · ' + fmtD(_rest) + ' 희망휴무' + (hint ? ' · ' + hint : '');
+    el('fw-h').textContent = hint;
+    el('fw-h').style.display = hint ? '' : 'none';
     el('fw-prev').style.visibility = _i === 0 ? 'hidden' : '';
     el('fw-next').textContent = s.type === 'review' ? '제출하기' : '다음';
     el('fw-e').style.display = 'none';
@@ -276,7 +290,8 @@
         + row('제출자 서명', window._submitterSignDataURL ? '<span style="color:#15803d">서명완료</span>' : '')
         + row('면담 직원', _admin || '관리자');
     } else if (_type === 'earlyLeave') {
-      h += row('구분', _d.kind) + row('날짜', fmtD(_d.date))
+      h += row('구분', _d.kind + (_rest ? ' <span style="color:#15803d;font-weight:900">· 쉼데이</span>' : ''))
+        + row('날짜', fmtD(_d.date))
         + row('약정 근로시간', (_d.schStart || '') + (_d.schEnd ? ' ~ ' + _d.schEnd : ''))
         + row('희망 퇴근', isOff() ? '해당없음' : ((_d.actStart || '') + (_d.actEnd ? ' ~ ' + _d.actEnd : '')))
         + row('사유', esc(_d.content)) + row('동의', _d.consent ? '<span style="color:#15803d">동의함</span>' : '')

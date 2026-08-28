@@ -9,6 +9,39 @@ type Pos = (typeof POSITIONS)[number];
 const quotaKey = (p: string) =>
   p === '매점' ? 'quota_store' : p === '플로어' ? 'quota_floor' : 'quota_total';
 
+// GAS 호출 (결과를 받아 시트 반영 성공 여부를 판단한다)
+async function callGAS(action: string, params: any[]): Promise<any> {
+  const GAS_URL = process.env.GAS_URL;
+  if (!GAS_URL) return { ok: false, msg: 'GAS_URL 미설정' };
+  try {
+    const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ action, params }) });
+    const txt = await res.text();
+    try { return JSON.parse(txt); } catch { return { ok: false, msg: txt.slice(0, 200) }; }
+  } catch (e: any) {
+    return { ok: false, msg: e.message };
+  }
+}
+
+// 승인된 쉼데이 1건을 스케줄 시트에 반영
+async function applyRestDayToSheet(claimId: string) {
+  const { data: c } = await supabaseAdmin
+    .from('restday_claims').select('*').eq('id', claimId).single();
+  if (!c) return { ok: false, msg: '신청을 찾을 수 없습니다.' };
+  if (c.sheet_done) return { ok: true, msg: '이미 반영됨', already: true };
+
+  const { data: post } = await supabaseAdmin
+    .from('restday_posts').select('work_date').eq('id', c.post_id).single();
+  if (!post) return { ok: false, msg: '모집을 찾을 수 없습니다.' };
+
+  const r = await callGAS('applyRestDayToSheet', [{ workDate: post.work_date, name: c.name }]);
+  const res = r && (r.result ?? r);
+  if (res && res.ok) {
+    await supabaseAdmin.from('restday_claims').update({ sheet_done: true }).eq('id', claimId);
+    return { ok: true, sheet: res.sheet, updated: res.updated };
+  }
+  return { ok: false, msg: (res && res.msg) || '시트 반영에 실패했습니다.' };
+}
+
 function makeId() {
   const d = new Date();
   const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
@@ -70,6 +103,15 @@ export async function GET(req: NextRequest) {
   const byPost: Record<string, any[]> = {};
   (allClaims ?? []).forEach((c: any) => { (byPost[c.post_id] ||= []).push(c); });
 
+  // 확인서 서명 여부 (승인 시 자동 생성된 요청의 상태)
+  const frmIds = (allClaims ?? []).map((c: any) => c.form_request_id).filter(Boolean);
+  const frmStatus: Record<string, string> = {};
+  if (frmIds.length) {
+    const { data: frms } = await supabaseAdmin
+      .from('form_requests').select('id, status').in('id', frmIds);
+    (frms ?? []).forEach((f: any) => { frmStatus[f.id] = f.status; });
+  }
+
   const now = Date.now();
   const rows = list.map((p: any) => {
     const cs = byPost[p.id] ?? [];
@@ -89,6 +131,8 @@ export async function GET(req: NextRequest) {
       claims: cs.map((c) => ({
         id: c.id, name: c.name, position: c.position, status: c.status,
         claimedAt: c.claimed_at, approvedBy: c.approved_by, sheetDone: c.sheet_done,
+        formId: c.form_request_id || '',
+        formStatus: c.form_request_id ? (frmStatus[c.form_request_id] || 'pending') : '',
       })),
     };
   });
@@ -199,7 +243,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, id: row.id });
     }
 
-    // 승인 (확인서 발송은 별도 단계에서 연결)
+    // 승인 → 희망휴무 확인서 요청 자동 생성
     if (action === 'approve') {
       const { claimId } = body;
       if (!claimId) return NextResponse.json({ error: 'claimId 필요' }, { status: 400 });
@@ -214,9 +258,45 @@ export async function POST(req: NextRequest) {
       if (!claimed || !claimed.length) return NextResponse.json({ ok: true, duplicate: true });
 
       const { data: post } = await supabaseAdmin.from('restday_posts').select('work_date').eq('id', c.post_id).single();
+      const wd = post ? post.work_date : '';
+
+      // 확인서(희망휴무) 요청 자동 생성 — 날짜·구분이 미리 채워진 상태로 열린다
+      let frmId = '';
+      if (wd) {
+        frmId = `FRM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+        const { error: frmErr } = await supabaseAdmin.from('form_requests').insert([{
+          id: frmId,
+          type: 'earlyLeave',
+          target_name: c.name,
+          requested_by: admin.name,
+          note: `[쉼데이]${wd}`,
+          status: 'pending',
+        }]);
+        if (frmErr) {
+          console.error('[restday.approve] 확인서 요청 생성 실패', frmErr.message);
+          frmId = '';
+        } else {
+          await supabaseAdmin.from('restday_claims').update({ form_request_id: frmId }).eq('id', claimId);
+        }
+      }
+
       await sendPushToNames([c.name], '✅ 쉼데이 확정',
-        `${post ? dateLabel(post.work_date) : ''} 쉼데이가 확정됐습니다.\n확인서 서명 요청이 곧 발송됩니다.`);
-      return NextResponse.json({ ok: true });
+        frmId
+          ? `${dateLabel(wd)} 쉼데이가 확정됐습니다.\n확인서에 서명해 주세요. (내 서류함)`
+          : `${wd ? dateLabel(wd) : ''} 쉼데이가 확정됐습니다.`,
+        frmId ? '/?go=forms' : undefined);
+
+      // 스케줄 시트 반영 — 실패해도 승인 자체는 유지하고, 관리자 화면에서 재시도할 수 있게 한다
+      const sheet = await applyRestDayToSheet(claimId);
+      return NextResponse.json({ ok: true, formId: frmId, sheet });
+    }
+
+    // 시트 반영 재시도 (주차 시트가 아직 없거나 이름을 못 찾은 경우)
+    if (action === 'applySheet') {
+      const { claimId } = body;
+      if (!claimId) return NextResponse.json({ error: 'claimId 필요' }, { status: 400 });
+      const r = await applyRestDayToSheet(claimId);
+      return r.ok ? NextResponse.json(r) : NextResponse.json({ error: r.msg }, { status: 400 });
     }
 
     // 마감 (수동) — 탈락자 통지
@@ -234,12 +314,34 @@ export async function POST(req: NextRequest) {
       const { claimId } = body;
       if (!claimId) return NextResponse.json({ error: 'claimId 필요' }, { status: 400 });
       const { data: c } = await supabaseAdmin.from('restday_claims').select('*').eq('id', claimId).single();
-      await supabaseAdmin.from('restday_claims').update({ status: 'canceled' }).eq('id', claimId);
-      if (c) {
-        const { data: post } = await supabaseAdmin.from('restday_posts').select('work_date').eq('id', c.post_id).single();
-        await sendPushToNames([c.name], '🙏 쉼데이 취소',
-          `${post ? dateLabel(post.work_date) : ''} 쉼데이 신청이 취소되었습니다.`);
+      if (!c) return NextResponse.json({ error: '신청을 찾을 수 없습니다.' }, { status: 404 });
+
+      const { data: post } = await supabaseAdmin.from('restday_posts').select('work_date').eq('id', c.post_id).single();
+
+      // 이미 시트에 반영된 건이면 원래 근무자를 먼저 되돌린다.
+      // 실패하면 취소를 진행하지 않는다 — 시트에 이름 없는 '쉼데이' 칸만 남으면 복구할 수 없다.
+      let revert: any = null;
+      if (c.sheet_done && post) {
+        revert = await callGAS('revertRestDayInSheet', [{ workDate: post.work_date, name: c.name }]);
+        const rv = revert && (revert.result ?? revert);
+        if (!rv || !rv.ok) {
+          return NextResponse.json({
+            error: `스케줄 시트 되돌리기에 실패해 취소를 중단했습니다.\n사유: ${(rv && rv.msg) || '알 수 없음'}\n\n시트에서 해당 칸을 직접 수정한 뒤 다시 시도해 주세요.`,
+          }, { status: 409 });
+        }
+        await supabaseAdmin.from('restday_claims').update({ sheet_done: false }).eq('id', claimId);
       }
+
+      await supabaseAdmin.from('restday_claims').update({ status: 'canceled' }).eq('id', claimId);
+
+      // 자동 생성된 확인서 요청도 함께 정리 (아직 미제출인 경우만)
+      if (c.form_request_id) {
+        await supabaseAdmin.from('form_requests')
+          .delete().eq('id', c.form_request_id).eq('status', 'pending');
+      }
+
+      await sendPushToNames([c.name], '🙏 쉼데이 취소',
+        `${post ? dateLabel(post.work_date) : ''} 쉼데이 신청이 취소되었습니다.`);
       return NextResponse.json({ ok: true });
     }
 

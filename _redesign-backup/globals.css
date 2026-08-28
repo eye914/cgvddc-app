@@ -1,0 +1,28 @@
+/* CGV동두천 맞교대 - 전역 스타일 초기화 */
+/* Tailwind는 CDN으로 로드 (layout.tsx) */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ─────────────────────────────────────────────
+   부드러운 전환 효과 (iOS 감성) — 항상 적용(사용자 요청)
+   ───────────────────────────────────────────── */
+
+/* 탭 화면 전환: 방향에 따라 슬라이드+페이드 */
+@keyframes cgvTabInR { from { opacity: 0; transform: translate3d(46px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes cgvTabInL { from { opacity: 0; transform: translate3d(-46px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+.cgv-tab-in-r { animation: cgvTabInR .36s cubic-bezier(.22, .61, .36, 1); }
+.cgv-tab-in-l { animation: cgvTabInL .36s cubic-bezier(.22, .61, .36, 1); }
+.cgv-tab-in-r, .cgv-tab-in-l { will-change: transform, opacity; }
+
+/* 버튼 누름 반응 (탭틱) */
+button, [role="button"], .tab-btn {
+  transition: transform .13s cubic-bezier(.22, .61, .36, 1), filter .13s ease, background-color .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active, [role="button"]:active, .tab-btn:active { transform: scale(.94); }
+
+/* 바텀시트 슬라이드업 + 배경 페이드 (공지/매뉴얼) */
+@keyframes cgvSheetUp { from { transform: translate3d(0, 100%, 0); } to { transform: translate3d(0, 0, 0); } }
+@keyframes cgvFadeIn { from { opacity: 0; } to { opacity: 1; } }
+#nm-sheet-ov { animation: cgvFadeIn .22s ease; }
+#nm-sheet { animation: cgvSheetUp .36s cubic-bezier(.22, .61, .36, 1); will-change: transform; }
+#nm-zoom { animation: cgvFadeIn .2s ease; }

@@ -122,16 +122,6 @@
             }).catch(function(e) { console.error('Push 구독 실패:', e); });
         }
 
-        // 알림 권한이 이미 허용된 사용자는 앱을 켤 때마다 구독을 서버에 다시 등록한다.
-        //   브라우저가 구독 주소를 갱신하면 서버의 옛 주소로는 푸시가 조용히 실패하므로,
-        //   버튼을 다시 누르지 않아도 자동으로 복구되게 한다. (세션당 1회만 실행)
-        function ensurePushSubscription(name) {
-            if (!name) return;
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-            doSubscribe(name);
-        }
-
         function requestPushPermission(name) {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 alert('크롬(Chrome) 브라우저에서 접속해주세요.\n\n① 크롬 앱 실행\n② 현재 주소를 크롬에서 열기'); return;
@@ -229,7 +219,7 @@
                 btn.innerHTML = '🔕 차단됨';
                 btn.onclick = showPushDeniedGuide;
             } else {
-                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #D6001C;background:white;color:#D6001C;cursor:pointer;white-space:nowrap';
+                btn.style.cssText = 'font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap';
                 btn.innerHTML = '🔕 알림받기';
                 btn.onclick = function() { requestPushPermission(n); };
             }
@@ -331,7 +321,6 @@
             if (!n) return;
             updatePushBtn(n);
             updatePushBanner(); // 기기 설정 변경 반영
-            ensurePushSubscription(n);   // 복귀 시에도 구독 주소 확인(세션당 1회)
         });
 
         // ── 현황 실시간 갱신: 화면을 열어둔 채로도 새 지원·쌍방합의·승인을 반영 ──
@@ -396,12 +385,6 @@
             }).join('');
         }
         function loadMisoForAuth() {
-            // 로그인 화면 초기화: 이름 선택 전에도 빈 PIN 점 + 다이얼 패드가 보이도록
-            authSelectedName = ''; authIsAdmin = false;
-            renderPinBoxes('', PIN_LENGTH_STAFF);
-            buildNumpad('auth-numpad', PIN_LENGTH_STAFF, 'numpadPress');
-            var _nb = document.getElementById('auth-name-btn'); if (_nb) _nb.innerHTML = '👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span>';
-            var _dsc = document.getElementById('auth-pin-desc'); if (_dsc) _dsc.innerText = '이름을 먼저 선택해 주세요';
             var CACHE_TTL = 60 * 60 * 1000; // 1시간
             // 1) 지난 세션의 명단(localStorage)이 있으면 즉시 표시 → 콜드/네트워크 지연에도 '로드 실패' 안 뜸
             try {
@@ -440,84 +423,41 @@
                     });
             })(0);
         }
-        function openNameSheet() { var s = document.getElementById('auth-name-sheet'); if (s) s.style.display = 'block'; }
-        function closeNameSheet() { var s = document.getElementById('auth-name-sheet'); if (s) s.style.display = 'none'; }
-        function _prepPin(btnLabel, descText) {
-            closeNameSheet();
-            var btn = document.getElementById('auth-name-btn'); if (btn) btn.innerHTML = btnLabel;
-            var dsc = document.getElementById('auth-pin-desc'); if (dsc) dsc.innerText = descText;
-            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
-            var i = document.getElementById('auth-pin-input'); if (i) { i.value = ''; i.maxLength = len; }
-            renderPinBoxes('', len);
-            var er = document.getElementById('auth-pin-error'); if (er) er.innerText = '';
-            buildNumpad('auth-numpad', len, 'numpadPress');
-            setTimeout(function() { var inp = document.getElementById('auth-pin-input'); if (inp) inp.focus(); }, 100);
-        }
         function selectAuthName(name) {
             authSelectedName = name; authIsAdmin = false;
-            _prepPin('👤 ' + name + ' <span style="font-size:11px;color:#9E9E9E">▾</span>', PIN_LENGTH_STAFF + '자리 PIN을 입력하세요');
+            showPinStep(name + ' 님', PIN_LENGTH_STAFF + '자리 PIN 입력');
         }
         function showAdminLogin() {
             authSelectedName = ''; authIsAdmin = true;
-            _prepPin('🔐 관리자 <span style="font-size:11px;color:#9E9E9E">▾</span>', PIN_LENGTH_ADMIN + '자리 관리자 PIN을 입력하세요');
+            showPinStep('관리자', PIN_LENGTH_ADMIN + '자리 PIN 입력');
         }
-        function backToNameSelect() { openNameSheet(); }
+        function backToNameSelect() {
+            document.getElementById('auth-step-2').style.display = 'none';
+            document.getElementById('auth-step-1').style.display = 'block';
+            var i = document.getElementById('auth-pin-input'); if (i) i.value = '';
+            renderPinBoxes('', PIN_LENGTH_STAFF);
+        }
+        function showPinStep(nameText, descText) {
+            document.getElementById('auth-step-1').style.display = 'none';
+            document.getElementById('auth-step-2').style.display = 'block';
+            document.getElementById('auth-pin-name').innerText = nameText;
+            document.getElementById('auth-pin-desc').innerText = descText;
+            var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
+            var i = document.getElementById('auth-pin-input');
+            if (i) { i.value = ''; i.maxLength = len; }
+            renderPinBoxes('', len);
+            document.getElementById('auth-pin-error').innerText = '';
+            buildNumpad('auth-numpad', len, 'numpadPress');
+            setTimeout(function() { var inp = document.getElementById('auth-pin-input'); if (inp) inp.focus(); }, 100);
+        }
         function onPinInput() {
-            if (_autoAnimTimer) return;   // 자동 로그인 진행 중에는 입력 무시
-            if (!authSelectedName && !authIsAdmin) { return; }
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             var val = (i.value || '').replace(/\D/g,'').substring(0, len);
             i.value = val; renderPinBoxes(val, len);
             if (val.length === len) submitPin();
         }
-        // 핀 키패드 효과음 (아이폰 잠금화면 키 누름 느낌) — Web Audio 합성 + 진동
-        var _pinAudioCtx = null;
-        function _ensureAudio() {
-            try {
-                var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
-                if (!_pinAudioCtx) _pinAudioCtx = new AC();
-                if (_pinAudioCtx.state === 'suspended') _pinAudioCtx.resume();
-                return _pinAudioCtx;
-            } catch (e) { return null; }
-        }
-        // iOS 오디오 잠금 해제: 첫 사용자 터치에 무음 버퍼 1회 재생 → 이후 효과음이 확실히 남
-        (function () {
-            function _unlock() {
-                var c = _ensureAudio();
-                if (c) { try { var b = c.createBuffer(1, 1, 22050); var s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {} }
-                document.removeEventListener('touchend', _unlock, true);
-                document.removeEventListener('pointerdown', _unlock, true);
-            }
-            document.addEventListener('touchend', _unlock, true);
-            document.addEventListener('pointerdown', _unlock, true);
-        })();
-        function playKeyTick() {
-            var c = _ensureAudio();
-            if (c) {
-                try {
-                    var t = c.currentTime + 0.001;
-                    var osc = c.createOscillator();
-                    var g = c.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(1180, t);
-                    g.gain.setValueAtTime(0.0001, t);
-                    g.gain.exponentialRampToValueAtTime(0.28, t + 0.004);
-                    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
-                    osc.connect(g); g.connect(c.destination);
-                    osc.start(t); osc.stop(t + 0.07);
-                } catch (e) {}
-            }
-            if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
-        }
-        function _hintSelectName() {
-            var b = document.getElementById('auth-name-btn'); if (!b) return;
-            b.style.transition = 'transform .07s';
-            [0, -6, 6, -4, 4, 0].forEach(function (x, i) { setTimeout(function () { b.style.transform = 'translateX(' + x + 'px)'; }, i * 55); });
-        }
         function numpadPress(key) {
-            if (!authSelectedName && !authIsAdmin) { _hintSelectName(); return; }  // 이름 선택 전엔 번호판 무시(시트 안 열림)
-            playKeyTick();
             var i = document.getElementById('auth-pin-input');
             var len = authIsAdmin ? PIN_LENGTH_ADMIN : PIN_LENGTH_STAFF;
             if (key === 'x') i.value = i.value.slice(0,-1);
@@ -530,72 +470,16 @@
             el.innerHTML = '';
             for (var i=0; i<len; i++) {
                 var f = i < val.length;
-                el.innerHTML += '<div style="width:15px;height:15px;border-radius:50%;transition:all .15s;' + (f?'background:#D32F2F;border:1px solid #D32F2F':'background:transparent;border:1.5px solid #D1D1D6') + '"></div>';
+                el.innerHTML += '<div class="w-11 h-14 border-2 rounded-2xl flex items-center justify-center transition-all ' + (f?'border-slate-900 bg-slate-900':'border-slate-300 bg-slate-50') + '">' + (f?'<div class="w-3 h-3 bg-white rounded-full"></div>':'') + '</div>';
             }
         }
-        // ── 자동 로그인 연출 ──
-        //   토큰 검증에 1~2초가 걸리는 동안 빈 화면이면 "안 되는 줄 알고" 화면을 누르게 된다.
-        //   PIN 점이 하나씩 채워지는 모습을 보여줘 진행 중임을 명확히 알린다.
-        var _autoAnimTimer = null, _autoAnimDone = false;
-        function startAutoLoginAnim() {
-            _autoAnimDone = false;
-            var rm = getRemember();
-            var nameEl = document.getElementById('auth-pin-name');
-            var descEl = document.getElementById('auth-pin-desc');
-            var btnEl  = document.getElementById('auth-name-btn');
-            var remWrap = document.getElementById('auth-remember-wrap');
-            var pad = document.getElementById('auth-numpad');
-            // 이름 표시 + 안내 문구 교체, 입력 요소는 잠시 숨겨 오조작 방지
-            if (btnEl && rm && rm.name) {
-                btnEl.innerHTML = '👤 <span style="color:#212121;font-weight:700">' + rm.name + '</span>';
-                btnEl.style.pointerEvents = 'none';
-            }
-            if (descEl) descEl.innerText = '자동 로그인 중…';
-            if (remWrap) remWrap.style.visibility = 'hidden';
-            if (pad) { pad.style.opacity = '0.25'; pad.style.pointerEvents = 'none'; }
-            if (nameEl) nameEl.style.display = 'none';
-            // 점을 하나씩 채우고, 다 차면 다시 처음부터 반복(응답이 늦어도 계속 살아있게)
-            var len = PIN_LENGTH_STAFF, i = 0;
-            renderPinBoxes('', len);
-            _autoAnimTimer = setInterval(function () {
-                if (_autoAnimDone) return;
-                i = (i % len) + 1;
-                renderPinBoxes(new Array(i + 1).join('•'), len);
-            }, 180);
-        }
-        // 성공: 남은 점을 한 번에 채우고 잠깐 보여준 뒤 진행
-        function finishAutoLoginAnim(cb) {
-            _autoAnimDone = true;
-            if (_autoAnimTimer) { clearInterval(_autoAnimTimer); _autoAnimTimer = null; }
-            renderPinBoxes(new Array(PIN_LENGTH_STAFF + 1).join('•'), PIN_LENGTH_STAFF);
-            var descEl = document.getElementById('auth-pin-desc');
-            if (descEl) descEl.innerText = '로그인 완료';
-            setTimeout(function () { if (typeof cb === 'function') cb(); }, 220);
-        }
-        // 실패/만료: 원래 PIN 입력 화면으로 되돌린다
-        function stopAutoLoginAnim() {
-            _autoAnimDone = true;
-            if (_autoAnimTimer) { clearInterval(_autoAnimTimer); _autoAnimTimer = null; }
-            renderPinBoxes('', PIN_LENGTH_STAFF);
-            var descEl = document.getElementById('auth-pin-desc');
-            var btnEl  = document.getElementById('auth-name-btn');
-            var remWrap = document.getElementById('auth-remember-wrap');
-            var pad = document.getElementById('auth-numpad');
-            if (descEl) descEl.innerText = '이름을 먼저 선택해 주세요';
-            if (btnEl) { btnEl.style.pointerEvents = ''; btnEl.innerHTML = '👤 이름 선택 <span style="font-size:11px;color:#9E9E9E">▾</span>'; }
-            if (remWrap) remWrap.style.visibility = '';
-            if (pad) { pad.style.opacity = ''; pad.style.pointerEvents = ''; }
-        }
-
         function buildNumpad(containerId, pinLen, pressFunc) {
             var pad = document.getElementById(containerId); if (!pad) return;
             var keys = ['1','2','3','4','5','6','7','8','9','','0','x'];
-            var letters = {'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ'};
             pad.innerHTML = keys.map(function(k) {
                 if (!k) return '<div></div>';
-                if (k === 'x') return '<button onclick="'+pressFunc+'(\'x\')" style="display:flex;align-items:center;justify-content:center;width:70px;height:70px;margin:0 auto;background:transparent;border:none;font-size:22px;color:#616161;cursor:pointer">⌫</button>';
-                var lt = letters[k] ? '<span style="font-size:8px;letter-spacing:1.5px;color:#9E9E9E;font-weight:700;margin-top:-1px">'+letters[k]+'</span>' : '';
-                return '<button onclick="'+pressFunc+'(\''+k+'\')" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:70px;height:70px;margin:0 auto;background:#F2F2F2;border:none;border-radius:50%;color:#212121;cursor:pointer;transition:all .1s"><span style="font-size:26px;font-weight:400;line-height:1">'+k+'</span>'+lt+'</button>';
+                var label = k === 'x' ? '⌫' : k;
+                return '<button onclick="'+pressFunc+'(\''+k+'\')" class="py-4 rounded-2xl font-black text-xl active:scale-95 transition-all ' + (k==='x'?'bg-slate-200 text-slate-600':'bg-slate-50 border-2 border-slate-200 text-slate-800') + '">' + label + '</button>';
             }).join('');
         }
         function submitPin() {
@@ -615,73 +499,15 @@
                     showAuthError(e&&e.message?e.message:'서버 오류');
                     if(i) i.value=''; renderPinBoxes('',len);
                 })
-                .checkPinAuth(authIsAdmin?'':authSelectedName, pin, authIsAdmin?'admin':'staff', isRememberChecked());
+                .checkPinAuth(authIsAdmin?'':authSelectedName, pin, authIsAdmin?'admin':'staff');
         }
-        // ── PIN 기억하기 / 자동 로그인 ──
-        //   PIN 자체를 저장하지 않고, 서버가 발급한 30일 토큰만 localStorage 에 보관한다.
-        //   (토큰은 서명·만료가 있어 위조 불가. 계정이 비활성화되면 서버가 자동 로그인을 거부)
-        var REMEMBER_KEY = 'cgv_remember_v1';
-        function isRememberChecked() {
-            var c = document.getElementById('auth-remember');
-            return !!(c && c.checked);
-        }
-        function saveRemember(r, name) {
-            if (!isRememberChecked() || !r || !r.token) return;
-            try {
-                localStorage.setItem(REMEMBER_KEY, JSON.stringify({
-                    token: r.token, name: name, role: r.role, pd: !!r.pinDefault, ts: Date.now()
-                }));
-            } catch (e) {}
-        }
-        function clearRemember() { try { localStorage.removeItem(REMEMBER_KEY); } catch (e) {} }
-        function getRemember() {
-            try { return JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); } catch (e) { return null; }
-        }
-        // 저장된 토큰으로 세션 복원 시도. 성공 시 true.
-        function tryAutoLogin(done) {
-            var rm = getRemember();
-            if (!rm || !rm.token || !rm.name) { done(false); return; }
-            fetch('/api/auth', { headers: { 'Authorization': 'Bearer ' + rm.token } })
-                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-                .then(function (res) {
-                    if (!res.ok || !res.j || !res.j.ok) { clearRemember(); done(false); return; }
-                    var j = res.j;
-                    sessionStorage.setItem('cgv_auth', 'true');
-                    sessionStorage.setItem('cgv_token', rm.token);
-                    sessionStorage.setItem('cgv_pin_default', j.pinDefault ? 'true' : 'false');
-                    if (j.role === 'admin') {
-                        isAdmin = true;
-                        sessionStorage.setItem('cgv_admin', 'true');
-                        sessionStorage.setItem('cgv_admin_name', j.name || '관리자');
-                    } else {
-                        sessionStorage.setItem('cgv_currentUser', j.name);
-                        sessionStorage.setItem('cgv_locked_user', j.name);
-                        try { localStorage.setItem('cgv_last_name', j.name); } catch (e) {}
-                    }
-                    done(true);
-                })
-                .catch(function () { done(false); });   // 네트워크 오류 시 토큰은 보존, 수동 로그인
-        }
-        // 로그아웃 — 세션·기억하기 모두 정리 후 PIN 화면으로
-        window.cgvLogout = function () {
-            if (!confirm('로그아웃하시겠습니까?\nPIN 기억하기도 해제됩니다.')) return;
-            clearRemember();
-            ['cgv_auth','cgv_token','cgv_admin','cgv_admin_name','cgv_currentUser','cgv_locked_user','cgv_pin_default','cgv_go']
-                .forEach(function (k) { try { sessionStorage.removeItem(k); } catch (e) {} });
-            location.reload();
-        };
         function authSuccess(r) {
             var ov = document.getElementById('auth-overlay');
-            ov.classList.add('cgv-unlocking');   // iOS 잠금해제 줌아웃 효과
-            var _revEls = [document.getElementById('app-content'), document.querySelector('header')];
-            _revEls.forEach(function(el){ if (el) el.classList.add('cgv-reveal'); });
-            setTimeout(function(){ ov.style.display = 'none'; ov.classList.remove('cgv-unlocking'); }, 420);  // 로그인 확대되며 사라짐
-            setTimeout(function(){ _revEls.forEach(function(el){ if (el) el.classList.remove('cgv-reveal'); }); }, 560);
+            ov.style.opacity = '0';
+            setTimeout(function(){ ov.style.display = 'none'; }, 400);
             sessionStorage.setItem('cgv_auth','true');
             if (r.token) sessionStorage.setItem('cgv_token', r.token); // 서버 인증 토큰(공지·매뉴얼 API용)
             sessionStorage.setItem('cgv_pin_default', r.pinDefault ? 'true' : 'false');
-            // PIN 기억하기 체크 시 30일 토큰 보관 (체크 안 하면 저장 안 됨)
-            saveRemember(r, r.role === 'admin' ? (r.name || '관리자') : authSelectedName);
             if (r.role === 'admin') {
                 isAdmin = true;
                 sessionStorage.setItem('cgv_admin','true');
@@ -692,11 +518,10 @@
                 try { localStorage.setItem('cgv_last_name', authSelectedName); } catch(e) {}
                 selectUser(authSelectedName);
             }
-            fetchData(true);   // 로그인 직후엔 전체화면 로더 없이 목록만 조용히 로딩
+            fetchData();
             if (window.EV && EV.homeBoard) EV.homeBoard();
             var _pName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
             if (_pName && typeof updatePushBtn === 'function') updatePushBtn(_pName);
-            ensurePushSubscription(_pName);   // 구독 주소 최신화(자동 복구)
             setTimeout(function() { checkAndShowPushBanner(_pName); }, 600);
         }
         function showAuthError(msg) {
@@ -736,7 +561,6 @@
             if (val.length === PIN_LENGTH_ADMIN) submitAdminModalPin();
         }
         function adminModalNumpad(key) {
-            playKeyTick();
             var i = document.getElementById('admin-modal-pin-input');
             if (key==='x') i.value = i.value.slice(0,-1);
             else if (i.value.length < PIN_LENGTH_ADMIN) i.value += key;
@@ -757,12 +581,6 @@
                         if(i) i.value=''; renderAdminModalBoxes(''); return;
                     }
                     isAdmin = true; sessionStorage.setItem('cgv_admin','true');
-                    // ★ 서버 인증 토큰도 관리자용으로 교체해야 한다.
-                    //   이전에는 클라이언트 플래그만 세워, 공지·매뉴얼 등록/월말평가 저장 등
-                    //   requireAdmin 이 걸린 API 가 403 으로 거부됐다. 작성자(author) 기록도 불가.
-                    if (r.token) sessionStorage.setItem('cgv_token', r.token);
-                    sessionStorage.setItem('cgv_admin_name', r.name || '관리자');
-                    sessionStorage.setItem('cgv_pin_default', 'false');
                     closeAdminPinModal();
                     if (pendingAdminTab) { pendingAdminTab=false; switchTab('manager'); }
                 })
@@ -891,63 +709,13 @@ function showKakaoModal(text, forced) {
             var now = new Date();
             var ri = document.getElementById("req-date-input");
             if (ri) ri.min = getLocalYYYYMMDD(now); // 당일(오늘) 대타도 신청 가능
-            // 세션이 없으면 'PIN 기억하기' 토큰으로 자동 로그인 시도 → 성공 시 PIN 화면 생략
-            if (sessionStorage.getItem("cgv_auth") !== "true" && getRemember()) {
-                startAutoLoginAnim();   // PIN이 자동으로 채워지는 연출 (빈 화면 대기감 제거)
-                // 응답이 끝내 없으면 8초 후 수동 로그인으로 전환 (연출이 무한 반복되지 않도록)
-                var _autoGiveUp = setTimeout(function () {
-                    if (_autoAnimDone) return;
-                    stopAutoLoginAnim();
-                    loadMisoForAuth();
-                }, 8000);
-                tryAutoLogin(function (ok) {
-                    if (_autoAnimDone) return;      // 이미 시간초과로 전환됐으면 무시
-                    clearTimeout(_autoGiveUp);
-                    if (ok) {
-                        finishAutoLoginAnim(function () { __bootAuthed__(); });
-                    } else {
-                        stopAutoLoginAnim();
-                        loadMisoForAuth();
-                    }
-                });
-                __initPtr__();
-                return;
-            }
             if (sessionStorage.getItem("cgv_auth") === "true") {
-                __bootAuthed__();
-                __initPtr__();
-                return;
-            }
-            loadMisoForAuth();
-            __initPtr__();
-        }
-
-        // 로그인된 상태에서의 초기화(세션 복원·자동 로그인 공통)
-        function __bootAuthed__() {
-            {
-                // ★ selectUser() 전에 명단을 먼저 채운다.
-                //   자동 로그인/세션 복원은 이름 선택 화면을 거치지 않아 MISO_DATA 가 비어 있고,
-                //   그 상태로 selectUser() 하면 본인 포지션이 [] 이 되어 직무 선택이 전부 막힌다.
-                if (!MISO_DATA.length) {
-                    try {
-                        var _c = JSON.parse(sessionStorage.getItem('cgv_miso') || 'null');
-                        var _cl = Array.isArray(_c) ? _c : (_c && _c.data ? _c.data : null);
-                        if (_cl && _cl.length) MISO_DATA = _cl;
-                    } catch (e) {}
-                }
-                if (!MISO_DATA.length) {
-                    try {
-                        var _ls = JSON.parse(localStorage.getItem('cgv_miso_list') || 'null');
-                        if (Array.isArray(_ls) && _ls.length) MISO_DATA = _ls;
-                    } catch (e) {}
-                }
                 var ov = document.getElementById("auth-overlay");
                 if (ov) ov.style.display = "none";
                 if (sessionStorage.getItem("cgv_admin") === "true") isAdmin = true;
                 var saved = sessionStorage.getItem("cgv_currentUser");
                 if (saved) selectUser(saved);
                 // 15초 안에 로더가 안 꺼지면 세션 초기화 후 로그인 화면으로 복귀
-                //   (네트워크 문제일 수 있어 '기억하기' 토큰은 지우지 않는다 — 다음 실행에 다시 자동 로그인)
                 var _authRecovery = setTimeout(function() {
                     var ldr = document.getElementById("loader");
                     if (ldr && ldr.style.display !== "none") {
@@ -962,61 +730,23 @@ function showKakaoModal(text, forced) {
                         loadMisoForAuth();
                     }
                 }, 15000);
-                fetchData(true);   // 이미 로그인 상태로 앱 재진입 시에도 전체화면 로더 없이
+                fetchData();
                 var _rName = sessionStorage.getItem('cgv_currentUser') || sessionStorage.getItem('cgv_admin_name');
                 if (_rName && typeof updatePushBtn === 'function') updatePushBtn(_rName);
-                ensurePushSubscription(_rName);   // 구독 주소 최신화(자동 복구)
-                if (typeof consumeDeepLink === 'function') consumeDeepLink();  // 알림으로 들어온 경우
+            } else {
+                loadMisoForAuth();
             }
-        }
-
-        // Pull-to-refresh 초기화 (로그인 경로와 무관하게 1회만 등록)
-        var _ptrInited = false;
-        function __initPtr__() {
-            if (_ptrInited) return; _ptrInited = true;
-            // 페이지 최상단에서 시작한 당김에만 반응
-            //   (모달/시트 등 자체 스크롤 영역 안에서의 스와이프는 제외 → 글 읽다 튕기는 문제 방지)
-            var ptrStart = 0; var ptrActive = false; var ptrEligible = false;
-            function ptrInScrollable(el) {
-                for (var n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
-                    if (n.scrollHeight - n.clientHeight > 4) {
-                        var ov = getComputedStyle(n).overflowY;
-                        if (ov === "auto" || ov === "scroll") return true;
-                    }
-                }
-                return false;
-            }
-            // 모달·시트·사진확대가 열려 있으면 당겨서 새로고침 자체를 끔
-            //  (이때 body가 position:fixed 로 잠기며 scrollY가 0이 되어 '최상단'으로 오판되던 문제)
-            // 화면에 실제로 보이는지 판정 (display:none·.hidden 모두 커버, position:fixed 에서도 정확)
-            function _ptrVisible(el) { return !!(el && el.getClientRects && el.getClientRects().length > 0); }
-            function ptrBlocked() {
-                var b = document.body.style;
-                if (b.position === "fixed" || b.overflow === "hidden") return true;   // lockBody 중
-                if (document.getElementById("nm-zoom") || document.getElementById("nm-sheet-ov")) return true;
-                if (document.getElementById("urgent-sub-wrap") || document.getElementById("ev-ov")) return true;
-                // ★ 클래스(.hidden)가 아니라 '실제 표시 여부'로 판정한다.
-                //   support/user-select/kakao 모달은 .hidden 을 쓰지 않고 display 로 숨기므로
-                //   클래스 기준으로 보면 항상 '열림'이 되어 당겨서 새로고침이 영구히 막혔었다.
-                var ovs = document.querySelectorAll('[id$="-modal"], .modal-overlay, #auth-overlay, #auth-name-sheet');
-                for (var i = 0; i < ovs.length; i++) if (_ptrVisible(ovs[i])) return true;
-                return false;
-            }
-            document.addEventListener("touchstart", function(e){
-                ptrStart = e.touches[0].clientY;
-                // 시작 순간 페이지가 최상단이고, 스크롤 영역/모달 안이 아닐 때만 허용
-                ptrEligible = (window.scrollY <= 0) && !ptrInScrollable(e.target) && !ptrBlocked();
-            }, {passive:true});
+            // Pull-to-refresh
+            var ptrStart = 0; var ptrActive = false;
+            document.addEventListener("touchstart", function(e){ ptrStart = e.touches[0].clientY; }, {passive:true});
             document.addEventListener("touchend", function(e){
                 var dist = e.changedTouches[0].clientY - ptrStart;
-                if (ptrEligible && !ptrBlocked() && dist > 80 && window.scrollY <= 0 && !ptrActive) {
+                if (dist > 80 && window.scrollY === 0 && !ptrActive) {
                     ptrActive = true;
                     sessionStorage.removeItem("cgv_miso");
                     sessionStorage.removeItem("cgv_sched_pos_map_v3");
-                    // 화면(디자인)까지 최신으로 — SW 갱신 후 전체 리로드
-                    try { if (navigator.serviceWorker) navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){}); } catch(e){}
-                    showLoader(true, "최신 버전 불러오는 중…");
-                    setTimeout(function(){ location.reload(); }, 250);
+                    fetchData();
+                    setTimeout(function(){ ptrActive = false; }, 2000);
                 }
             }, {passive:true});
         };
@@ -1071,15 +801,6 @@ function showKakaoModal(text, forced) {
             var m = key.match(/(\d{4})\uB144[^(]*\((\d+)\/(\d+)/);
             if (!m) return new Date(0);
             return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
-        }
-
-        // 주차 라벨 압축: "2026년 8월 3주차 (8/17(월)~8/23(일))" → "8월 3주차 (8/17~8/23)"
-        //   관리자 헤더는 배지와 한 줄을 나눠 쓰므로 짧게 만들어 줄바꿈을 막는다.
-        function shortWeekLabel(wk) {
-            var s = String(wk || '').replace(' 주간', '');
-            s = s.replace(/^\d{4}\s*년\s*/, '');          // 연도 제거
-            s = s.replace(/\((\d{1,2}\/\d{1,2})\([^)]*\)\s*~\s*(\d{1,2}\/\d{1,2})\([^)]*\)\)/, '($1~$2)'); // 요일 제거
-            return s.trim();
         }
 
         function sortWeekKeys(keys) {
@@ -1156,13 +877,9 @@ function showKakaoModal(text, forced) {
         }
 
         function openUserSelectModal(){
-            // PIN 로그인 후에는 이름 변경 불가 → 대신 로그아웃 안내
+            // PIN 로그인 후 이름 변경 차단
             if (sessionStorage.getItem('cgv_locked_user')) {
-                var who = sessionStorage.getItem('cgv_currentUser') || '';
-                var remembered = !!getRemember();
-                if (confirm(who + '님으로 로그인되어 있습니다.\n'
-                    + (remembered ? 'PIN 기억하기가 켜져 있어 자동 로그인됩니다.\n\n' : '\n')
-                    + '로그아웃하시겠습니까?')) cgvLogout();
+                alert('PIN 로그인 후에는 본인 계정만 사용 가능합니다.');
                 return;
             }
             // 미리보기/로컬 환경에서 MISO_DATA가 비어있으면 fallback 채움
@@ -1201,11 +918,6 @@ function showKakaoModal(text, forced) {
             var btn = document.getElementById("user-display-btn");
             btn.innerHTML = "<span class='text-slate-900 font-black text-xl'>"+name+" <span class='text-[15px] text-slate-500 font-semibold'>("+currentUserPos.join(", ")+")</span></span><span class='bg-slate-800 text-white px-3 py-1.5 rounded-lg font-black tracking-widest uppercase shadow-md'>\uBCC0\uACBD</span>";
             clearReqData(); clearWishData(); updatePosButtonLock();
-            // 이름은 헤더 칩으로 표시 → 큰 "누구신가요?" 카드는 항상 숨김
-            var _ws = document.getElementById("who-section");
-            if (_ws) _ws.style.display = "none";
-            var _hn = document.getElementById("header-name-txt");
-            if (_hn) _hn.textContent = name || "이름 선택";
             var um = document.getElementById("user-select-modal");
             if (um && um.style.display !== "none") closeUserSelectModal();
             renderList();
@@ -1222,28 +934,6 @@ function showKakaoModal(text, forced) {
             });
             var ri = document.getElementById("req-date-input"); if (ri) ri.value = "";
             var rs = document.getElementById("reason-select"); if (rs) rs.value = "";
-        }
-
-        // ★ 미소지기DB 로드 완료 후 본인 포지션 정보를 다시 채운다.
-        //   자동 로그인(PIN 기억하기) 경로는 이름목록 로드를 건너뛰므로,
-        //   selectUser() 시점에 MISO_DATA 가 비어 currentUserPos 가 [] 로 남는다.
-        //   → 그러면 모든 직무 선택이 "역량 밖" 으로 막히므로 여기서 복구한다.
-        //   (작성 중 입력을 지우지 않도록 잠금 상태만 갱신)
-        function refreshCurrentUserPos() {
-            var nm = currentUser || sessionStorage.getItem('cgv_currentUser');
-            if (!nm || !MISO_DATA || !MISO_DATA.length) return;
-            var person = MISO_DATA.find(function(m){ return m.name === nm; });
-            if (!person) return;
-            currentUser = nm;
-            currentUserPos = person.pos || [];
-            var isTotal = currentUserPos.indexOf("통합") > -1;
-            var canMM = isTotal || currentUserPos.indexOf("매점마감") > -1 || currentUserPos.indexOf("매점") > -1;
-            ["통합","매점","매점마감","플로어"].forEach(function(p) {
-                var btn = document.getElementById("req-pos-"+p);
-                if (!btn) return;
-                var capable = isTotal || currentUserPos.indexOf(p) > -1 || (p === "매점마감" && canMM);
-                if (capable) btn.classList.remove("locked"); else btn.classList.add("locked");
-            });
         }
 
         function updatePosButtonLock() {
@@ -1588,9 +1278,7 @@ function showKakaoModal(text, forced) {
 
         function setReqPosition(pos) {
             var isTotal = currentUserPos.indexOf("\uD1B5\uD569") > -1;
-            // \uB9E4\uC810 \uB2F4\uB2F9\uC790\uB294 \uB9E4\uC810\uB9C8\uAC10\uB3C4 \uAC00\uB2A5 (\uBC84\uD2BC \uC7A0\uAE08 \uADDC\uCE59 updatePosButtonLock \uACFC \uB3D9\uC77C\uD558\uAC8C \uB9DE\uCDA4)
-            var canMM = pos === "\uB9E4\uC810\uB9C8\uAC10" && currentUserPos.indexOf("\uB9E4\uC810") > -1;
-            if (!isTotal && !canMM && currentUserPos.indexOf(pos) === -1){ alert("\uBCF8\uC778 \uC5ED\uB7C9 \uBC16\uC758 \uD3EC\uC9C0\uC158\uC785\uB2C8\uB2E4."); return; }
+            if (!isTotal && currentUserPos.indexOf(pos) === -1){ alert("\uBCF8\uC778 \uC5ED\uB7C9 \uBC16\uC758 \uD3EC\uC9C0\uC158\uC785\uB2C8\uB2E4."); return; }
             var rc = document.getElementById("req-selected-code").value;
             var grp = document.getElementById("req-selected-group") ? document.getElementById("req-selected-group").value : "";
             var curGroup = document.querySelector(".req-time-group.selected");
@@ -1842,7 +1530,7 @@ function showKakaoModal(text, forced) {
                 var safe = t.desiredShift ? String(t.desiredShift) : "\uB0B4\uC6A9 \uC5C6\uC74C";
                 var lines = safe.split("\n").map(function(l){ return l.trim(); }).filter(function(l){ return l; });
                 document.getElementById("modal-target-wish").innerHTML = safe === "\uB300\uD0C0 \uC694\uCCAD"
-                    ? "<div class='text-slate-400 font-medium text-sm'>\uB300\uD0C0 \uC694\uCCAD</div>"
+                    ? "<div class='text-slate-400 italic text-sm'>\uB300\uD0C0 \uC694\uCCAD</div>"
                     : lines.map(function(l, idx){
                         var parts = l.split(" / ");
                         var date = parts[0] || '';
@@ -2114,13 +1802,8 @@ function showKakaoModal(text, forced) {
 
         function closeModal(){ document.getElementById("support-modal").style.display = "none"; }
 
-        function fetchData(silent) {
-            if (silent) {
-                var _mb = document.getElementById('main-list-board');
-                if (_mb) _mb.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:44px 20px;font-size:13px;font-weight:600">\uBD88\uB7EC\uC624\uB294 \uC911\u2026</div>';
-            } else {
-                showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
-            }
+        function fetchData() {
+            showLoader(true, "\uB370\uC774\uD130 \uB3D9\uAE30\uD654 \uC911...");
             if (typeof google !== "undefined" && google.script) {
                 var loaded = 0;
                 var total = 3; // 미소지기DB + 교대DB + 출결DB 병렬
@@ -2130,18 +1813,14 @@ function showKakaoModal(text, forced) {
                     if (loaded >= total && !_fetchDone) {
                         _fetchDone = true;
                         showLoader(false); buildUserGrid(); renderList();
-                        refreshCurrentUserPos();   // 자동 로그인 시 비어 있던 본인 포지션 복구
                         if (!isAdmin && sessionStorage.getItem('cgv_currentUser')) {
                             checkMyPendingForms();
-                            renderMyDocbox();
-                            if (window.RD && RD.renderOpen) RD.renderOpen();   // 쉼데이 모집중
-                            consumeDeepLink();   // 푸시 알림으로 들어온 경우 해당 화면 열기
                         }
                     }
                 }
                 // 12초 이내 응답 없으면 강제 완료
                 setTimeout(function() {
-                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); refreshCurrentUserPos(); }
+                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); }
                 }, 12000);
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
@@ -2282,20 +1961,6 @@ function showKakaoModal(text, forced) {
                 .deleteTradeFromDB(id);
         }
 
-        function remindTrade(id){
-            if (!confirm("이 공고를 아직 못 본 미소지기 전체에게 재알림(푸시)을 보낼까요?\n(하루 1회만 보낼 수 있습니다)")) return;
-            showLoader(true);
-            fetch('/api/trades', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'remind', id:id }) })
-                .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
-                .then(function(res){
-                    showLoader(false);
-                    if (!res.ok || (res.j && res.j.error)) { alert(res.j && res.j.error ? res.j.error : "재알림 실패"); return; }
-                    alert("재알림을 발송했습니다.");
-                    if (typeof fetchData === 'function') fetchData();
-                })
-                .catch(function(){ showLoader(false); alert("네트워크 오류"); });
-        }
-
         function handleAgreement(id, action) {
             var t = trades.find(function(i){ return i.id === id; });
             var nS = action === "agree" ? "\uC2B9\uC778\uB300\uAE30" : "\uBC18\uB824\uB428";
@@ -2370,11 +2035,9 @@ function showKakaoModal(text, forced) {
             if (tab === "schedule" && typeof window.initScheduleTab === "function") {
                 window.initScheduleTab();
             }
-            if (tab === "schedule") renderMyDocbox();
             if (tab === "notice" && window.NM && NM.renderNotices) NM.renderNotices();
             if (tab === "manual" && window.NM && NM.renderManuals) NM.renderManuals();
             if (tab === "trade" && window.EV && EV.homeBoard) EV.homeBoard();
-            if (tab === "manager") initAdminTabs();   // 관리자 서브탭 복원
             renderList();
         }
 
@@ -2382,20 +2045,18 @@ function showKakaoModal(text, forced) {
             var now = new Date();
             var wk = getWeekKey(getLocalYYYYMMDD(currentStatsDate));
             if (!attendanceData[n]) attendanceData[n] = {};
-            if (!attendanceData[n][wk]) attendanceData[n][wk] = { late:0, absent:0, miss:0, logs:[] };
-            if (attendanceData[n][wk][t] == null) attendanceData[n][wk][t] = 0;
+            if (!attendanceData[n][wk]) attendanceData[n][wk] = { late:0, absent:0, logs:[] };
             attendanceData[n][wk][t] += a;
             if (attendanceData[n][wk][t] < 0) attendanceData[n][wk][t] = 0;
             var ts = (now.getMonth()+1)+"/"+now.getDate()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
-            var tLabel = t==="late" ? "\uC9C0\uAC01" : t==="absent" ? "\uACB0\uADFC" : "\uACF5\uC9C0\uBBF8\uC219\uC9C0";
-            attendanceData[n][wk].logs.unshift("["+ts+"] "+tLabel+" "+(a>0?"\uBD80\uC5EC":"\uCC28\uAC10"));
+            attendanceData[n][wk].logs.unshift("["+ts+"] "+(t==="late"?"\uC9C0\uAC01":"\uACB0\uADFC")+" "+(a>0?"\uBD80\uC5EC":"\uCC28\uAC10"));
             if (attendanceData[n][wk].logs.length > 5) attendanceData[n][wk].logs.pop();
             // DB에 저장
             if (typeof google !== "undefined" && google.script) {
                 var att = attendanceData[n][wk];
                 google.script.run
                     .withFailureHandler(function(e){ alert("\uCD9C\uACB0 \uC800\uC7A5 \uC2E4\uD328: "+e.message); })
-                    .saveAttendanceToDB(n, wk, att.late, att.absent, att.logs, att.miss || 0);
+                    .saveAttendanceToDB(n, wk, att.late, att.absent, att.logs);
             }
             renderStaffStats(); renderList();
         }
@@ -2444,7 +2105,7 @@ function showKakaoModal(text, forced) {
             var html = '';
             MISO_DATA.forEach(function(m, idx){
                 if (!attendanceData[m.name]) attendanceData[m.name] = {};
-                if (!attendanceData[m.name][wk]) attendanceData[m.name][wk] = { late:0, absent:0, miss:0, logs:[] };
+                if (!attendanceData[m.name][wk]) attendanceData[m.name][wk] = { late:0, absent:0, logs:[] };
                 var att = attendanceData[m.name][wk];
                 var isP = checkPenaltyStatus(m.name);
                 var isExp = !!_statsExpanded[m.name];
@@ -2481,14 +2142,6 @@ function showKakaoModal(text, forced) {
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
                 html += "<span class='text-lg font-black w-7 text-center " + (att.absent > 0 ? 'text-red-600' : 'text-slate-700') + "'>" + att.absent + "</span>";
                 html += "<button onclick=\"updateAttendance('" + m.name + "','absent',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
-                html += "</div></div>";
-                // 공지 미숙지 — 서명은 했으나 현장 확인 시 내용을 모른 경우
-                html += "<div class='flex items-center justify-between bg-white rounded-xl px-4 py-2.5'>";
-                html += "<span class='text-sm font-black text-slate-600 whitespace-nowrap'>공지 미숙지</span>";
-                html += "<div class='flex items-center gap-2'>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','miss',-1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>-</button>";
-                html += "<span class='text-lg font-black w-7 text-center " + ((att.miss||0) > 0 ? 'text-purple-600' : 'text-slate-700') + "'>" + (att.miss||0) + "</span>";
-                html += "<button onclick=\"updateAttendance('" + m.name + "','miss',1)\" class='w-8 h-8 bg-slate-100 border border-slate-200 rounded-xl text-base font-black text-slate-600 active:scale-95'>+</button>";
                 html += "</div></div></div></div></div>";
             });
             container.innerHTML = html;
@@ -2546,10 +2199,14 @@ function showKakaoModal(text, forced) {
         function loadMisojigiAdmin() {
             var el = document.getElementById('miso-admin-list');
             if (el) el.innerHTML = '<p class="text-slate-400 text-xs text-center py-4">불러오는 중...</p>';
-            // 0) 캐시된 전화번호 즉시 사용 (있으면 첫 렌더부터 번호 표시)
-            try { var _cp = JSON.parse(sessionStorage.getItem('cgv_miso_phones') || 'null'); if (_cp && typeof _cp === 'object') _misoPhones = _cp; } catch (e) {}
-            // 1) 목록 먼저 (Supabase, 빠름) → 즉시 렌더 — 느린 전화번호를 기다리지 않음
-            fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).then(function(list) {
+            // 전화번호 + 미소지기 목록 병렬 fetch (Supabase → Next.js API)
+            Promise.all([
+                fetch('/api/misojigi?mode=phones').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
+                fetch('/api/misojigi?all=1').then(function(r){ return r.json(); }).catch(function(){ return []; })
+            ]).then(function(results) {
+                var phones = results[0];
+                var list   = results[1];
+                if (phones && typeof phones === 'object' && !phones.error) _misoPhones = phones;
                 if (!Array.isArray(list)) {
                     if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: 데이터를 불러올 수 없습니다</p>';
                     return;
@@ -2559,14 +2216,6 @@ function showKakaoModal(text, forced) {
             }).catch(function(e) {
                 if (el) el.innerHTML = '<p class="text-red-500 text-xs text-center py-4">오류: ' + e + '</p>';
             });
-            // 2) 전화번호는 백그라운드(느린 GAS) → 도착하면 번호만 채워 재렌더 + 캐시
-            fetch('/api/misojigi?mode=phones').then(function(r){ return r.json(); }).then(function(phones) {
-                if (phones && typeof phones === 'object' && !phones.error) {
-                    _misoPhones = phones;
-                    try { sessionStorage.setItem('cgv_miso_phones', JSON.stringify(phones)); } catch (e) {}
-                    if (_misoAdminData.length) renderMisojigiAdmin(_misoAdminData);
-                }
-            }).catch(function(){});
         }
 
         function renderMisojigiAdmin(list) {
@@ -2941,30 +2590,27 @@ function showKakaoModal(text, forced) {
                 }
                 var _sdParts = safeDate.split(" / ");
                 var _sdDate  = _sdParts[0];
-                // 카드용 짧은 날짜: "2026-08-06(목)" → "8/6(목)"
-                var _shortD  = function(s){ return String(s).replace(/^(\d{4})-(\d{1,2})-(\d{1,2})/, function(_m,_y,_mo,_d){ return parseInt(_mo,10)+'/'+parseInt(_d,10); }); };
-                var _sdDateS = _shortD(_sdDate);
                 var _sdCode  = _sdParts.length > 1 ? _sdParts.slice(1).join(' / ').trim() : '';
                 var _codeMatch = _sdCode.match(/^([A-Z]\d+)/);
                 var _pureCode  = _codeMatch ? _codeMatch[1] : _sdCode.split(' ')[0];
                 var _cardTime  = _pureCode ? getActualTimeByCode(_pureCode, _reqHoursCard) : '';
                 var _hoursLbl  = _reqHoursCard <= 4.5 ? '4.5h' : '5.5h';
                 var _hoursCls  = _reqHoursCard <= 4.5 ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700';
-                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px]'>"
-                    + "<span class='text-slate-800 font-bold whitespace-nowrap' style='display:inline-block;min-width:3.3rem'>" + _sdDateS + "</span>"
+                var outHtml = "<div class='font-bold mt-1 flex flex-wrap items-center gap-1.5'>"
+                    + "<span class='text-slate-700'>" + _sdDate + "</span>"
                     + (_pureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _pureCode + "</span>" : "")
-                    + (_cardTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _cardTime + "</span>" : "")
-                    + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + rPL + "</span>"
+                    + (_cardTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _cardTime + "</span>" : "")
+                    + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + rPL + "</span>"
 
                     + "</div>";
                 // \u2605 \uD76C\uB9DD\uADFC\uBB34(IN) \uBA40\uD2F0\uB77C\uC778 \uD30C\uC2F1 \u2014 "[\uB9E4\uC810/\uD50C\uB85C\uC5B4/\uD1B5\uD569]" \uD3EC\uC9C0\uC158 \uD0DC\uADF8 \uC815\uD655 \uCD94\uCD9C
                 var inHtml;
                 if (safe === "\uB300\uD0C0 \uC694\uCCAD") {
-                    inHtml = "<div class='text-slate-400 font-medium'>\uB300\uD0C0 \uC694\uCCAD</div>";
+                    inHtml = "<div class='text-slate-400 italic'>\uB300\uD0C0 \uC694\uCCAD</div>";
                 } else {
                     var _inLines = safe.split("\n").filter(function(l){ return l.trim(); });
                     if (!_inLines.length) {
-                        inHtml = "<div class='text-slate-400 font-medium'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
+                        inHtml = "<div class='text-slate-400 italic'>\uB0B4\uC6A9 \uC5C6\uC74C</div>";
                     } else {
                         var _inBuf = "<div class='space-y-1'>";
                         // \u2605 IN \uC139\uC158 \uD3F4\uBC31 \uD3EC\uC9C0\uC158 = \uC218\uB77D\uC790\uAC00 IN \uADFC\uBB34 \uB0A0\uC9DC\uC5D0 \uBC30\uC815\uB41C \uC2E4\uC81C \uD3EC\uC9C0\uC158
@@ -2972,7 +2618,7 @@ function showKakaoModal(text, forced) {
                         var _inFallbackPos = _inPos;   // IN 슬롯 점유자 기준 포지션
                         _inLines.forEach(function(line, li) {
                             var _lParts = line.split(" / ");
-                            var _lDate = _shortD(_lParts[0] || '');
+                            var _lDate = _lParts[0] || '';
                             var _lCode = _lParts.length > 1 ? _lParts.slice(1).join(' / ').trim() : '';
                             var _lCodeMatch = _lCode.match(/^([A-Z]\d+)/);
                             var _lPureCode = _lCodeMatch ? _lCodeMatch[1] : '';
@@ -2988,11 +2634,11 @@ function showKakaoModal(text, forced) {
                                 if (_lTimeText) _lPureCode = _lTimeText.split(' ')[0];
                             }
                             _inBuf += "<div class='font-bold " + (li > 0 ? "mt-2 pt-2 border-t border-slate-100" : "mt-1") + " flex flex-wrap items-center gap-1.5'>"
-                                + "<span class='text-slate-800 font-bold whitespace-nowrap' style='display:inline-block;min-width:3.3rem'>" + _lDate + "</span>"
+                                + "<span class='text-slate-700'>" + _lDate + "</span>"
                                 + (_lPureCode ? "<span class='font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md text-[12px]'>" + _lPureCode + "</span>" : "")
-                                + (_lTime ? "<span class='text-slate-500 font-semibold text-[13px]'>" + _lTime + "</span>" : "")
+                                + (_lTime ? "<span class='text-slate-800 font-black text-[13px]'>" + _lTime + "</span>" : "")
                                 // IN body: _lPos 포지션 뱃지 (수락자 그 날짜 포지션)
-                                + "<span class='text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500'>" + _lPos + "</span>"
+                                + "<span class='text-[10px] font-black px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200'>" + _lPos + "</span>"
                                 + "</div>";
                         });
                         inHtml = _inBuf + "</div>";
@@ -3060,57 +2706,36 @@ function showKakaoModal(text, forced) {
                 })();
                 var isMineCard = currentUser && (t.reqName === currentUser || t.subName === currentUser);
                 var cardBorder = canApply ? "border-blue-300 ring-2 ring-blue-100" : isUrgent ? "border-red-400 ring-2 ring-red-100" : isMineCard ? "border-amber-300" : "border-slate-100";
-                var _barColor = isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400";
-                var _stBg  = isU?"background:#fef2f2;color:#D6001C":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a";
-                var _stDot = isU?"#D6001C":isN?"#d97706":isP2?"#2563eb":"#16a34a";
-                var _ini   = t.reqName ? String(t.reqName).charAt(0) : "";
-                // 재알림: 오늘(KST) 이미 보냈는지 → 버튼 상태 결정
-                var _remindedToday = !!(t.lastRemindAt &&
-                    new Date(t.lastRemindAt).toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"})
-                    === new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Seoul"}));
-                var cardHtml = "<div class='bg-white rounded-[16px] card-shadow border "+cardBorder+" overflow-hidden mb-2.5 "+(isN&&isMine?"my-alert":"")+"'>"
-                    + "<div class='flex'>"
-                    + "<div class='w-1.5 flex-shrink-0 "+_barColor+"'></div>"
-                    + "<div class='flex-1 min-w-0 p-3.5'>"
-                    // \u2500\u2500 \uD5E4\uB354: \uC544\uBC14\uD0C0\u00B7\uC774\uB984\u00B7\uD0DC\uADF8 / \uC720\uD615\u00B7\uC0C1\uD0DC \u2500\u2500
-                    + "<div class='flex items-center justify-between gap-2 mb-2.5'>"
-                    + "<div class='flex items-center gap-2 min-w-0'>"
-                    + "<div class='w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0 "+(isMineCard?"bg-red-50 text-red-600":isSub?"bg-orange-50 text-orange-500":"bg-slate-100 text-slate-500")+"'>"+_ini+"</div>"
-                    + "<span class='text-[16px] font-extrabold text-slate-900 tracking-tight flex-shrink-0'>"+t.reqName+"</span>"
-                    + (isMine&&isU ? "<span class='text-[9.5px] font-black text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uB0B4 \uACF5\uACE0</span>" : "")
-                    + (t.subName===currentUser&&isN ? "<span class='text-[9.5px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full flex-shrink-0'>\uC9C0\uC6D0\uD568</span>" : "")
+                var cardHtml = "<div class='bg-white rounded-[40px] p-6 sm:p-8 card-shadow border-2 "+cardBorder+" relative overflow-hidden mb-6 "+(isN&&isMine?"my-alert":"")+" transition-all hover:shadow-md'>"
+                    + "<div class='absolute top-0 left-0 w-2 h-full "+(isU?(isUrgent?"bg-red-600":"bg-red-500"):isD?"bg-green-500":isP2?"bg-blue-500":"bg-yellow-400")+"'>"+"</div>"
+                    + "<div class='flex justify-between items-center mb-6'>"
+                    + "<div class='flex items-center gap-2'><span class='px-3 py-1.5 rounded-full text-[11px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-slate-800 text-white shadow-sm")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
+                    + "<span class='text-[10px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-md border'>"+t.id+"</span></div>"
+                    + "<div class='flex items-center gap-2'>"
+                    + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-3 py-1.5 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 shadow-sm active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
+                    + "<div class='flex flex-col items-end gap-1'>"
+                    + "<span class='status-badge' style='"+(isU?"background:#fef2f2;color:#e71a0f":isN?"background:#fffbeb;color:#d97706":isP2?"background:#eff6ff;color:#2563eb":"background:#f0fdf4;color:#16a34a")+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+(isU?"#e71a0f":isN?"#d97706":isP2?"#2563eb":"#16a34a")+"'></span>"+t.status+"</span>"
+                    + (canApply ? "<span class='text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full shadow-sm'>\uC9C0\uC6D0\uAC00\uB2A5</span>" : "")
+                    + (isUrgent ? "<span class='text-[9px] text-red-500 font-bold animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</span>" : "")
+                    + (isMine&&isU ? "<span class='text-[9px] text-slate-400 font-bold'>\uB0B4 \uACF5\uACE0</span>" : "")
+                    + (t.subName===currentUser&&isN ? "<span class='text-[9px] text-blue-500 font-bold'>\uB0B4\uAC00 \uC9C0\uC6D0\uD568</span>" : "")
+                    + "</div></div></div>"
+                    + "<div class='flex justify-between items-start mb-5'>"
+                    + "<div class='flex items-center gap-3'><div class='w-10 h-10 rounded-2xl "+(isSub?"bg-orange-500":"bg-red-600")+" text-white flex items-center justify-center font-black text-[10px] shadow-sm'>\uC2E0\uCCAD</div>"
+                    + "<h4 class='text-lg font-black text-slate-800'>"+t.reqName+"</h4></div>"
+                    + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[11px] btn-c2 btn-c2-danger px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
+                    + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[11px] btn-c2 btn-c2-ghost px-3 py-1.5 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
                     + "</div>"
-                    + "<div class='flex items-center gap-1.5 flex-shrink-0'>"
-                    + "<span class='px-2 py-0.5 rounded-full text-[10px] font-black "+(isSub?"bg-orange-100 text-orange-600":"bg-blue-100 text-blue-700")+"'>"+(isSub?"\uB300\uD0C0":"\uB9DE\uAD50\uB300")+"</span>"
-                    + "<span class='status-badge' style='"+_stBg+"'><span class='badge-dot"+(isU?" badge-dot-pulse":"")+"' style='background:"+_stDot+"'></span>"+t.status+"</span>"
-                    + "</div></div>"
-                    // \u2500\u2500 \uD78C\uD2B8: \uC9C0\uC6D0\uAC00\uB2A5/\uB9C8\uAC10\uC784\uBC15 \u2500\u2500
-                    + ((canApply||isUrgent) ? "<div class='flex gap-1.5 mb-2'>"
-                        + (canApply ? "<span class='text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full'>\uC9C0\uC6D0\uAC00\uB2A5</span>" : "")
-                        + (isUrgent ? "<span class='text-[9px] font-black text-red-500 bg-red-50 px-2 py-0.5 rounded-full animate-pulse'>\u26A0\uFE0F \uB9C8\uAC10\uC784\uBC15</span>" : "")
-                        + "</div>" : "")
-                    // \u2500\u2500 OUT/IN \uC2AC\uB86F \u2500\u2500
-                    + "<div class='bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 space-y-1.5'>"
-                    + "<div class='flex items-center gap-2'><span class='text-[9px] font-black text-red-600 bg-red-100 w-9 text-center py-1 rounded flex-shrink-0'>OUT</span><div class='min-w-0 flex-1'>"+outHtml+"</div></div>"
-                    + "<div class='flex items-start gap-2'><span class='text-[9px] font-black "+(isSub?"text-orange-600 bg-orange-100":"text-blue-600 bg-blue-100")+" w-9 text-center py-1 rounded flex-shrink-0 mt-0.5'>"+(isSub?"\uB300\uD0C0":"IN")+"</span><div class='min-w-0 flex-1 text-[14px]'>"+inHtml+"</div></div>"
+                    + "<div class='bg-slate-50 p-4 sm:p-5 rounded-[28px] border border-slate-100 space-y-4'>"
+                    + "<div><p class='text-[11px] text-red-600 font-black tracking-widest uppercase mb-2'>\uBCF4\uB0BC \uADFC\uBB34 (OUT)</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+outHtml+"</div></div>"
+                    + "<div class='h-px bg-slate-200 w-full'></div>"
+                    + "<div><p class='text-[11px] "+(isSub?"text-orange-600":"text-blue-600")+" font-black tracking-widest uppercase mb-2'>"+(isSub?"\uB2E8\uC21C \uB300\uD0C0 \uC694\uCCAD":"\uBC1B\uACE0 \uC2F6\uC740 \uADFC\uBB34 (IN)")+"</p><div class='bg-white rounded-2xl px-4 py-3 border border-slate-200 shadow-sm'>"+inHtml+"</div></div>"
+                    + (!isU ? "<div class='mt-4 text-[12px] font-black text-blue-800 bg-blue-100/50 px-4 py-3 rounded-xl border border-blue-200 flex items-center justify-between shadow-inner'><span>\uC9C0\uC6D0\uC790: "+t.subName+" <span class='bg-white px-2 py-0.5 rounded-md shadow-sm border border-blue-100 ml-2 text-[10px] text-blue-600'>"+_inPos+"</span></span><span class='text-[9px] bg-blue-600 text-white px-2.5 py-1 rounded-md shadow-sm'>\uB9E4\uCE6D\uB428</span></div>" : "")
                     + "</div>"
-                    // \u2500\u2500 \uC9C0\uC6D0\uC790 \u2500\u2500
-                    + (!isU ? "<div class='flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-1.5 mt-2 flex-wrap'><span class='text-[10px] text-slate-400 font-bold flex-shrink-0'>\uC9C0\uC6D0\uC790</span><span class='text-[12px] font-black text-blue-700'>"+t.subName+"</span>"+(_inPos?"<span class='text-[10px] text-slate-500 font-bold'>"+_inPos+"</span>":"")+"<span class='text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-md ml-auto flex-shrink-0'>\uB9E4\uCE6D\uB428</span></div>" : "")
-                    // \u2500\u2500 \uC8FC\uC694 \uC561\uC158 \u2500\u2500
-                    + (((isU&&!isMine)||(isN&&isMine)) ? "<div class='mt-2.5 flex gap-2'>"
-                        + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-2.5 rounded-xl font-black text-[14px]'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-2.5 text-center rounded-xl font-black text-[11px]'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
-                        + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-2.5 rounded-xl font-black text-[13px]'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-2.5 rounded-xl font-black text-[13px]'>\uAC70\uC808</button>" : "")
-                        + "</div>" : "")
-                    // \u2500\u2500 \uBCF4\uC870 \uC561\uC158: \uCE74\uD1A1\uACF5\uC720 / \uCDE8\uC18C / \uC0AD\uC81C \u2500\u2500
-                    + ((isMine||((isMine||isAdmin)&&!isD)||(isAdmin&&isD)) ? "<div class='mt-2 flex items-center gap-2 justify-end'>"
-                        + (isMine ? "<button onclick=\"copyToClipboard(decodeURIComponent('"+encText+"'))\" class='px-2.5 py-1 bg-[#fae100] text-amber-900 rounded-lg text-[10px] font-black border border-yellow-300 active:scale-95'>\uCE74\uD1A1\uACF5\uC720</button>" : "")
-                        + (isAdmin&&isU ? (_remindedToday
-                            ? "<button disabled class='text-[10px] px-2.5 py-1 bg-slate-100 text-slate-400 rounded-lg font-black cursor-default'>\uD83D\uDD14 \uC624\uB298 \uBC1C\uC1A1\uB428</button>"
-                            : "<button onclick=\"remindTrade('"+t.id+"')\" class='text-[10px] btn-c2 btn-c2-blue px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uD83D\uDD14 \uC7AC\uC54C\uB9BC</button>") : "")
-                        + ((isMine||isAdmin)&&!isD ? "<button onclick=\"cancelTrade('"+t.id+"')\" class='text-[10px] btn-c2 btn-c2-danger px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uCDE8\uC18C</button>" : "")
-                        + (isAdmin&&isD ? "<button onclick=\"adminCancelTrade('"+t.id+"','"+t.reqName+"')\" class='text-[10px] btn-c2 btn-c2-ghost px-2.5 py-1 rounded-lg active:scale-95 font-black'>\uC0AD\uC81C</button>" : "")
-                        + "</div>" : "")
-                    + "</div></div></div>";
+                    + "<div class='mt-6 flex gap-3'>"
+                    + (isU&&!isMine ? (currentUser ? "<button onclick=\"openSupportModal('"+t.id+"')\" class='w-full "+(isSub?"btn-c2 btn-c2-orange":"btn-c2 btn-c2-blue")+" py-4 rounded-2xl font-black'>\uC9C0\uC6D0\uD558\uAE30</button>" : "<div class='w-full bg-slate-100 text-slate-400 py-4 text-center rounded-2xl font-black text-xs uppercase border'>\uC774\uB984 \uC120\uD0DD \uD6C4 \uC9C0\uC6D0 \uAC00\uB2A5</div>") : "")
+                    + (isN&&isMine ? "<button onclick=\"handleAgreement('"+t.id+"','agree')\" class='flex-1 btn-c2 btn-c2-green py-4 rounded-2xl font-black'>\uC218\uB77D</button><button onclick=\"handleAgreement('"+t.id+"','reject')\" class='flex-1 btn-c2 btn-c2-ghost py-4 rounded-2xl font-black'>\uAC70\uC808</button>" : "")
+                    + "</div></div>";
 
                 if (isN&&isMine) { myBoard.innerHTML += cardHtml; }
                 else {
@@ -3239,10 +2864,10 @@ function showKakaoModal(text, forced) {
                 });
                 var secMonth = "<details class='mb-4' "+(isThisMonth?"open":"")+">"
                     + "<summary class='flex justify-between items-center bg-slate-900 text-white px-5 py-4 rounded-[20px] cursor-pointer select-none font-black'>"
-                    + "<span class='text-[14px] min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
-                    + "<div class='flex items-center gap-2 flex-shrink-0'><span class='fold-hint-dark'></span>"
-                    + (mTotalWait>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black whitespace-nowrap'>승인대기 "+mTotalWait+"</span>":"")
-                    + (mTotalDone>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black whitespace-nowrap'>확정 "+mTotalDone+"</span>":"")
+                    + "<span class='text-[14px]'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
+                    + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
+                    + (mTotalWait>0?"<span class='bg-blue-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>승인대기 "+mTotalWait+"</span>":"")
+                    + (mTotalDone>0?"<span class='bg-green-500 text-white text-[10px] px-2.5 py-1 rounded-lg font-black'>확정 "+mTotalDone+"</span>":"")
                     + "</div></summary>"
                     + "<div class='pl-2 mt-2 space-y-2'>";
                 sortWeekKeys(Object.keys(weeks)).forEach(function(wkKey) {
@@ -3252,10 +2877,10 @@ function showKakaoModal(text, forced) {
                     var waitCount = items.length - doneCount;
                     var secA = "<details class='mb-2' "+(isThisWkA?"open":"")+">"
                         + "<summary class='flex justify-between items-center bg-slate-700 text-white px-4 py-3 rounded-[16px] cursor-pointer select-none font-black'>"
-                        + "<span class='text-[12px] min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis'>"+shortWeekLabel(wkKey)+(isThisWkA?" <span class='text-red-300 text-[10px]'>이번주</span>":"")+"</span>"
-                        + "<div class='flex items-center gap-2 flex-shrink-0'><span class='fold-hint-dark'></span>"
-                        + (waitCount>0?"<span class='bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black whitespace-nowrap'>대기 "+waitCount+"</span>":"")
-                        + (doneCount>0?"<span class='bg-green-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black whitespace-nowrap'>확정 "+doneCount+"</span>":"")
+                        + "<span class='text-[12px]'>"+wkKey.replace(' 주간','')+(isThisWkA?" <span class='text-red-300 text-[10px]'>이번주</span>":"")+"</span>"
+                        + "<div class='flex items-center gap-2'><span class='fold-hint-dark'></span>"
+                        + (waitCount>0?"<span class='bg-blue-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>대기 "+waitCount+"</span>":"")
+                        + (doneCount>0?"<span class='bg-green-400 text-white text-[10px] px-2 py-0.5 rounded-md font-black'>확정 "+doneCount+"</span>":"")
                         + "</div></summary>"
                         + "<div class='mt-2 space-y-3 px-1'>";
                     items.sort(function(a,b){ return Number(a.isDone)-Number(b.isDone) || a.date.localeCompare(b.date); }).forEach(function(item){ secA += item.html; });
@@ -3287,28 +2912,10 @@ function showKakaoModal(text, forced) {
         var _formSelectedName = '';
         var _formCurrentReqId = '';
         var _formCurrentType = '';
-        var _formRequestedBy = '';   // 서류를 보낸 관리자 이름 (하단 확인란에 표기)
-        var _formSubmitting = false; // 제출 진행 중 플래그 (연타로 인한 중복 제출 방지)
-        var _driveSaving = false;    // 드라이브 저장 진행 중 플래그
         var _formCollapsed = {};
 
         var FORM_TYPE_LABELS = { late: '지각확인서', absent: '결근사유서', resign: '사직원', earlyLeave: '희망조퇴확인서', privacy: '개인정보보호 서약서', overtime: '연장·야간·휴일 근로동의서', workCondition: '근로조건 변경동의서' };
         var FORM_TYPE_ICONS  = { late: '⏰', absent: '❌', resign: '📄', earlyLeave: '🕐', privacy: '🔒', overtime: '🌙', workCondition: '📋' };
-        // 깔끔한 컬러 배지 + 라인 아이콘 (이모지 대체)
-        var FORM_TYPE_STYLE = {
-            workCondition: { bg:'#eef2ff', fg:'#4f46e5', p:'<path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3"/><path d="M8 10h6M8 13h6"/>' },
-            overtime:      { bg:'#f5f3ff', fg:'#7c3aed', p:'<path d="M15.5 11.5A5.5 5.5 0 1 1 8.5 4.5a4.3 4.3 0 0 0 7 7z"/>' },
-            privacy:       { bg:'#f1f5f9', fg:'#475569', p:'<rect x="5" y="9" width="10" height="7" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>' },
-            late:          { bg:'#fff7ed', fg:'#ea580c', p:'<circle cx="10" cy="10" r="6"/><path d="M10 6.5V10l2.5 1.5"/>' },
-            earlyLeave:    { bg:'#f0fdfa', fg:'#0d9488', p:'<circle cx="10" cy="10" r="6"/><path d="M10 6.5V10l2.5 1.5"/>' },
-            absent:        { bg:'#fef2f2', fg:'#dc2626', p:'<circle cx="10" cy="10" r="6"/><path d="M8 8l4 4M12 8l-4 4"/>' },
-            resign:        { bg:'#f8fafc', fg:'#64748b', p:'<path d="M6 3h6l3 3v11H6z"/><path d="M12 3v3h3"/>' }
-        };
-        function formBadge(type) {
-            var s = FORM_TYPE_STYLE[type] || FORM_TYPE_STYLE.workCondition;
-            return '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:7px;background:' + s.bg + ';flex-shrink:0">'
-                + '<svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="' + s.fg + '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + s.p + '</svg></span>';
-        }
         var FORM_STATUS_LABELS = { pending: '제출대기', submitted: '제출완료', viewed: '확인완료' };
 
         // 관리자: 폼 패널 토글
@@ -3368,7 +2975,7 @@ function showKakaoModal(text, forced) {
             var desc = document.getElementById('form-req-modal-desc');
             var note = document.getElementById('form-req-note');
             if (title) title.textContent = (FORM_TYPE_ICONS[type] || '') + ' ' + (FORM_TYPE_LABELS[type] || '') + ' 요청';
-            if (desc) desc.textContent = _formSelectedName + ' 님에게 ' + (FORM_TYPE_LABELS[type] || '') + ' 제출을 요청합니다.';
+            if (desc) desc.textContent = _formSelectedName + '님에게 ' + (FORM_TYPE_LABELS[type] || '') + ' 제출을 요청합니다.';
             if (note) note.value = '';
             var modal = document.getElementById('form-request-modal');
             if (modal) modal.classList.remove('hidden');
@@ -3417,48 +3024,12 @@ function showKakaoModal(text, forced) {
                 .getFormRequests(null);
         }
 
-        // 서류 제출 재전송(독촉) — 해당 미소지기에게 알림을 다시 보낸다
-        function remindFormReq(id) {
-            if (!confirm('제출 요청 알림을 다시 보낼까요?')) return;
-            fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ id: id, action: 'remind' }) })
-                .then(function(r){ return r.json(); })
-                .then(function(j){
-                    if (j && j.error) { alert('오류: ' + j.error); return; }
-                    alert((j && j.name ? j.name + ' 님에게 ' : '') + '재전송했습니다.');
-                })
-                .catch(function(){ alert('네트워크 오류'); });
-        }
-        // 기한초과 건 일괄 재전송
-        function remindAllOverdue() {
-            var ids = window._overdueFormIds || [];
-            if (!ids.length) { alert('기한초과 건이 없습니다.'); return; }
-            if (!confirm('기한초과 ' + ids.length + '건에 대해 알림을 다시 보낼까요?')) return;
-            var done = 0, fail = 0;
-            var next = function(i) {
-                if (i >= ids.length) { alert('재전송 완료 ' + done + '건' + (fail ? (' / 실패 ' + fail + '건') : '')); return; }
-                fetch('/api/forms', { method:'PATCH', headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ id: ids[i], action: 'remind' }) })
-                    .then(function(r){ return r.json(); })
-                    .then(function(j){ if (j && j.error) fail++; else done++; })
-                    .catch(function(){ fail++; })
-                    .then(function(){ next(i + 1); });
-            };
-            next(0);
-        }
-
         function updateFormPendingBadge(list) {
             var badge = document.getElementById('form-pending-badge');
             if (!badge) return;
-            var pend = (list || []).filter(function(r) { return r.status === 'pending'; });
-            var overdue = pend.filter(function(r) {
-                if (!r.requested_at) return false;
-                var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
-                return new Date() > due;
-            }).length;
-            if (pend.length > 0) {
-                // 기한초과가 있으면 "3 (초과2)" 형태로 강조
-                badge.textContent = overdue ? (pend.length + ' · 초과' + overdue) : String(pend.length);
+            var pending = (list || []).filter(function(r) { return r.status === 'pending'; }).length;
+            if (pending > 0) {
+                badge.textContent = pending;
                 badge.classList.remove('hidden');
             } else {
                 badge.classList.add('hidden');
@@ -3481,31 +3052,6 @@ function showKakaoModal(text, forced) {
             });
             monthOrder.sort(function(a, b) { return b.localeCompare(a); });
             var html = '';
-
-            // ── 미제출 현황 요약 (기한초과 우선) ──
-            var pend = list.filter(function(r){ return r.status === 'pending' && r.requested_at; });
-            var over = [], soon = [];
-            pend.forEach(function(r){
-                var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
-                var d = Math.ceil((due - new Date()) / (1000*60*60*24));
-                (d < 0 ? over : soon).push({ r: r, d: d });
-            });
-            if (pend.length) {
-                html += '<div class="rounded-xl border-2 ' + (over.length ? 'border-red-300 bg-red-50' : 'border-amber-200 bg-amber-50') + ' px-3 py-2.5 mb-3">';
-                html += '<div class="flex items-center gap-2 mb-1.5">';
-                html += '<span class="text-[12px] font-black ' + (over.length ? 'text-red-700' : 'text-amber-700') + '">📌 미제출 ' + pend.length + '건</span>';
-                if (over.length) html += '<span class="text-[10px] font-black text-white bg-red-500 px-2 py-0.5 rounded-full">기한초과 ' + over.length + '</span>';
-                html += '<div class="flex-1"></div>';
-                if (over.length) html += '<button onclick="remindAllOverdue()" class="text-[10px] font-black bg-red-600 text-white px-2.5 py-1 rounded-lg active:scale-95">기한초과 일괄 재전송</button>';
-                html += '</div>';
-                // 이름 나열 (기한초과 먼저)
-                var names = over.map(function(x){ return '<span class="text-[10px] font-black text-red-700">' + x.r.target_name + '<span class="font-bold text-red-400">(' + (FORM_TYPE_LABELS[x.r.type] || x.r.type) + ' · ' + Math.abs(x.d) + '일 경과)</span></span>'; })
-                    .concat(soon.map(function(x){ return '<span class="text-[10px] font-bold text-amber-700">' + x.r.target_name + '<span class="text-amber-400">(D-' + x.d + ')</span></span>'; }));
-                html += '<div class="flex flex-wrap gap-x-2 gap-y-1">' + names.join('') + '</div>';
-                html += '</div>';
-            }
-            // 기한초과 목록을 전역에 보관 → 일괄 재전송에서 사용
-            window._overdueFormIds = over.map(function(x){ return x.r.id; });
             monthOrder.forEach(function(month) {
                 var forms = months[month];
                 var parts = month.split('-');
@@ -3513,21 +3059,14 @@ function showKakaoModal(text, forced) {
                 var isCollapsed = !!_formCollapsed[month];
                 html += '<div class="mb-3">';
                 // 월 헤더: 클릭으로 접기/펴기 + 전체선택 + 인쇄
-                html += '<div class="px-2.5 py-2 bg-slate-100 rounded-xl select-none">';
-                // 1행: 화살표 + 날짜(넉넉히) + 전체
-                html += '<div class="flex items-center gap-1.5 cursor-pointer" onclick="toggleFormMonth(\'' + month + '\')">';
+                html += '<div class="flex items-center gap-1.5 px-2.5 py-2 bg-slate-100 rounded-xl cursor-pointer select-none" onclick="toggleFormMonth(\'' + month + '\')">';
                 html += '<span id="form-month-arrow-' + month + '" class="text-[10px] text-slate-500 font-black flex-shrink-0">' + (isCollapsed ? '▶' : '▼') + '</span>';
-                html += '<span class="text-[13px] font-black text-slate-700 flex-1 min-w-0 whitespace-nowrap">' + monthLabel + ' <span class="font-bold text-slate-400 text-[10px]">(' + forms.length + ')</span></span>';
-                html += '<label class="flex items-center gap-1 flex-shrink-0" onclick="event.stopPropagation()">';
-                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3.5 h-3.5">';
-                html += '<span class="text-[10px] text-slate-500 font-bold">전체</span>';
+                html += '<span class="text-xs font-black text-slate-700 flex-1 min-w-0 truncate">' + monthLabel + ' <span class="font-bold text-slate-400 text-[10px]">(' + forms.length + ')</span></span>';
+                html += '<label class="flex items-center gap-0.5 flex-shrink-0 ml-1" onclick="event.stopPropagation()">';
+                html += '<input type="checkbox" id="selall-' + month + '" onchange="toggleSelectAllForms(\'' + month + '\',this.checked)" class="accent-red-600 w-3 h-3">';
+                html += '<span class="text-[9px] text-slate-500 font-bold">전체</span>';
                 html += '</label>';
-                html += '</div>';
-                // 2행: 인쇄 / 드라이브
-                html += '<div class="flex items-center gap-1.5 mt-1.5">';
-                html += '<button onclick="downloadSelectedForms(\'' + month + '\')" class="flex-1 text-[11px] font-black bg-slate-700 text-white py-1.5 rounded-lg active:scale-95 whitespace-nowrap">📥 인쇄</button>';
-                html += '<button onclick="saveSelectedFormsToDrive(\'' + month + '\')" class="flex-1 text-[11px] font-black bg-blue-600 text-white py-1.5 rounded-lg active:scale-95 whitespace-nowrap">☁️ 드라이브</button>';
-                html += '</div>';
+                html += '<button onclick="event.stopPropagation();downloadSelectedForms(\'' + month + '\')" class="flex-shrink-0 text-[9px] font-black bg-slate-700 text-white px-2 py-1 rounded-lg active:scale-95 whitespace-nowrap ml-1">📥 인쇄</button>';
                 html += '</div>';
                 // 접히는 목록 영역
                 html += '<div id="form-month-body-' + month + '" class="mt-1" style="' + (isCollapsed ? 'display:none' : '') + '">';
@@ -3553,7 +3092,7 @@ function showKakaoModal(text, forced) {
                         var reqD = new Date(r.requested_at);
                         var dueD = new Date(reqD); dueD.setDate(dueD.getDate() + 3);
                         var diffD = Math.ceil((dueD - new Date()) / (1000*60*60*24));
-                        if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">미회신 ' + Math.abs(diffD) + '일</span>';
+                        if (diffD < 0) dueInfo = '<span class="text-[9px] font-black text-red-500 bg-red-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">기한초과</span>';
                         else if (diffD <= 1) dueInfo = '<span class="text-[9px] font-black text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">D-' + diffD + '</span>';
                     }
                     // ── 카드 (overflow:hidden으로 절대 넘침 방지) ──
@@ -3561,6 +3100,7 @@ function showKakaoModal(text, forced) {
                     // ── 1행: 체크박스 + 아이콘 + 이름 + 서류명(truncate) + 상태뱃지 ──
                     html += '<div class="flex items-center gap-1.5 w-full min-w-0">';
                     html += '<input type="checkbox" id="form-chk-' + r.id + '" data-form-id="' + r.id + '" data-month="' + month + '"' + chkDisabled + ' class="accent-blue-600 w-3.5 h-3.5 flex-shrink-0' + (chkDisabled ? ' opacity-30' : '') + '">';
+                    html += '<span class="flex-shrink-0">' + icon + '</span>';
                     html += '<span class="font-black text-[13px] text-slate-800 whitespace-nowrap flex-shrink-0">' + r.target_name + '</span>';
                     html += '<span class="text-[10px] text-slate-500 font-bold flex-1 min-w-0 truncate">' + label + '</span>';
                     html += '<span class="flex items-center gap-0.5 flex-shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ' + statusBgCls + ' ml-1"><span class="w-1.5 h-1.5 rounded-full flex-shrink-0 ' + statusDot + '"></span>' + statusLabel + '</span>';
@@ -3571,8 +3111,6 @@ function showKakaoModal(text, forced) {
                     if (dueInfo) html += dueInfo;
                     html += '<div class="flex-1"></div>';
                     if (canView) html += '<button onclick="openFormViewModal(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-blue-600 text-white px-3 py-1.5 rounded-lg active:scale-95">열람</button>';
-                    // 미제출(pending) 이면 재전송(독촉) 가능
-                    if (r.status === 'pending') html += '<button onclick="remindFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-amber-500 text-white px-3 py-1.5 rounded-lg active:scale-95">재전송</button>';
                     html += '<button onclick="cancelFormReq(\'' + r.id + '\')" class="flex-shrink-0 text-[10px] font-black bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg active:scale-95">취소</button>';
                     html += '</div>';
                     html += '</div>';
@@ -3620,7 +3158,7 @@ function showKakaoModal(text, forced) {
             names.forEach(function(name) {
                 google.script.run
                     .withSuccessHandler(function(subs) {
-                        (subs || []).forEach(function(s) { var _ex = allSubs[s.request_id]; if (!_ex || String(s.submitted_at || '') > String(_ex.submitted_at || '')) allSubs[s.request_id] = s; });
+                        (subs || []).forEach(function(s) { allSubs[s.request_id] = s; });
                         remaining--;
                         if (remaining === 0) { showLoader(false); printBatchForms(selected, allSubs, adminName, sig); }
                     })
@@ -3657,293 +3195,12 @@ function showKakaoModal(text, forced) {
             win.document.close();
         }
 
-        // ── 선택 서류를 PDF로 구글드라이브에 저장 (GAS가 변환·저장) ──
-        function buildFullFormHtml(inner) {
-            return '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
-                + '<style>body{font-family:"Apple SD Gothic Neo","Malgun Gothic","나눔고딕",sans-serif;background:#fff;width:210mm;margin:0 auto;padding:18mm 16mm;box-sizing:border-box;color:#111}'
-                + 'table{border-collapse:collapse}img{max-width:100%}</style></head><body>' + inner + '</body></html>';
-        }
-        // 드라이브 저장 결과 패널 — 자동 이동 대신 링크를 탭하게 해서 앱(PWA)이 종료되지 않게 한다
-        function showDriveResult(title, desc, url) {
-            var old = document.getElementById('drive-result-wrap'); if (old) old.remove();
-            var w = document.createElement('div');
-            w.id = 'drive-result-wrap';
-            w.style.cssText = 'position:fixed;inset:0;z-index:9600;background:rgba(15,23,42,.55);display:flex;align-items:flex-end;justify-content:center';
-            w.innerHTML = '<div style="width:100%;max-width:460px;background:#fff;border-radius:22px 22px 0 0;padding:20px 18px calc(22px + env(safe-area-inset-bottom))">'
-                + '<div style="font-size:17px;font-weight:900;color:#0f172a;margin-bottom:6px">' + title + '</div>'
-                + '<div style="font-size:12.5px;font-weight:700;color:#64748b;margin-bottom:14px">' + desc + '</div>'
-                + '<a href="' + url + '" target="_blank" rel="noopener noreferrer" '
-                +   'style="display:block;text-align:center;padding:14px;background:#1d4ed8;color:#fff;border-radius:14px;font-weight:900;font-size:14px;text-decoration:none">📁 드라이브 폴더 열기</a>'
-                + '<div style="font-size:11px;color:#94a3b8;font-weight:700;text-align:center;margin-top:8px">폴더는 새 창에서 열립니다</div>'
-                + '<button onclick="document.getElementById(\'drive-result-wrap\').remove()" '
-                +   'style="width:100%;margin-top:10px;padding:13px;background:#f1f5f9;color:#475569;border:none;border-radius:14px;font-weight:900;font-size:14px">닫기</button>'
-                + '</div>';
-            w.addEventListener('click', function (e) { if (e.target === w) w.remove(); });
-            document.body.appendChild(w);
-        }
-
-        function saveSelectedFormsToDrive(month) {
-            if (_driveSaving) return;   // 연타 방지 (PDF 생성이 오래 걸려 중복 실행되기 쉬움)
-            var all = document.querySelectorAll('input[data-month="' + month + '"]:not(:disabled)');
-            var ids = [];
-            for (var i = 0; i < all.length; i++) { if (all[i].checked) ids.push(all[i].getAttribute('data-form-id')); }
-            if (!ids.length) { alert('드라이브에 저장할 서류를 선택해 주세요.'); return; }
-            var selected = _formRequests.filter(function(r) { return ids.indexOf(r.id) >= 0 && (r.status === 'submitted' || r.status === 'viewed'); });
-            if (!selected.length) { alert('저장 가능한 서류가 없습니다. (제출완료 상태만)'); return; }
-            var sig = ''; try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
-            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
-            var nameMap = {};
-            selected.forEach(function(r) { if (!nameMap[r.target_name]) nameMap[r.target_name] = []; nameMap[r.target_name].push(r); });
-            var names = Object.keys(nameMap), allSubs = {}, remaining = names.length;
-            _driveSaving = true;
-            showLoader(true, '서류 불러오는 중... (' + selected.length + '건)');
-            names.forEach(function(name) {
-                google.script.run
-                    .withSuccessHandler(function(subs) { (subs || []).forEach(function(s) { var _ex = allSubs[s.request_id]; if (!_ex || String(s.submitted_at || '') > String(_ex.submitted_at || '')) allSubs[s.request_id] = s; }); if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
-                    .withFailureHandler(function() { if (--remaining === 0) _doDriveSave(selected, allSubs, adminName, sig, month); })
-                    .getFormSubmissions(name);
-            });
-        }
-        function _ensureHtml2Pdf(cb) {
-            if (window.html2pdf) return cb();
-            var s = document.createElement('script');
-            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-            s.onload = cb;
-            s.onerror = function() { showLoader(false); _driveSaving = false; alert('PDF 라이브러리를 불러오지 못했어요(네트워크). 잠시 후 다시 시도해 주세요.'); };
-            document.head.appendChild(s);
-        }
-        // 캡처 전 모든 이미지(서명·관리자도장)를 완전히 디코딩까지 대기 → PDF에 서명 누락 방지
-        function _waitImages(root, cb) {
-            var imgs = Array.prototype.slice.call(root.querySelectorAll('img'));
-            var done = false;
-            function finish() { if (done) return; done = true; setTimeout(cb, 150); } // 페인트 여유
-            if (!imgs.length) { finish(); return; }
-            var proms = imgs.map(function (im) {
-                if (im.decode) { return im.decode().catch(function () {}); }
-                return new Promise(function (res) { if (im.complete) return res(); im.onload = res; im.onerror = res; });
-            });
-            Promise.all(proms).then(finish);
-            setTimeout(finish, 3000); // 안전장치
-        }
-        function _doDriveSave(selected, allSubs, adminName, sig, month) {
-            // 인쇄 화면과 동일하게 브라우저에서 렌더 → 여러 서류를 1개 PDF로 묶어 저장(서식 보존 + 빠름)
-            var parts = [];
-            selected.forEach(function(req) {
-                var sub = allSubs[req.id]; if (!sub) return;
-                parts.push(buildViewDoc(req.type, sub.form_data || {}, sub, adminName, sig));
-            });
-            if (!parts.length) { showLoader(false); _driveSaving = false; alert('저장할 제출 내용이 없습니다.'); return; }
-            // 각 서류를 A4 한 장으로 감싸 상(제목)·중(본문)·하(서명·날짜) 분산 배치 (여러 건이어도 장마다 동일 적용)
-            var _pageStyle = 'width:794px;height:1092px;overflow:hidden;padding:56px 34px 64px;box-sizing:border-box;background:#fff;font-family:\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;color:#111;display:flex;flex-direction:column;justify-content:space-between';
-            var combined = parts.map(function(p, i) { return '<div style="' + _pageStyle + (i > 0 ? ';page-break-before:always' : '') + '">' + p + '</div>'; }).join('');
-            // 저장 폴더 경로: cgv근태서류/2026년/8월  (month이 "YYYY-MM"이면 파싱, 아니면 그대로)
-            var _mm = String(month).match(/(\d{4})[-.\/ ]*(\d{1,2})/);
-            var folder = _mm ? ('cgv근태서류/' + _mm[1] + '년/' + Number(_mm[2]) + '월') : ('cgv근태서류/' + String(month).replace(/[\\:*?"<>|]/g, '-'));
-            showLoader(true, 'PDF 만드는 중...');
-            _ensureHtml2Pdf(function() {
-                var holder = document.createElement('div');
-                holder.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px;background:#fff';
-                holder.innerHTML = '<div style="width:794px;background:#fff">' + combined + '</div>';
-                document.body.appendChild(holder);
-                _waitImages(holder, function() {
-                var opt = { margin: 0, image: { type: 'jpeg', quality: 0.55 }, html2canvas: { scale: 1.25, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', windowWidth: 794, scrollX: 0, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }, pagebreak: { mode: ['css', 'legacy'], avoid: ['img', 'table', 'tr'] } };
-                window.html2pdf().set(opt).from(holder.firstChild).outputPdf('datauristring').then(function(datauri) {
-                    if (holder.parentNode) document.body.removeChild(holder);
-                    var base64 = String(datauri).split(',')[1] || '';
-                    function p2(n) { return ('0' + n).slice(-2); }
-                    var d = new Date();
-                    var ts = d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '_' + p2(d.getHours()) + p2(d.getMinutes());
-                    var fileName = ('근태서류_' + folder + '_' + parts.length + '건_' + ts).replace(/[\\/:*?"<>|]/g, '-');
-                    showLoader(true, '드라이브에 저장 중...');
-                    var _tok = sessionStorage.getItem('cgv_token') || '';
-                    var _ctl = new AbortController();
-                    var _to = setTimeout(function(){ _ctl.abort(); }, 58000);
-                    fetch('/api/gas', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok }, body: JSON.stringify({ action: 'saveFormPdfBase64', params: [fileName, folder, base64] }), signal: _ctl.signal })
-                        .then(function(r) { return r.json(); })
-                        .then(function(res) {
-                            clearTimeout(_to); showLoader(false); _driveSaving = false;
-                            var _parentFolderUrl = 'https://drive.google.com/drive/folders/1Wwn-6713MD0F9y8y3tUZEJuZTlWU8ug-';
-                            // ★ window.open 으로 자동 이동하지 않는다.
-                            //   PWA(홈화면 앱)에서는 앱이 통째로 이탈·재시작되어 로그인 화면으로 돌아갔다.
-                            //   결과 패널의 링크를 직접 탭하도록 바꿔 앱이 유지되게 한다.
-                            if (res && res.ok) {
-                                showDriveResult('✅ 구글드라이브에 저장 완료', '서류 ' + parts.length + '건 · PDF 1개', res.folderUrl || _parentFolderUrl);
-                            } else if (res && res.parseError) {
-                                showDriveResult('📄 저장 요청 전송됨', '드라이브에 저장된 것으로 보입니다. (응답 확인 지연)', _parentFolderUrl);
-                            } else {
-                                alert('드라이브 저장 실패: ' + (res && res.error ? res.error : '알 수 없음') + '\n(시트 웹앱에 saveFormPdfBase64 함수가 재배포됐는지 확인해 주세요)');
-                            }
-                        })
-                        .catch(function(e) { clearTimeout(_to); showLoader(false); _driveSaving = false; alert('드라이브 저장 오류: ' + (e && e.name === 'AbortError' ? '시간 초과(58초). 서류 수를 줄여 다시 시도해 주세요.' : (e && e.message ? e.message : e))); });
-                }).catch(function(e) { if (holder.parentNode) document.body.removeChild(holder); showLoader(false); _driveSaving = false; alert('PDF 생성 오류: ' + (e && e.message ? e.message : e)); });
-                }); // _waitImages
-            }); // _ensureHtml2Pdf
-        }
-
         function cancelFormReq(id) {
             if (!confirm('서류 요청을 취소하시겠습니까?')) return;
             google.script.run
                 .withSuccessHandler(function() { loadAdminForms(); })
                 .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
                 .cancelFormRequest(id);
-        }
-
-        // ── 관리자 서브탭 (승인/인력/서류/스케줄/쉼데이/평가) ──
-        //   기능이 늘면서 한 화면에 전부 쌓여 스크롤이 길어지는 문제 → 그룹별로 나눠 표시
-        var _admTab = 'approval';
-        var ADM_ORDER = ['approval', 'staff', 'docs', 'schedule', 'restday', 'eval'];
-        function switchAdminTab(sec) {
-            // 탭 순서로 이동 방향 결정 → 오른쪽 탭이면 오른쪽에서 슬라이드 인
-            var from = ADM_ORDER.indexOf(_admTab);
-            var to = ADM_ORDER.indexOf(sec);
-            var cls = (to >= from) ? 'slide-r' : 'slide-l';
-            _admTab = sec;
-            try { sessionStorage.setItem('cgv_adm_tab', sec); } catch (e) {}
-            document.querySelectorAll('.adm-sec').forEach(function (el) {
-                var on = el.getAttribute('data-sec') === sec;
-                el.style.display = on ? '' : 'none';
-                el.classList.remove('slide-r', 'slide-l');
-                if (on) { void el.offsetWidth; el.classList.add(cls); }   // 애니메이션 재생
-            });
-            document.querySelectorAll('.adm-tab').forEach(function (b) {
-                var on = b.id === 'atab-' + sec;
-                b.classList.toggle('active', on);
-                b.classList.toggle('text-slate-500', !on);
-            });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            // 탭 진입 시 필요한 것만 로드
-            if (sec === 'restday' && window.RD && RD.renderAdmin) RD.renderAdmin();
-            if (sec === 'schedule' && typeof loadAvailOpenStatus === 'function') loadAvailOpenStatus();
-        }
-        function initAdminTabs() {
-            var saved = 'approval';
-            try { saved = sessionStorage.getItem('cgv_adm_tab') || 'approval'; } catch (e) {}
-            if (!document.getElementById('atab-' + saved)) saved = 'approval';
-            switchAdminTab(saved);
-            // 탭 바가 위에서 아래로 펼쳐지는 효과 (진입할 때마다 재생)
-            var bar = document.getElementById('adm-tabbar');
-            if (bar) { bar.classList.remove('drop'); void bar.offsetWidth; bar.classList.add('drop'); }
-        }
-
-        // ── 쉼데이 관리 패널 (관리자) ──
-        function toggleRestdayPanel() {
-            var p = document.getElementById('rd-panel');
-            var a = document.getElementById('rd-panel-arrow');
-            if (!p) return;
-            var willOpen = p.classList.contains('hidden');
-            p.classList.toggle('hidden');
-            if (a) a.textContent = willOpen ? '▲' : '▼';
-            if (willOpen && window.RD && RD.renderAdmin) RD.renderAdmin();
-        }
-
-        // ── 푸시 알림 딥링크 (?go=contract | ?go=forms) ──
-        //   알림을 누르면 앱이 열리는데, 로그인 전이면 PIN 화면이 먼저 뜬다.
-        //   목적지를 저장해 두었다가 로그인 완료 후 해당 화면을 자동으로 연다.
-        function stashDeepLink() {
-            try {
-                var go = new URLSearchParams(location.search).get('go');
-                if (go) {
-                    sessionStorage.setItem('cgv_go', go);
-                    history.replaceState(null, '', location.pathname);  // 주소 정리
-                }
-            } catch (e) {}
-        }
-        function consumeDeepLink() {
-            var go = sessionStorage.getItem('cgv_go');
-            if (!go) return;
-            if (!sessionStorage.getItem('cgv_currentUser')) return;   // 로그인 후에만
-            sessionStorage.removeItem('cgv_go');
-            setTimeout(function () {
-                if (go === 'contract' && typeof openMyContracts === 'function') openMyContracts();
-                else if (go === 'forms') { switchTab('schedule'); if (typeof openMyFormsModal === 'function') openMyFormsModal(); }
-            }, 600);
-        }
-        window.consumeDeepLink = consumeDeepLink;
-        stashDeepLink();
-        // 앱이 이미 떠 있는 상태에서 알림을 누른 경우 (서비스워커가 경로를 전달)
-        if (navigator.serviceWorker) {
-            navigator.serviceWorker.addEventListener('message', function (e) {
-                if (e.data && e.data.type === 'NAVIGATE' && e.data.url) {
-                    var m = String(e.data.url).match(/go=([a-z]+)/);
-                    if (m) { sessionStorage.setItem('cgv_go', m[1]); consumeDeepLink(); }
-                }
-            });
-        }
-
-        // ── 직원용: 내 서류함 (근태서류 + 근로계약서 통합, 근태 탭 상단 고정) ──
-        function renderMyDocbox() {
-            var el = document.getElementById('my-docbox');
-            if (!el) return;
-            var myName = sessionStorage.getItem('cgv_currentUser');
-            var admin = sessionStorage.getItem('cgv_admin') === 'true';
-            if (!myName || admin) { el.innerHTML = ''; return; }  // 관리자/미로그인 시 숨김
-
-            if (el.getAttribute('data-loaded') !== '1') {
-                el.innerHTML = '<div style="background:white;border:1px solid #e2e8f0;border-radius:16px;padding:14px;text-align:center;color:#94a3b8;font-size:12px;font-weight:700">내 서류함 불러오는 중…</div>';
-            }
-            Promise.all([
-                fetch('/api/forms?name=' + encodeURIComponent(myName)).then(function(r){ return r.json(); }).catch(function(){ return []; }),
-                fetch('/api/contracts?mode=my&name=' + encodeURIComponent(myName)).then(function(r){ return r.json(); }).catch(function(){ return []; })
-            ]).then(function(res){
-                var forms = Array.isArray(res[0]) ? res[0] : [];
-                var contracts = Array.isArray(res[1]) ? res[1] : [];
-                var pForms = forms.filter(function(r){ return r.status === 'pending'; });
-                var pContracts = contracts.filter(function(c){ return !c.signedAt; });
-                el.setAttribute('data-loaded', '1');
-                el.innerHTML = buildDocboxHtml(pForms, pContracts);
-                // 근태 탭 버튼에 미처리 표시(빨간 점)
-                var tb = document.getElementById('tab-schedule-btn');
-                if (tb) {
-                    var dot = document.getElementById('sched-tab-dot');
-                    if ((pForms.length + pContracts.length) > 0) {
-                        if (!dot) { dot = document.createElement('span'); dot.id = 'sched-tab-dot'; dot.style.cssText = 'display:inline-block;width:7px;height:7px;border-radius:50%;background:#D6001C;margin-left:4px;vertical-align:middle'; tb.appendChild(dot); }
-                    } else if (dot) { dot.remove(); }
-                }
-            });
-        }
-
-        function buildDocboxHtml(pForms, pContracts) {
-            var total = pForms.length + pContracts.length;
-            if (total === 0) {
-                return '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:800">'
-                    + '<span>📂</span><span>내 서류함 — 처리할 서명/제출 요청이 없습니다 ✅</span></div>';
-            }
-            var rows = '';
-            // 근태서류
-            pForms.forEach(function(r){
-                var label = (FORM_TYPE_LABELS && FORM_TYPE_LABELS[r.type]) || r.type;
-                var icon = (FORM_TYPE_ICONS && FORM_TYPE_ICONS[r.type]) || '📄';
-                var dueStr = '', overdue = false;
-                if (r.requested_at) {
-                    var due = new Date(r.requested_at); due.setDate(due.getDate() + 3);
-                    var diff = Math.ceil((due - new Date()) / (1000*60*60*24));
-                    overdue = diff < 0;
-                    dueStr = overdue ? ('기한 초과 (' + (due.getMonth()+1) + '/' + due.getDate() + ')')
-                                     : ('기한 ' + (due.getMonth()+1) + '/' + due.getDate() + ' · ' + diff + '일 남음');
-                }
-                rows += '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:white;border:1px solid ' + (overdue ? '#fca5a5' : '#fde68a') + ';border-radius:12px;margin-bottom:8px">'
-                    + '<span style="font-size:18px;flex-shrink:0">' + icon + '</span>'
-                    + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:900;color:#0f172a">' + label + ' 제출 요청</div>'
-                    + (dueStr ? '<div style="font-size:11px;font-weight:800;color:' + (overdue ? '#dc2626' : '#b45309') + '">⏰ ' + dueStr + '</div>' : '')
-                    + '</div>'
-                    + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\',\'' + String(r.requested_by || '').replace(/'/g, "\\'") + '\',\'' + String(r.note || '').replace(/'/g, "\\'") + '\')" style="flex-shrink:0;padding:9px 16px;background:#D6001C;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✏️ 작성</button>'
-                    + '</div>';
-            });
-            // 근로계약서
-            pContracts.forEach(function(c){
-                rows += '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:white;border:1px solid #bfdbfe;border-radius:12px;margin-bottom:8px">'
-                    + '<span style="font-size:18px;flex-shrink:0">📄</span>'
-                    + '<div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:900;color:#0f172a">' + (c.weekKey || '') + ' 근로계약서</div>'
-                    + '<div style="font-size:11px;font-weight:800;color:#2563eb">서명 후 제출 → PDF 자동 저장</div></div>'
-                    + '<button onclick="openMyContracts()" style="flex-shrink:0;padding:9px 16px;background:#1d4ed8;color:white;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer">✍ 서명</button>'
-                    + '</div>';
-            });
-            return '<div style="background:linear-gradient(180deg,#fff7f7,#ffffff);border:2px solid #fecaca;border-radius:18px;padding:14px 14px 6px;box-shadow:0 3px 14px rgba(214,0,28,.08)">'
-                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">'
-                + '<span style="font-size:16px">📥</span>'
-                + '<span style="font-size:14px;font-weight:900;color:#0f172a">내 서류함 · 처리할 요청</span>'
-                + '<span style="margin-left:auto;background:#D6001C;color:white;font-size:11px;font-weight:900;padding:2px 9px;border-radius:999px">' + total + '건</span>'
-                + '</div>' + rows + '</div>';
         }
 
         // ── 직원용: 내 서류 ──
@@ -4006,12 +3263,13 @@ function showKakaoModal(text, forced) {
                         }
                         return '<div class="' + (isOverdue ? 'bg-red-50 border-2 border-red-300' : 'bg-yellow-50 border-2 border-yellow-200') + ' rounded-2xl p-4">'
                             + '<div class="flex items-center gap-2 mb-2">'
+                            + '<span class="text-xl">' + icon + '</span>'
                             + '<div><p class="font-black text-slate-800">' + label + ' 제출 요청</p>'
                             + '<p class="text-xs text-slate-500 font-bold">' + dateStr + ' · ' + (r.requested_by || '관리자') + '</p></div>'
                             + '</div>'
                             + (dueStr ? '<div class="text-xs font-black ' + (isOverdue ? 'text-red-600 bg-red-100' : 'text-amber-700 bg-amber-100') + ' rounded-xl px-3 py-2 mb-2">' + dueStr + '</div>' : '')
                             + (r.note ? '<p class="text-xs text-slate-600 font-bold bg-white rounded-xl px-3 py-2 mb-3 border border-yellow-200">' + r.note + '</p>' : '')
-                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\',\'' + String(r.requested_by || '').replace(/'/g, "\\'") + '\',\'' + String(r.note || '').replace(/'/g, "\\'") + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">✏️ 작성하기</button>'
+                            + '<button onclick="openFormFillModal(\'' + r.id + '\',\'' + r.type + '\')" class="w-full btn-c2 btn-c2-primary py-3 rounded-2xl font-black text-sm active:scale-95">✏️ 작성하기</button>'
                             + '</div>';
                     }).join('');
                 })
@@ -4032,17 +3290,10 @@ function showKakaoModal(text, forced) {
         window._submitterSignDataURL = null;
         window._agreementSignDataURL = null;
 
-        function openFormFillModal(reqId, type, requestedBy, note) {
+        function openFormFillModal(reqId, type) {
+            lockBodyScroll();
             _formCurrentReqId = reqId;
             _formCurrentType = type;
-            // 서류 하단 관리자 확인란에는 '이 서류를 보낸 관리자' 이름이 들어가야 한다
-            _formRequestedBy = requestedBy || '';
-            // ★ 단계별 입력(한 번에 하나씩 → 최종 확인)으로 처리. 실패 시에만 기존 서식 폼으로.
-            if (window.FW && FW.open) {
-                var _mn = sessionStorage.getItem('cgv_currentUser') || '';
-                if (FW.open(reqId, type, _mn, _formRequestedBy, note || '')) return;
-            }
-            lockBodyScroll();
             window._signDataURL = null;
             window._submitterSignDataURL = null;
             window._agreementSignDataURL = null;
@@ -4059,9 +3310,9 @@ function showKakaoModal(text, forced) {
             } else if (type === 'absent') {
                 body.innerHTML = buildAbsentForm(myName, today);
             } else if (type === 'resign') {
-                body.innerHTML = buildResignForm(myName, today, _formRequestedBy);
+                body.innerHTML = buildResignForm(myName, today);
             } else if (type === 'earlyLeave') {
-                body.innerHTML = buildEarlyLeaveForm(myName, today, _formRequestedBy);
+                body.innerHTML = buildEarlyLeaveForm(myName, today);
             } else if (type === 'privacy') {
                 body.innerHTML = buildPrivacyForm(myName, today);
             } else if (type === 'overtime') {
@@ -4070,7 +3321,6 @@ function showKakaoModal(text, forced) {
                 body.innerHTML = buildWorkConditionForm(myName, today);
             }
             modal.classList.remove('hidden');
-            if (type === 'earlyLeave' && typeof onEarlyLeaveKindChange === 'function') onEarlyLeaveKindChange(); // 초기 선택 표시
             ensureSignPadModal();
             ensureTimePickerModal();
         }
@@ -4109,7 +3359,7 @@ function showKakaoModal(text, forced) {
                 + '<canvas id="sign-pad-canvas" width="340" height="160" style="width:100%;height:160px;border:2px solid #334155;border-radius:10px;background:white;touch-action:none;display:block;cursor:crosshair"></canvas>'
                 + '<div style="display:flex;gap:10px;margin-top:14px">'
                 + '<button onclick="clearSignPad()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">🗑 지우기</button>'
-                + '<button onclick="confirmSignPad()" style="flex:2;padding:13px;border-radius:12px;background:#D6001C;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 서명 완료</button>'
+                + '<button onclick="confirmSignPad()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 서명 완료</button>'
                 + '</div>'
                 + '</div>';
             document.body.appendChild(el);
@@ -4124,22 +3374,10 @@ function showKakaoModal(text, forced) {
 
             _signPadCanvas = document.getElementById('sign-pad-canvas');
             if (!_signPadCanvas) return;
-            // ★ 캔버스 해상도를 화면 크기 × 기기 픽셀비로 맞춘다.
-            //   340x160 고정이던 탓에 넓은 화면에서 늘려 그려져 서명이 뭉개졌다.
-            //   추가로 2배 오버샘플링해 서류에 확대 삽입해도 또렷하게 남게 한다.
-            (function () {
-                var r = _signPadCanvas.getBoundingClientRect();
-                var dpr = (window.devicePixelRatio || 1) * 2;          // 선명도 확보용 2배
-                var w = Math.max(320, Math.round(r.width || 340));
-                var h = Math.max(150, Math.round(r.height || 160));
-                _signPadCanvas.width = Math.round(w * dpr);
-                _signPadCanvas.height = Math.round(h * dpr);
-            })();
             _signPadCtx = _signPadCanvas.getContext('2d');
             _signPadCtx.clearRect(0, 0, _signPadCanvas.width, _signPadCanvas.height);
             _signPadCtx.strokeStyle = '#0f172a';
-            // 선 굵기는 캔버스 실제 해상도에 비례해야 화면상 두께가 일정하다
-            _signPadCtx.lineWidth = Math.max(4, _signPadCanvas.width / 340 * 2.6);
+            _signPadCtx.lineWidth = 5;
             _signPadCtx.lineCap = 'round';
             _signPadCtx.lineJoin = 'round';
 
@@ -4223,7 +3461,7 @@ function showKakaoModal(text, forced) {
                 var s = '<div style="position:relative;width:80px;flex-shrink:0">';
                 // 선택 강조 띠
                 s += '<div style="position:absolute;top:'+selTop+'px;left:4px;right:4px;height:'+TP_ITEM_H+'px;'
-                   + 'background:rgba(214,0,28,0.07);border-top:2.5px solid #D6001C;border-bottom:2.5px solid #D6001C;'
+                   + 'background:rgba(231,26,15,0.07);border-top:2.5px solid #e71a0f;border-bottom:2.5px solid #e71a0f;'
                    + 'border-radius:10px;pointer-events:none;z-index:2"></div>';
                 // 위 페이드
                 s += '<div style="position:absolute;top:0;left:0;right:0;height:'+padH+'px;'
@@ -4261,7 +3499,7 @@ function showKakaoModal(text, forced) {
                 + '</div>'
                 + '<div style="display:flex;gap:10px;margin-top:18px">'
                 + '<button onclick="cancelTimePicker()" style="flex:1;padding:13px;border-radius:12px;background:#f1f5f9;font-weight:900;font-size:14px;border:none;cursor:pointer;color:#475569">취소</button>'
-                + '<button onclick="confirmTimePicker()" style="flex:2;padding:13px;border-radius:12px;background:#D6001C;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
+                + '<button onclick="confirmTimePicker()" style="flex:2;padding:13px;border-radius:12px;background:#e71a0f;color:white;font-weight:900;font-size:14px;border:none;cursor:pointer">✅ 확인</button>'
                 + '</div></div>';
             document.body.appendChild(el);
         }
@@ -4330,58 +3568,10 @@ function showKakaoModal(text, forced) {
             + '.doc-legend span{display:flex;align-items:center;gap:4px}'
             + '.doc-legend b{display:inline-block;width:11px;height:11px;border-radius:2px;border:1px solid #ccc}'
             + '.adm-line{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#222;flex-wrap:nowrap;white-space:nowrap}'
-            + '.adm-line img{height:48px;object-fit:contain;vertical-align:middle}'
+            + '.adm-line img{height:38px;object-fit:contain;vertical-align:middle}'
             + '.seal{border:1px solid #888;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#aaa;font-weight:600;margin:0 auto}'
             + '.sub-date{text-align:center;font-size:12px;font-weight:700;color:#222;margin:10px 0 4px}'
             + '.doc-footer{display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px}'
-            + '</style>';
-
-        // 구분(희망조퇴/희망휴무) 선택 — 2열 카드형. 한 줄에 나열하면 폰에서 줄바꿈이 깨진다.
-        var KIND_STYLE = '<style>'
-            + '.kind-box{border:1.5px solid #555;border-radius:9px;padding:10px 11px;margin-bottom:12px;background:#fafafa}'
-            + '.kind-tt{font-size:11.5px;font-weight:900;color:#333;margin-bottom:8px}'
-            + '.kind-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
-            + '.kind-op{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;'
-            +   'padding:10px 6px;border:1.5px solid #cbd5e1;border-radius:9px;background:#fff;cursor:pointer;text-align:center}'
-            + '.kind-op input{position:absolute;opacity:0;width:0;height:0}'
-            + '.kind-nm{font-size:13px;font-weight:900;color:#334155;white-space:nowrap}'
-            + '.kind-sub{font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap}'
-            + '.kr{position:absolute;opacity:0;width:0;height:0}'
-            // 선택 표시는 CSS(:checked)로 처리 → 스크립트가 막혀도 항상 동작
-            + '.kr:checked + .kind-op{border-color:#D6001C;background:#fff1f2;box-shadow:0 0 0 2px rgba(214,0,28,.12)}'
-            + '.kr:checked + .kind-op .kind-nm{color:#D6001C}'
-            + '.kr:checked + .kind-op .kind-sub{color:#b91c1c}'
-            // 구분에 따른 문구 전환 (희망조퇴 ↔ 희망휴무)
-            + '.kw-o{display:none}'
-            + '.el-doc:has(#ff-kind-off:checked) .kw-e{display:none}'
-            + '.el-doc:has(#ff-kind-off:checked) .kw-o{display:inline}'
-            // 희망휴무 선택 시 '희망 퇴근 시간' 행 비활성
-            + '.el-doc:has(#ff-kind-off:checked) #ff-act-row{background:#f1f5f9}'
-            + '.el-doc:has(#ff-kind-off:checked) #ff-act-row .fv-in{opacity:.4;pointer-events:none}'
-            + '.el-doc:has(#ff-kind-off:checked) #ff-act-na{display:block}'
-            + '#ff-act-na{display:none;font-size:9.5px;font-weight:700;color:#94a3b8;margin-top:2px}'
-            + '</style>';
-
-        // 작성 화면 전용 세로형 입력 스타일 (출력물 표 스타일과 별개)
-        //  · 가로 표(min-width 480px)는 폰에서 오른쪽 '확인 서명' 칸이 잘려 보이지 않았다.
-        //  · 라벨-입력을 세로로 쌓아 잘림 없이 모든 항목이 보이게 한다.
-        var FORM_ROW_STYLE = '<style>'
-            + '.fv{border:1px solid #555;border-radius:6px;overflow:hidden;margin-bottom:16px}'
-            + '.fv-row{display:flex;align-items:stretch;border-bottom:1px solid #555}'
-            + '.fv-row:last-child{border-bottom:none}'
-            + '.fv-lb{width:104px;min-width:104px;background:#e8e8e8;border-right:1px solid #555;'
-            +   'display:flex;flex-direction:column;align-items:center;justify-content:center;'
-            +   'padding:10px 4px;font-size:11.5px;font-weight:900;color:#333;text-align:center;line-height:1.35}'
-            + '.fv-lb small{display:block;font-size:9.5px;font-weight:700;color:#666;margin-top:2px}'
-            + '.fv-in{flex:1;min-width:0;background:#eef4ff;padding:10px 12px;display:flex;'
-            +   'flex-direction:column;justify-content:center}'
-            + '.fv-in .di{font-size:13px}'
-            + '.fv-time{flex-direction:row;align-items:center;gap:6px;flex-wrap:wrap}'
-            + '.fv-time .tbtn{font-size:12px;font-weight:900;padding:8px 10px;border-radius:8px;'
-            +   'background:#fff;border:1.5px solid #aac;cursor:pointer;min-width:74px}'
-            + '.fv-time .tw{font-size:12px;font-weight:800;color:#555}'
-            + '.sbtn{font-size:12px;font-weight:900;padding:10px 12px;border-radius:9px;background:#fff;'
-            +   'border:1.5px dashed #888;cursor:pointer;white-space:nowrap;align-self:flex-start}'
             + '</style>';
 
         function buildLateForm(name, today) {
@@ -4428,116 +3618,64 @@ function showKakaoModal(text, forced) {
                 +   '<input type="hidden" id="ff-act-end" value=""></td>'
                 + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
                 +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
-                +   '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
+                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
                 + '</tr></tbody></table>'
                 + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
-                + '<div><div class="adm-line">CGV동두천 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
 
-        // 희망조퇴/휴무 구분 전환 — 전일 휴무면 '희망 퇴근 시간'은 의미가 없어 비활성화한다
-        function onEarlyLeaveKindChange() {
-            var off = document.getElementById('ff-kind-off');
-            var isOff = !!(off && off.checked);
-            // 표시 전환(문구·비활성)은 CSS(:has)가 처리한다. JS는 값 정리와 안내문만 담당.
-            if (isOff) {   // 희망휴무면 '희망 퇴근 시간' 입력값을 비운다
-                ['ff-act-start', 'ff-act-end'].forEach(function (id) { var h = document.getElementById(id); if (h) h.value = ''; });
-                ['ff-act-start-btn', 'ff-act-end-btn'].forEach(function (id) { var b = document.getElementById(id); if (b) b.textContent = '-- : --'; });
-            }
-            // 사유 입력 안내 문구도 맞춰준다
-            var ta = document.getElementById('ff-content');
-            if (ta) ta.placeholder = (isOff ? '휴무' : '조퇴') + ' 사유를 구체적으로 작성하세요';
-        }
-
-        // 관리자 확인란 — 이 서류를 보낸 관리자 이름을 넣는다(미지정 시 '관리자')
-        //   이름 사이를 벌려 서명란처럼 보이게: "이 경 연"
-        function admConfirmLine(adminName) {
-            var nm = String(adminName || '').trim() || '관리자';
-            var spaced = nm.split('').join(' ');
-            return '<div class="adm-line">CGV동두천 (관리자) 확인 :'
-                + '<span style="letter-spacing:0.15em;margin-left:6px">' + spaced + '</span>'
-                + '<span style="margin-left:2px">(서명)</span>'
-                + '<img src="/admin-sig.png" onerror="this.style.display=\'none\'"></div>';
-        }
-
-        function buildEarlyLeaveForm(name, today, adminName) {
-            return '<div class="el-doc">' + DOC_STYLE
-                // 제목은 2줄 고정 — 한 줄로 두면 '확/인서' 처럼 단어 중간에서 깨진다
-                + '<div style="text-align:center;margin-bottom:12px;margin-top:8px;line-height:1.3">'
-                +   '<div style="font-size:15px;font-weight:800;color:#444;letter-spacing:0.04em">미소지기</div>'
-                +   '<div style="font-size:22px;font-weight:900;letter-spacing:0.02em;word-break:keep-all">희망 조퇴 · 휴무 확인서</div>'
-                + '</div>'
-                // ★ 구분 선택 — 조퇴(출근 후 조기퇴근) / 전일 휴무(미출근)
-                //   전일 휴무를 고르면 '희망 퇴근 시간'은 해당없음으로 처리되어 서류가 사실과 일치한다.
-                + KIND_STYLE
-                // 라디오를 label 바로 앞에 두고 :checked + label 로 선택 표시 → 스크립트 없이도 동작
-                + '<div class="kind-box">'
-                +   '<div class="kind-tt">구분</div>'
-                +   '<div class="kind-grid">'
-                +     '<div><input type="radio" class="kr" name="ff-kind" id="ff-kind-early" value="조퇴" checked onchange="onEarlyLeaveKindChange()">'
-                +       '<label class="kind-op" for="ff-kind-early">'
-                +       '<span class="kind-nm">희망조퇴</span><span class="kind-sub">일부 근무 후 퇴근</span></label></div>'
-                +     '<div><input type="radio" class="kr" name="ff-kind" id="ff-kind-off" value="전일휴무" onchange="onEarlyLeaveKindChange()">'
-                +       '<label class="kind-op" for="ff-kind-off">'
-                +       '<span class="kind-nm">희망휴무</span><span class="kind-sub">근무 없음</span></label></div>'
-                +   '</div>'
-                + '</div>'
+        function buildEarlyLeaveForm(name, today) {
+            return DOC_STYLE
+                + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
                 + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                 + '미소지기 <span style="border-bottom:1.5px solid #222;display:inline-block;min-width:60px;text-align:center;background:#eef4ff">' + name + '</span>'
-                + ' 은(는) 아래와 같이 <span class="kw-e">조퇴</span><span class="kw-o">휴무</span> 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
                 + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                 + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                 + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">사유</div>'
-                + '<div id="ff-kind-cell" style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333;text-align:center;line-height:1.3">'
-                +   '<span class="kw-e">희망조퇴</span><span class="kw-o">희망휴무</span></div>'
+                + '<div style="flex:1;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
                 + '</div>'
                 + '<div style="flex:1;display:flex;flex-direction:column">'
                 + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#333">내  용</div>'
                 + '<div style="flex:1;background:#eef4ff;padding:4px 6px"><textarea id="ff-content" class="di" rows="8" placeholder="조퇴 사유를 구체적으로 작성하세요"></textarea></div>'
                 + '</div>'
                 + '</div>'
-                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:12px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래 항목을 모두 입력해 주세요</div>'
-                // ★ 작성 화면은 세로형(라벨-입력 행) — 가로 표는 폰에서 서명칸이 잘려 보이지 않았음.
-                //   출력물(인쇄/PDF)은 기존 가로 표 그대로 유지된다.
-                + FORM_ROW_STYLE
-                + '<div class="fv">'
-                +   '<div class="fv-row"><div class="fv-lb">이름</div><div class="fv-in">'
-                +     '<input id="ff-name" class="di" value="' + name + '" placeholder="이름"></div></div>'
-                +   '<div class="fv-row"><div class="fv-lb">날짜</div><div class="fv-in">'
-                +     '<input id="ff-date" type="date" class="di"></div></div>'
-                +   '<div class="fv-row"><div class="fv-lb">약정 근로시간<small>(스케줄)</small></div><div class="fv-in fv-time">'
-                +     '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" class="tbtn">-- : --</button>'
-                +     '<input type="hidden" id="ff-sch-start" value="">'
-                +     '<span class="tw">~</span>'
-                +     '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" class="tbtn">-- : --</button>'
-                +     '<input type="hidden" id="ff-sch-end" value=""></div></div>'
-                +   '<div class="fv-row" id="ff-act-row"><div class="fv-lb" id="ff-act-lb">희망 퇴근 시간<span id="ff-act-na">해당없음</span></div><div class="fv-in fv-time">'
-                +     '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" class="tbtn">-- : --</button>'
-                +     '<input type="hidden" id="ff-act-start" value="">'
-                +     '<span class="tw">~</span>'
-                +     '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" class="tbtn">-- : --</button>'
-                +     '<input type="hidden" id="ff-act-end" value=""></div></div>'
-                +   '<div class="fv-row"><div class="fv-lb">확인 서명<small style="color:#D6001C">필수</small></div><div class="fv-in">'
-                +     '<button type="button" id="ff-sign-btn" onclick="openSignPad()" class="sbtn">✏️ 서명하기</button>'
-                +     '<img id="ff-sign-img" src="" style="display:none;max-height:40px;max-width:120px;margin-top:6px;border:1px solid #ccc;border-radius:4px;background:#fff"></div></div>'
-                + '</div>'
-                // ★ 자발적 신청 · 무급 · 주휴수당 영향 고지 (동의 체크 필수)
-                + '<div style="border:1.5px solid #555;border-radius:8px;padding:11px 13px;margin-bottom:14px;background:#fbfbfb">'
-                +   '<div style="font-size:11.5px;font-weight:900;color:#333;margin-bottom:7px">확인 사항</div>'
-                +   '<p style="font-size:10.5px;font-weight:600;color:#333;line-height:1.75;margin:0 0 9px">'
-                +     '본인은 위 일자의 <b>근로시간 단축(또는 휴무)을 본인의 자유로운 의사에 따라 자발적으로 신청</b>하며, '
-                +     '회사의 지시나 강요에 의한 것이 아님을 확인합니다.<br>'
-                +     '아울러 해당 시간은 <b>무급</b>으로 처리되며, 이로 인해 '
-                +     '<b>주휴수당 지급요건(주 15시간 이상 근무 및 소정근로일 만근)에 영향이 있을 수 있음</b>을 '
-                +     '안내받아 이해하였습니다.</p>'
-                +   '<label style="display:flex;align-items:flex-start;gap:7px;font-size:11.5px;font-weight:800;color:#111;cursor:pointer">'
-                +     '<input type="checkbox" id="ff-consent" style="width:17px;height:17px;accent-color:#D6001C;margin-top:1px;flex-shrink:0">'
-                +     '<span>위 내용을 모두 확인하였으며 이에 동의합니다. <span style="color:#D6001C">(필수)</span></span></label>'
+                + '<div style="background:#fff8e1;border:1.5px solid #ffc107;border-radius:10px;padding:9px 14px;margin-bottom:14px;font-size:12px;font-weight:900;color:#856404;text-align:center">▼ 아래에 날짜와 시간 정보도 꼭 입력해 주세요</div>'
+                + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px">'
+                + '<table class="dt" style="min-width:480px"><thead><tr class="hr">'
+                + '<th style="min-width:72px">이  름</th>'
+                + '<th style="min-width:100px">날  짜</th>'
+                + '<th style="min-width:110px">약정 근로시간<br><small style="font-weight:600;color:#555">(스케줄)</small></th>'
+                + '<th style="min-width:110px">희망 퇴근 시간</th>'
+                + '<th style="min-width:88px">확인 서명</th>'
+                + '</tr></thead><tbody><tr style="height:64px">'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:72px">'
+                +   '<input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="text-align:center;min-width:64px"></td>'
+                + '<td class="fc" style="vertical-align:middle;min-width:100px">'
+                +   '<input id="ff-date" type="date" class="di" placeholder="날짜">'
+                +   '<div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<button type="button" id="ff-sch-start-btn" onclick="openTimePicker(\'ff-sch-start\',\'ff-sch-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-sch-end-btn" onclick="openTimePicker(\'ff-sch-end\',\'ff-sch-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-sch-end" value=""></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:110px">'
+                +   '<button type="button" id="ff-act-start-btn" onclick="openTimePicker(\'ff-act-start\',\'ff-act-start-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-start" value="">'
+                +   '<span style="margin:0 2px;font-size:11px;font-weight:700">~</span>'
+                +   '<button type="button" id="ff-act-end-btn" onclick="openTimePicker(\'ff-act-end\',\'ff-act-end-btn\')" style="font-size:11px;font-weight:900;padding:4px 6px;border-radius:6px;background:#eef4ff;border:1.5px solid #aac;cursor:pointer;min-width:52px">-- : --</button>'
+                +   '<input type="hidden" id="ff-act-end" value=""></td>'
+                + '<td class="fc" style="vertical-align:middle;text-align:center;min-width:88px">'
+                +   '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;display:block;margin:0 auto 4px;white-space:nowrap">✏️ 서명하기</button>'
+                +   '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;margin:0 auto;border:1px solid #ccc;border-radius:4px"></td>'
+                + '</tr></tbody></table>'
                 + '</div>'
                 + '<div class="doc-footer" style="margin-top:20px"><div></div>'
-                + '<div>' + admConfirmLine(adminName) + '</div>'
-                + '</div></div>';
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
         }
 
         function buildAbsentForm(name, today) {
@@ -4548,8 +3686,8 @@ function showKakaoModal(text, forced) {
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
                 + '<table class="dt" style="min-width:300px"><tbody>'
-                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명<span class="need">필수</span></th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
-                + '<th style="width:26%">주민번호<br>앞자리<span class="need">필수</span></th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
+                + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
+                + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
                 + '<tr><th>일&nbsp;&nbsp;&nbsp;시</th><td colspan="3" class="fc"><input id="ff-date" type="date" class="di"><div style="font-size:9px;color:#aaa;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>제출사유</th><td colspan="3" class="fc"><div class="ck-row">'
                 + '<label><input type="checkbox" id="ff-r1"> 경고</label>'
@@ -4575,144 +3713,91 @@ function showKakaoModal(text, forced) {
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
                 + signBtn
                 + '</div>'
-                + '<div><div class="adm-line">CGV동두천 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
                 + '</div>';
         }
 
-        // 사직원 — 퇴직일 입력 시 상단 문구를 자동 반영 (같은 날짜를 두 번 적지 않도록)
-        function onResignDateChange() {
-            var el = document.getElementById('ff-resign-date');
-            var out = document.getElementById('ff-resign-ymd-txt');
-            if (!el || !out) return;
-            var v = el.value;
-            if (!v) { out.innerHTML = '<span style="color:#bbb">____년 __월 __일</span>'; return; }
-            var p = v.split('-');
-            out.innerHTML = '<b>' + Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일</b>';
-        }
-        // 반납 물품 — '분실'을 고르면 반납 체크는 해제하고, 분실도 처리 완료로 인정
-        function onResignItemChange(key) {
-            var ret = document.getElementById('ff-' + key);
-            var lost = document.getElementById('ff-' + key + '-lost');
-            if (!ret || !lost) return;
-            if (ret.checked) lost.checked = false;
-            else if (lost.checked) ret.checked = false;
-        }
-
-        // 사직원 작성 화면 전용 — 입력해야 할 칸을 눈에 띄게 (미소지기가 어디를 채울지 명확히)
-        var RESIGN_STYLE = '<style>'
-            + '#ff-resign .fc{background:#eef4ff !important;box-shadow:inset 0 0 0 1.5px #93c5fd}'
-            + '#ff-resign .fc .di{background:transparent}'
-            + '#ff-resign .di::placeholder{color:#9db8dd;font-weight:600}'
-            + '#ff-resign .ac{background:#f7f7f8 !important}'          /* 관리자/자동 영역 */
-            + '#ff-resign .adm-fill{background:#f2f4f7 !important;color:#64748b}'
-            + '#ff-resign p, #ff-resign .agree-box{word-break:keep-all;overflow-wrap:break-word}'
-            + '#ff-resign .need{display:inline-block;font-size:9px;font-weight:900;color:#fff;background:#D6001C;'
-            +   'border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:1px}'
-            + '#ff-resign .guide{display:flex;align-items:center;gap:7px;background:#eff6ff;border:1.5px solid #bfdbfe;'
-            +   'border-radius:11px;padding:10px 12px;margin-bottom:12px;font-size:11.5px;font-weight:800;color:#1d4ed8;line-height:1.6}'
-            + '</style>';
-
-        function buildResignForm(name, today, adminName) {
+        function buildResignForm(name, today) {
             // 제출자 서명 버튼
             var subSignBtn = '<button type="button" id="ff-submitter-sign-btn" onclick="openSignPad(\'submitter\')" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
                 + '<img id="ff-submitter-sign-img" src="" style="display:none;max-height:32px;max-width:80px;margin-top:3px;border:1px solid #ccc;border-radius:4px">';
             // 합의문 서명 버튼
             var agreeSignBtn = '<button type="button" id="ff-agree-sign-btn" onclick="openSignPad(\'agreement\')" style="font-size:10px;font-weight:900;padding:4px 7px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-agree-sign-img" src="" style="display:none;max-height:40px;max-width:95px;margin-left:4px;border:1px solid #ccc;border-radius:3px">';
+                + '<img id="ff-agree-sign-img" src="" style="display:none;max-height:28px;max-width:70px;margin-left:4px;border:1px solid #ccc;border-radius:3px">';
             // 연/월/일 입력 길이 제한 inline oninput
             var yOi = 'oninput="if(this.value.length>4)this.value=this.value.slice(0,4)"';
             var mOi = 'oninput="if(this.value>12)this.value=12;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
             var dOi = 'oninput="if(this.value>31)this.value=31;else if(this.value<1&&this.value!==\'\')this.value=1;if(this.value.length>2)this.value=this.value.slice(0,2)"';
             var adminOnlyStyle = 'background:#f9f9f9;color:#aaa;font-size:11px;cursor:not-allowed';
-            return '<div id="ff-resign">' + DOC_STYLE + RESIGN_STYLE
+            return DOC_STYLE
                 + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사  직  원</div>'
                 + '<div style="text-align:center;font-size:13px;color:#555;font-weight:700;margin-bottom:16px">(미소지기 용)</div>'
-                // 작성 안내 — 파란 칸만 채우면 됨
-                + '<div class="guide"><span style="font-size:15px">✍️</span>'
-                +   '<span><b style="color:#1e40af">파란색 칸</b>만 작성해 주세요. 회색 칸은 관리자가 채웁니다.</span></div>'
                 // 상기 문구
-                // 퇴직일 한 곳만 입력받고 여기에 자동 반영 (중복 입력·불일치 방지)
                 + '<p style="font-size:11px;font-weight:700;color:#222;line-height:1.8;margin-bottom:14px;text-align:center">'
-                + '상기 본인은&nbsp;&nbsp;<span id="ff-resign-ymd-txt"><span style="color:#bbb">____년 __월 __일</span></span>'
+                + '상기 본인은&nbsp;&nbsp;'
+                + '<input id="ff-resign-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-resign-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-resign-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
                 + '&nbsp;&nbsp;자로 당 사를 사직하고자 하오니 재가하여 주시기 바랍니다.'
-                + '<span style="display:block;font-size:9.5px;color:#aaa;font-weight:600;margin-top:3px">아래 표의 퇴직일을 입력하면 자동으로 채워집니다</span>'
                 + '</p>'
                 + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
                 + '<table class="dt" style="min-width:300px"><tbody>'
                 + '<tr><th style="width:22%">성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="홍길동"></td>'
                 + '<th style="width:26%">주민번호 앞자리</th><td class="fc"><input id="ff-birth" class="di" placeholder="001215" maxlength="6"></td></tr>'
-                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일<span class="need">필수</span></th><td class="fc"><input id="ff-hire-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
-                + '<th>퇴직일<span class="need">필수</span><br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di" onchange="onResignDateChange()"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
+                + '<tr><th>입&nbsp;&nbsp;사&nbsp;&nbsp;일</th><td class="fc"><input id="ff-hire-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td>'
+                + '<th>퇴직일<br><small style="font-weight:600;color:#666">(마지막 근무일)</small></th><td class="fc"><input id="ff-resign-date" type="date" class="di"><div style="font-size:9px;color:#aaa;text-align:center;margin-top:2px">▲ 탭하여 날짜 선택</div></td></tr>'
                 + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc"><input id="ff-phone" class="di" placeholder="010-0000-0000" maxlength="13"></td></tr>'
-                + '<tr><th>퇴 사 사 유<span class="need">필수</span></th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
-                // 반납 물품 — 항목마다 [반납] 또는 [분실] 중 하나를 반드시 선택
-                + '<tr><th>반납 물품<br><small style="font-weight:600;color:#D6001C">필수</small></th><td colspan="3" class="ac">'
-                + [['c1', '유니폼'], ['c2', '명찰'], ['c4', '락커Key']].map(function (it) {
-                    return '<div style="display:flex;align-items:center;gap:10px;padding:5px 2px;border-bottom:1px dashed #e5e5e5">'
-                        + '<span style="font-size:12px;font-weight:800;color:#333;min-width:58px">' + it[1] + '</span>'
-                        + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;cursor:pointer">'
-                        +   '<input type="checkbox" id="ff-' + it[0] + '" onchange="onResignItemChange(\'' + it[0] + '\')"> 반납</label>'
-                        + '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#b91c1c;cursor:pointer">'
-                        +   '<input type="checkbox" id="ff-' + it[0] + '-lost" onchange="onResignItemChange(\'' + it[0] + '\')"> 분실</label>'
-                        + '</div>';
-                }).join('')
-                + '<div style="display:flex;align-items:center;gap:10px;padding:5px 2px">'
-                +   '<span style="font-size:12px;font-weight:800;color:#333;min-width:58px">기타</span>'
-                +   '<label style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;cursor:pointer">'
-                +     '<input type="checkbox" id="ff-c5"> 반납</label>'
-                +   '<span style="font-size:10px;color:#aaa;font-weight:600">(선택)</span>'
-                + '</div>'
-                + '<div style="font-size:9.5px;color:#aaa;font-weight:600;margin-top:4px">분실 물품은 규정에 따라 변상 처리됩니다.</div>'
-                + '</td></tr>'
-                + '<tr><th>지 급 방 법<span class="need">필수</span></th><td colspan="3" class="fc">'
+                + '<tr><th>퇴 사 사 유</th><td colspan="3" class="fc"><textarea id="ff-resign-reason" class="di" rows="2" placeholder="퇴사 사유를 작성하세요"></textarea></td></tr>'
+                // 관리자 전용 필드
+                + '<tr><th style="vertical-align:top;padding-top:6px">면담자 의견</th>'
+                + '<td colspan="3" style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 기입란 — 제출 후 작성</div></td></tr>'
+                + '<tr><th>체&nbsp;&nbsp;&nbsp;크</th><td colspan="3" class="ac"><div class="ck-row">'
+                + '<label><input type="checkbox" id="ff-c1"> 유니폼</label>'
+                + '<label><input type="checkbox" id="ff-c2"> 명찰</label>'
+                + '<label><input type="checkbox" id="ff-c3"> ID카드</label>'
+                + '<label><input type="checkbox" id="ff-c4"> 락커Key</label>'
+                + '<label><input type="checkbox" id="ff-c5"> 기타</label>'
+                + '</div></td></tr>'
+                + '<tr><th>지 급 방 법</th><td colspan="3" class="fc">'
                 + '<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;width:100%">'
                 + '<input id="ff-bank" class="di" placeholder="은행명" style="width:62px;min-width:0;flex-shrink:0">'
                 + '<span style="font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0">은행 (계좌번호:</span>'
                 + '<input id="ff-account" class="di" placeholder="계좌번호" style="flex:1;min-width:0">'
                 + '<span style="font-size:11px;font-weight:700;flex-shrink:0">)</span></div></td></tr>'
-                // 면담 직원 = 사직원을 요청한 관리자 (자동)
-                // 면담 직원 · 물품접수 확인자 = 사직원 요청 관리자 (이름 + 서명 자동)
-                + (function () {
-                    var cell = '<td class="ac" style="border:1px solid #555;padding:4px 6px">'
-                        + '<div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
-                        +   '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + (adminName || '관리자') + '</span>'
-                        +   '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>'
-                        +   '<img src="/admin-sig.png" onerror="this.style.display=\'none\'" style="height:34px;object-fit:contain">'
-                        + '</div></td>';
-                    return '<tr><th>면담 직원</th>' + cell + '<th>물품접수<br>확인자</th>' + cell + '</tr>';
-                })()
+                + '<tr><th>면담 직원</th>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td>'
+                + '<th>물품접수 확인자</th>'
+                + '<td style="' + adminOnlyStyle + ';border:1px solid #555;padding:5px 8px"><div style="font-size:10px;color:#ccc">관리자 작성</div></td></tr>'
                 + '</tbody></table>'
                 + '</div>'
                 // 합의문 — 서명 란 포함
-                + '<div class="agree-box" style="font-size:12px;color:#333;line-height:1.85;border:1px solid #ccc;padding:12px 14px;margin:14px 0 12px">'
+                + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
                 + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
-                // 확인·서명은 우측 정렬
-                + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:flex-end">'
-                + '<span style="font-weight:800;font-size:11.5px">확인 :</span>'
+                + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px">'
+                + '<span style="font-weight:800">확인 :</span>'
                 + '<input id="ff-agree-name" class="di" placeholder="이름" style="width:70px;border-bottom:1.5px solid #555;background:#eef4ff;text-align:center">'
-                + '<span style="font-weight:800;font-size:11.5px">(서명)</span>'
+                + '<span style="font-weight:800">(서명)</span>'
                 + agreeSignBtn
-                + '<span style="font-size:9.5px;font-weight:800;color:#D6001C">필수</span>'
                 + '</div>'
-                + '<div style="font-size:10px;color:#888;font-weight:600;margin-top:7px;text-align:right">합의가 어려우시면 제출 전 관리자에게 문의해 주세요.</div>'
                 + '</div>'
                 // 제출 문구
                 + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
-                // 제출 날짜 — 오늘 날짜 자동 (수기 입력 제거)
+                // 제출 날짜
                 + '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">'
-                + (function () { var p = String(today).split('-'); return Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일'; })()
+                + '<input id="ff-submit-year" class="di" type="number" placeholder="20__" ' + yOi + ' style="width:44px;border-bottom:1.5px solid #333;text-align:center">년&nbsp;'
+                + '<input id="ff-submit-month" class="di" type="number" placeholder="__" min="1" max="12" ' + mOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">월&nbsp;'
+                + '<input id="ff-submit-day" class="di" type="number" placeholder="__" min="1" max="31" ' + dOi + ' style="width:28px;border-bottom:1.5px solid #333;text-align:center">일'
                 + '</p>'
-                // 제출자 + 관리자 확인 — 문서 서식대로 우측 정렬
-                + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;margin-top:4px">'
-                + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
+                // 제출자 + 관리자 확인 세로 배치
+                + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
+                + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
                 + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:11px;font-weight:700">(서명)</span>'
                 + subSignBtn
-                + '<span class="need">필수</span>'
                 + '</div>'
-                + '<div>' + admConfirmLine(adminName) + '</div>'
-                + '</div></div>';
+                + '<div><div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :<span style="letter-spacing:0.15em;margin-left:6px">이 경 연</span><span style="margin-left:2px">(서명)</span><img src="/admin-sig.png"></div></div>'
+                + '</div>';
         }
 
         // ── 개인정보보호 서약서 ──
@@ -4731,14 +3816,11 @@ function showKakaoModal(text, forced) {
                 + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
                 + '<tr><th>핸드폰</th><td class="fc"><input id="ff-phone" class="di" type="tel" placeholder="010-0000-0000" maxlength="13" style="font-size:14px"></td></tr>'
                 + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc"><input id="ff-name" class="di" value="' + name + '" placeholder="이름" style="font-weight:700;font-size:14px"></td></tr>'
-                + '<tr><th>생년월일</th><td class="fc"><input id="ff-birth" class="di" type="tel" inputmode="numeric" placeholder="예) 001215" maxlength="6" style="font-size:14px"></td></tr>'
                 + '</tbody></table>'
                 + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
-                + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
-                + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
-                + '<span style="font-size:12px;font-weight:700">(서명)</span>'
+                + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
                 + '</div>'
                 + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
         }
@@ -4765,7 +3847,7 @@ function showKakaoModal(text, forced) {
                 + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + name + '</span>'
                 + '<span style="font-size:12px;font-weight:700">(인)</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
                 + '</div>'
                 + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
         }
@@ -4809,7 +3891,7 @@ function showKakaoModal(text, forced) {
                 + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
                 + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
                 + '<button type="button" id="ff-sign-btn" onclick="openSignPad()" style="font-size:10px;font-weight:900;padding:5px 8px;border-radius:8px;background:#f8fafc;border:1.5px dashed #888;cursor:pointer;white-space:nowrap">✏️ 서명하기</button>'
-                + '<img id="ff-sign-img" src="" style="display:none;max-height:48px;max-width:110px;border:1px solid #ccc;border-radius:4px">'
+                + '<img id="ff-sign-img" src="" style="display:none;max-height:36px;max-width:80px;border:1px solid #ccc;border-radius:4px">'
                 + '<span style="font-size:12px;font-weight:700">(인)</span>'
                 + '</div>'
                 + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
@@ -4845,7 +3927,6 @@ function showKakaoModal(text, forced) {
                 if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 지각 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('실제 근로시간의 시작/종료 시간이 같습니다.'); return; }
-                if (!formData.sign) { alert('확인 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'absent') {
                 var reasons = [];
                 if (chk('ff-r1')) reasons.push('경고');
@@ -4862,72 +3943,48 @@ function showKakaoModal(text, forced) {
                     submitterSign: window._submitterSignDataURL || ''
                 };
                 if (!formData.name || !formData.date || !formData.why) { alert('이름, 날짜, 이유(왜)는 필수입니다.'); return; }
-                if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'resign') {
-                // 반납 물품 — 항목마다 반납/분실 중 하나를 반드시 선택
-                var ITEMS = [['c1', '유니폼'], ['c2', '명찰'], ['c4', '락커Key']];
-                var returnItems = [], lostItems = [], notPicked = [];
-                ITEMS.forEach(function (it) {
-                    var r = chk('ff-' + it[0]), l = chk('ff-' + it[0] + '-lost');
-                    if (r) returnItems.push(it[1]);
-                    else if (l) lostItems.push(it[1]);
-                    else notPicked.push(it[1]);
-                });
+                var returnItems = [];
+                if (chk('ff-c1')) returnItems.push('유니폼');
+                if (chk('ff-c2')) returnItems.push('명찰');
+                if (chk('ff-c3')) returnItems.push('ID카드');
+                if (chk('ff-c4')) returnItems.push('락커Key');
                 if (chk('ff-c5')) returnItems.push('기타');
-                var _ymd = function (s) { var p = String(s || '').split('-'); return p.length === 3 ? Number(p[0]) + '년 ' + Number(p[1]) + '월 ' + Number(p[2]) + '일' : ''; };
-                var _rd = v('ff-resign-date');
+                var resignYear = v('ff-resign-year'), resignMonth = v('ff-resign-month'), resignDay = v('ff-resign-day');
+                var submitYear = v('ff-submit-year'), submitMonth = v('ff-submit-month'), submitDay = v('ff-submit-day');
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
-                    hireDate: v('ff-hire-date'), resignDate: _rd,
-                    resignYMD: _ymd(_rd),                      // 퇴직일에서 자동 생성
+                    hireDate: v('ff-hire-date'), resignDate: v('ff-resign-date'),
+                    resignYMD: (resignYear && resignMonth && resignDay) ? resignYear + '년 ' + resignMonth + '월 ' + resignDay + '일' : '',
                     phone: v('ff-phone'), reason: v('ff-resign-reason'),
                     returnItems: returnItems.join(', '),
-                    lostItems: lostItems.join(', '),           // 분실 물품(변상 대상)
                     bank: v('ff-bank'), account: v('ff-account'),
                     submitter: v('ff-name'),
-                    submitYMD: _ymd(getLocalYYYYMMDD(new Date())),   // 제출일 자동
-                    interviewer: _formRequestedBy || '',        // 면담 직원 = 사직원 요청 관리자
+                    submitYMD: (submitYear && submitMonth && submitDay) ? submitYear + '년 ' + submitMonth + '월 ' + submitDay + '일' : '',
                     submitterSign: window._submitterSignDataURL || '',
                     agreeName: v('ff-agree-name'),
                     agreeSign: window._agreementSignDataURL || ''
                 };
-                if (!formData.name)        { alert('성명을 입력해주세요.'); return; }
-                if (!formData.birth)       { alert('주민번호 앞자리를 입력해주세요.'); return; }
-                if (!formData.hireDate)    { alert('입사일을 선택해주세요.'); return; }
-                if (!formData.resignDate)  { alert('퇴직일(마지막 근무일)을 선택해주세요.'); return; }
-                if (!formData.reason)      { alert('퇴사 사유를 작성해주세요.'); return; }
-                if (notPicked.length)      { alert('반납 물품을 확인해주세요.\n' + notPicked.join(', ') + ' — 반납 또는 분실을 선택해야 합니다.'); return; }
-                if (!formData.bank)        { alert('지급받을 은행명을 입력해주세요.'); return; }
-                if (!formData.account)     { alert('계좌번호를 입력해주세요.'); return; }
-                if (!formData.agreeName)   { alert('금품청산 합의 확인란에 이름을 입력해주세요.'); return; }
-                if (!formData.agreeSign)   { alert('금품청산 합의 확인란에 서명해주세요. (✏️ 서명하기)'); return; }
-                if (!formData.submitterSign) { alert('제출자 서명을 해주세요. (✏️ 서명하기)'); return; }
+                if (!formData.name || !formData.resignDate) { alert('성명과 마지막 근무일은 필수입니다.'); return; }
             } else if (type === 'earlyLeave') {
-                var _isOff = !!(document.getElementById('ff-kind-off') && document.getElementById('ff-kind-off').checked);
                 formData = {
-                    kind: _isOff ? '희망휴무' : '희망조퇴',
                     name: v('ff-name'), date: v('ff-date'),
                     content: v('ff-content'),
                     schStart: v('ff-sch-start'), schEnd: v('ff-sch-end'),
-                    actStart: _isOff ? '' : v('ff-act-start'), actEnd: _isOff ? '' : v('ff-act-end'),
-                    consent: chk('ff-consent'),
+                    actStart: v('ff-act-start'), actEnd: v('ff-act-end'),
                     sign: window._signDataURL || ''
                 };
-                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, ' + (_isOff ? '휴무' : '조퇴') + ' 사유는 필수입니다.'); return; }
+                if (!formData.name || !formData.date || !formData.content) { alert('이름, 날짜, 조퇴 사유는 필수입니다.'); return; }
                 if (formData.schStart && formData.schEnd && formData.schStart === formData.schEnd) { alert('약정 근로시간의 시작/종료 시간이 같습니다.'); return; }
                 if (formData.actStart && formData.actEnd && formData.actStart === formData.actEnd) { alert('희망 퇴근 시간의 시작/종료 시간이 같습니다.'); return; }
-                if (!formData.consent) { alert('확인 사항에 동의해 주세요.\n(무급 처리 · 주휴수당 영향 안내)'); return; }
-                if (!formData.sign) { alert('확인 서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'privacy') {
                 formData = {
-                    name: v('ff-name'), phone: v('ff-phone'), birth: v('ff-birth'),
+                    name: v('ff-name'), phone: v('ff-phone'),
                     date: v('ff-date'),
                     sign: window._signDataURL || ''
                 };
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
-                if (!formData.birth) { alert('생년월일(주민번호 앞 6자리)을 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
-                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'overtime') {
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
@@ -4937,7 +3994,6 @@ function showKakaoModal(text, forced) {
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
                 if (!formData.birth) { alert('주민등록번호 앞자리를 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
-                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             } else if (type === 'workCondition') {
                 formData = {
                     name: v('ff-name'), birth: v('ff-birth'),
@@ -4945,29 +4001,20 @@ function showKakaoModal(text, forced) {
                     sign: window._signDataURL || ''
                 };
                 if (!formData.name) { alert('성명은 필수입니다.'); return; }
-                if (!formData.birth) { alert('생년월일(주민번호 앞 6자리)을 입력해주세요.'); return; }
                 if (!formData.date) { alert('날짜를 선택해주세요.'); return; }
-                if (!formData.sign) { alert('서명을 해주세요. (✏️ 서명하기)'); return; }
             }
 
             if (!_formCurrentReqId) { alert('요청 ID가 없습니다.'); return; }
-            // ★ 연타 방지: 제출이 끝나기 전 다시 누르면 제출 2건 + 관리자 알림 2번이 갔다
-            if (_formSubmitting) return;
-            _formSubmitting = true;
             showLoader(true, '제출 중...');
             google.script.run
                 .withSuccessHandler(function() {
-                    _formSubmitting = false;
                     showLoader(false);
                     closeFormFillModal();
                     closeMyFormsModal();
                     checkMyPendingForms();
-                    var _db = document.getElementById('my-docbox'); if (_db) _db.removeAttribute('data-loaded');
-                    renderMyDocbox();
                     alert('제출이 완료되었습니다. 수고하셨습니다!');
                 })
                 .withFailureHandler(function(e) {
-                    _formSubmitting = false;
                     showLoader(false);
                     alert('제출 실패: ' + (e && e.message ? e.message : e));
                 })
@@ -4988,9 +4035,8 @@ function showKakaoModal(text, forced) {
 
             google.script.run
                 .withSuccessHandler(function(list) {
-                    // request_id로 정확한 제출 서류 찾기 — 같은 request_id가 여러 개면 "가장 최근(서명 완성본)" 사용
-                    var sub = (list || []).filter(function(s){ return s.request_id === reqId; })
-                              .sort(function(a, b){ return String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')); })[0]
+                    // request_id로 정확한 제출 서류 찾기 (같은 사람이 여러 서류 제출한 경우 대비)
+                    var sub = (list || []).find(function(s){ return s.request_id === reqId; })
                               || (list && list[0]);
                     if (!sub) {
                         body.innerHTML = '<p class="text-slate-400 text-sm text-center py-6">제출된 서류가 없습니다</p>';
@@ -5011,18 +4057,18 @@ function showKakaoModal(text, forced) {
             var today = sub && sub.submitted_at ? sub.submitted_at.substring(0, 10) : getLocalYYYYMMDD(new Date());
             // localStorage에 base64 있으면 사용, 없으면 static 파일 fallback
             var sigImg = adminSigBase64
-                ? '<img src="' + adminSigBase64 + '" style="height:48px;object-fit:contain;vertical-align:middle">'
-                : '<img src="/admin-sig.png" style="height:48px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
+                ? '<img src="' + adminSigBase64 + '" style="height:38px;object-fit:contain;vertical-align:middle">'
+                : '<img src="/admin-sig.png" style="height:38px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
             function tv(v) { return v ? '<span style="font-weight:700;color:#111">' + v + '</span>' : '<span style="color:#bbb">-</span>'; }
             function tf(v) { return '<span style="display:inline-block;min-width:60px;border-bottom:1.5px solid #333;text-align:center;background:#eef4ff;padding:0 6px;font-weight:700">' + (v || '') + '</span>'; }
 
-            var adm = '<div class="adm-line">CGV동두천 (관리자) 확인 :'
+            var adm = '<div class="adm-line">㈜한연개발 동두천지점 (관리자) 확인 :'
                 + '<span style="letter-spacing:0.15em;margin-left:6px">' + adminName + '</span>'
                 + '<span style="margin-left:2px">(서명)</span>' + sigImg + '</div>';
 
             if (type === 'late') {
                 var signCell = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:56px;max-width:120px;display:block;margin:0 auto">'
+                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
                     : tv(fd.sign || '');
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 지각확인서</div>'
@@ -5059,23 +4105,17 @@ function showKakaoModal(text, forced) {
 
             if (type === 'earlyLeave') {
                 var elSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:56px;max-width:120px;display:block;margin:0 auto">'
+                    ? '<img src="' + fd.sign + '" style="max-height:44px;max-width:80px;display:block;margin:0 auto">'
                     : tv(fd.sign || '');
-                // 구분(희망조퇴/희망휴무) — 제출 데이터에 없으면 기존 문서로 보고 '희망조퇴'로 처리
-                var elKind = fd.kind === '희망휴무' ? '희망휴무' : '희망조퇴';
-                var elWord = elKind === '희망휴무' ? '휴무' : '조퇴';
                 return DOC_STYLE
-                    + '<div style="text-align:center;margin-bottom:14px;margin-top:8px;line-height:1.3">'
-                    +   '<div style="font-size:15px;font-weight:800;color:#444;letter-spacing:0.04em">미소지기</div>'
-                    +   '<div style="font-size:23px;font-weight:900;letter-spacing:0.02em;word-break:keep-all">희망 조퇴 · 휴무 확인서</div>'
-                    + '</div>'
+                    + '<div style="font-size:26px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:14px;margin-top:8px">미소지기 희망 조퇴 확인서</div>'
                     + '<p style="font-size:11px;font-weight:600;color:#222;line-height:1.7;margin-bottom:14px">'
                     + '미소지기 ' + tf(fd.name)
-                    + ' 은(는) 아래와 같이 개인 사정으로 인하여 ' + elWord + ' 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
+                    + ' 은(는) 아래와 같이 개인 사정으로 인하여 조퇴 사유가 발생하여 약정한 근무스케줄상 근로시간과 실제 근로시간의 차이가 있음을 확인합니다.</p>'
                     + '<div style="display:flex;border:1px solid #555;margin-bottom:16px;font-size:12px">'
                     + '<div style="width:56px;min-width:56px;border-right:1px solid #555;display:flex;flex-direction:column">'
                     + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">사유</div>'
-                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">' + elKind + '</div>'
+                    + '<div style="flex:1;background:#f0f0f0;padding:6px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">조퇴</div>'
                     + '</div>'
                     + '<div style="flex:1;display:flex;flex-direction:column">'
                     + '<div style="background:#e0e0e0;border-bottom:1px solid #555;padding:5px 2px;text-align:center;font-size:11px;font-weight:900;color:#333">내&nbsp;&nbsp;용</div>'
@@ -5093,28 +4133,16 @@ function showKakaoModal(text, forced) {
                     + '<td class="fc" style="text-align:center">' + tv(fd.name) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv(fd.date) + '</td>'
                     + '<td class="fc" style="text-align:center">' + tv((fd.schStart||'') + (fd.schEnd?' ~ '+fd.schEnd:'')) + '</td>'
-                    + '<td class="fc" style="text-align:center">'
-                    +   (elKind === '희망휴무' ? '<span style="color:#888;font-weight:700">해당없음</span>'
-                                               : tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:''))) + '</td>'
+                    + '<td class="fc" style="text-align:center">' + tv((fd.actStart||'') + (fd.actEnd?' ~ '+fd.actEnd:'')) + '</td>'
                     + '<td class="fc" style="text-align:center">' + elSign + '</td>'
                     + '</tr></tbody></table>'
-                    + '</div>'
-                    // 확인 사항 — 자발적 신청·무급·주휴수당 영향 고지 (동의 여부 표시)
-                    + '<div style="border:1px solid #555;border-radius:6px;padding:10px 12px;margin-bottom:14px;background:#fbfbfb">'
-                    +   '<div style="font-size:11px;font-weight:900;color:#333;margin-bottom:6px">확인 사항</div>'
-                    +   '<p style="font-size:10px;font-weight:600;color:#333;line-height:1.7;margin:0 0 7px">'
-                    +     '본인은 위 일자의 근로시간 단축(또는 휴무)을 본인의 자유로운 의사에 따라 자발적으로 신청하며, '
-                    +     '회사의 지시나 강요에 의한 것이 아님을 확인합니다. 아울러 해당 시간은 무급으로 처리되며, '
-                    +     '이로 인해 주휴수당 지급요건(주 15시간 이상 근무 및 소정근로일 만근)에 영향이 있을 수 있음을 안내받아 이해하였습니다.</p>'
-                    +   '<div style="font-size:10.5px;font-weight:900;color:' + (fd.consent ? '#166534' : '#b91c1c') + '">'
-                    +     (fd.consent ? '☑ 위 내용을 모두 확인하였으며 이에 동의함' : '☐ 미동의') + '</div>'
                     + '</div>'
                     + '<div class="doc-footer" style="margin-top:20px"><div></div><div>' + adm + '</div></div>';
             }
 
             if (type === 'absent') {
                 var subSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
-                    ? '<img src="' + fd.submitterSign + '" style="max-height:48px;max-width:110px;display:block;margin-top:2px">'
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
                     : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:6px;margin-top:8px">사&nbsp;&nbsp;유&nbsp;&nbsp;서</div>'
@@ -5148,7 +4176,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'resign') {
                 var rSubSign = fd.submitterSign && fd.submitterSign.indexOf('data:') === 0
-                    ? '<img src="' + fd.submitterSign + '" style="max-height:48px;max-width:110px;vertical-align:middle">'
+                    ? '<img src="' + fd.submitterSign + '" style="max-height:36px;max-width:80px;display:block;margin-top:2px">'
                     : '';
                 return DOC_STYLE
                     + '<div style="font-size:32px;font-weight:900;text-align:center;letter-spacing:0.08em;margin-bottom:4px;margin-top:8px">사&nbsp;&nbsp;직&nbsp;&nbsp;원</div>'
@@ -5162,39 +4190,27 @@ function showKakaoModal(text, forced) {
                     + '<th>퇴직일</th><td class="fc">' + tv(fd.resignDate) + '</td></tr>'
                     + '<tr><th>연&nbsp;&nbsp;락&nbsp;&nbsp;처</th><td colspan="3" class="fc">' + tv(fd.phone) + '</td></tr>'
                     + '<tr><th>퇴사사유</th><td colspan="3" class="fc" style="white-space:pre-wrap">' + tv(fd.reason) + '</td></tr>'
-                    + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems)
-                    + (fd.lostItems ? '<div style="margin-top:3px;font-size:11px;font-weight:800;color:#b91c1c">분실 : ' + fd.lostItems + ' <span style="font-weight:600;color:#888">(변상 대상)</span></div>' : '')
-                    + '</td></tr>'
+                    + '<tr><th style="vertical-align:top">면담자 의견</th><td colspan="3" class="ac" style="white-space:pre-wrap;color:#888;font-size:11px">'
+                    + (fd.interviewNote ? tv(fd.interviewNote) : '<span style="color:#ccc">관리자 미기입</span>') + '</td></tr>'
+                    + '<tr><th>반납 물품</th><td colspan="3" class="ac">' + tv(fd.returnItems) + '</td></tr>'
                     + '<tr><th>지급 방법</th><td colspan="3" class="fc">' + tv(fd.bank ? fd.bank + ' 은행  계좌: ' + (fd.account||'') : '') + '</td></tr>'
-                    // 면담 직원 · 물품접수 확인자 — 사직원을 요청한 관리자 (이름 + 서명)
-                    + (function () {
-                        var nm = fd.interviewer || adminName || '관리자';
-                        // 표 안이라 서명 이미지는 작게
-                        var sm = adminSigBase64
-                            ? '<img src="' + adminSigBase64 + '" style="height:34px;object-fit:contain;vertical-align:middle">'
-                            : '<img src="/admin-sig.png" style="height:34px;object-fit:contain;vertical-align:middle" onerror="this.style.display=\'none\'">';
-                        var c = '<td class="ac" style="padding:4px 6px"><div style="display:flex;align-items:center;gap:3px;flex-wrap:nowrap">'
-                            + '<span style="font-size:12.5px;font-weight:900;color:#111;white-space:nowrap">' + nm + '</span>'
-                            + '<span style="font-size:11px;font-weight:800;color:#333">(서명)</span>' + sm + '</div></td>';
-                        return '<tr><th>면담 직원</th>' + c + '<th>물품접수<br>확인자</th>' + c + '</tr>';
-                    })()
+                    + '<tr><th>면담 직원</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.interviewer || '관리자 미기입') + '</span></td>'
+                    + '<th>물품접수 확인자</th><td class="ac"><span style="color:#bbb;font-size:11px">' + (fd.receiver || '관리자 미기입') + '</span></td></tr>'
                     + '</tbody></table>'
                     + '</div>'
-                    + '<div style="font-size:12px;color:#333;line-height:1.85;border:1px solid #ccc;padding:12px 14px;margin:14px 0 12px;word-break:keep-all">'
+                    + '<div style="font-size:10px;color:#444;line-height:1.7;border:1px solid #ccc;padding:10px 12px;margin:14px 0 12px">'
                     + '본인은 근로기준법 제36조에 의거하여 회사와의 근로관계 종료에 따른 임금 등의 금품청산을 퇴사하는 월의 익월 급여일까지 연장하여 청산하는 것을 합의합니다.'
-                    // 확인·서명은 우측 정렬
-                    + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:flex-end">'
-                    + '<span style="font-weight:800;font-size:11.5px">확인 :</span>'
+                    + '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px">'
+                    + '<span style="font-weight:800">확인 :</span>'
                     + (fd.agreeName ? tf(fd.agreeName) : '<span style="color:#ccc;border-bottom:1px solid #ccc;min-width:50px;display:inline-block">&nbsp;</span>')
-                    + '<span style="font-weight:800;font-size:11.5px">(서명)</span>'
-                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:40px;max-width:95px;margin-left:2px;vertical-align:middle">' : '')
+                    + '<span style="font-weight:800">(서명)</span>'
+                    + (fd.agreeSign && fd.agreeSign.indexOf('data:') === 0 ? '<img src="' + fd.agreeSign + '" style="max-height:28px;max-width:70px;margin-left:2px">' : '')
                     + '</div>'
                     + '</div>'
                     + '<p class="sub-date" style="margin:12px 0 8px">위와 같이 사직원을 제출합니다.</p>'
                     + (fd.submitYMD ? '<p style="text-align:center;font-size:11px;font-weight:700;color:#222;margin-bottom:14px">' + fd.submitYMD + '</p>' : '<p style="text-align:center;font-size:11px;color:#aaa;margin-bottom:14px">제출일: ' + today + '</p>')
-                    // 제출자 · 관리자 확인 — 문서 서식대로 우측 정렬
-                    + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:14px;margin-top:4px">'
-                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">'
+                    + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">'
+                    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:11px;font-weight:800;color:#222;white-space:nowrap">제출자 :</span>'
                     + tf(fd.submitter || fd.name)
                     + '<span style="font-size:11px;font-weight:700">(서명)</span>'
@@ -5206,7 +4222,7 @@ function showKakaoModal(text, forced) {
 
             if (type === 'privacy') {
                 var pvSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:48px;max-width:110px;display:block;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
                     : '';
                 var pvDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
@@ -5215,28 +4231,23 @@ function showKakaoModal(text, forced) {
                     + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;text-align:left;word-break:keep-all;border:1.5px solid #555;padding:14px 16px;margin-bottom:22px;background:#fafafa">'
                     + '본인은 CJ CGV와 연관된 업무를 수행하면서 취급 및 지득한 CJ CGV 내부자와 외부고객들의 개인정보를 개인적인 목적으로 사용하지 않으며, 관련 개인정보를 내부지침에 따라 안전하게 관리할 것이고 이를 위반하여 발생하는 형·민사 상의 모든 책임은 본인이 감수할 것으로 서약합니다.'
                     + '</div>'
+                    + '<p style="text-align:center;font-size:13px;font-weight:700;color:#222;margin:18px 0 22px">날 짜 : ' + pvDate + '</p>'
                     + '<table class="dt" style="width:100%;margin:0 auto 18px"><tbody>'
                     + '<tr><th style="width:80px">소&nbsp;&nbsp;&nbsp;속</th><td class="ac" style="font-weight:700">CGV동두천</td></tr>'
                     + '<tr><th>직&nbsp;&nbsp;&nbsp;급</th><td class="ac" style="font-weight:700">단기 미소지기</td></tr>'
                     + '<tr><th>핸드폰</th><td class="fc">' + tv(fd.phone) + '</td></tr>'
                     + '<tr><th>성&nbsp;&nbsp;&nbsp;명</th><td class="fc">' + tv(fd.name) + '</td></tr>'
-                    + '<tr><th>생년월일</th><td class="fc">' + tv(fd.birth) + '</td></tr>'
                     + '</tbody></table>'
-                    + '<div>' // ── 하단 그룹: 날짜(서명 바로 위) → 서명 → CJ CGV
-                    + '<p style="text-align:right;font-size:13px;font-weight:700;color:#222;margin:0 0 16px">날 짜 : ' + pvDate + '</p>'
-                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
-                    + '<span style="font-size:12px;font-weight:800;color:#222">성명 : </span>'
-                    + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
-                    + '<span style="font-size:12px;font-weight:700">(서명)</span>'
+                    + '<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">'
+                    + '<span style="font-size:12px;font-weight:800;color:#222">(서명)</span>'
                     + pvSign
                     + '</div>'
-                    + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>'
-                    + '</div>';
+                    + '<div style="text-align:right;font-size:11px;font-weight:700;color:#555;margin-top:24px">CJ CGV</div>';
             }
 
             if (type === 'overtime') {
                 var otSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="max-height:48px;max-width:110px;display:block;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
                     : '';
                 var otDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
@@ -5250,22 +4261,20 @@ function showKakaoModal(text, forced) {
                     + '<p style="margin:0 0 14px"><b>1.</b>&nbsp;상기인은 회사로부터 근로시간 외 추가로 연장근로 및 야간, 휴일근로를 실시할 수 있다는 내용에 대하여 충분히 설명을 들었으며, 연장근로 및 야간, 휴일근로를 실시함에 동의합니다.</p>'
                     + '<p style="margin:0"><b>2.</b>&nbsp;연장 및 야간, 휴일근로에 대해 문제제기를 하지 않겠습니다.</p>'
                     + '</div>'
-                    + '<div>' // ── 하단 그룹: 귀하 → 날짜(서명 바로 위) → 서명
-                    + '<p style="font-size:12px;font-weight:700;text-align:right;margin:0 0 16px">(주)한연개발 동두천지점 귀하</p>'
-                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:0 0 16px">' + otDate + '</p>'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:20px 0">' + otDate + '</p>'
+                    + '<p style="font-size:12px;font-weight:700;text-align:right;margin-bottom:18px">(주)한연개발 동두천지점 귀하</p>'
                     + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">성명 :</span>'
                     + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + otSign
                     + '</div>'
-                    + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>'
-                    + '</div>';
+                    + '<p style="font-size:11px;font-weight:700;color:#555;margin-top:22px;text-align:center">CGV 동두천</p>';
             }
 
             if (type === 'workCondition') {
                 var wcSign = fd.sign && fd.sign.indexOf('data:') === 0
-                    ? '<img src="' + fd.sign + '" style="height:34px;width:auto;display:inline-block;vertical-align:middle;margin-left:4px">'
+                    ? '<img src="' + fd.sign + '" style="max-height:36px;max-width:80px;display:block;margin-left:4px">'
                     : '';
                 var wcDate = fd.date ? (function(){ var p=fd.date.split('-'); return p[0]+'년 '+parseInt(p[1])+'월 '+parseInt(p[2])+'일'; })() : (fd.year||'____')+'년 '+(fd.month||'__')+'월 '+(fd.day||'__')+'일';
                 return DOC_STYLE
@@ -5299,16 +4308,13 @@ function showKakaoModal(text, forced) {
                     + '<div style="font-size:12px;font-weight:600;color:#222;line-height:2.0;border:1.5px solid #555;padding:14px 18px;margin-bottom:22px;background:#fafafa">'
                     + '상기 본인은 ㈜한연개발 동두천지점 과 체결된 파견 근로계약서의 근로조건에서 근무 중 영화관 운영 사정상 필요에 의해 소정근로일수 및 소정근로시간이 변경될 수 있는 점에 대하여 동의하며 이로 인한 어떠한 문제제기도 하지 않을 것입니다.'
                     + '</div>'
-                    + '<div>' // ── 하단 그룹: 날짜(서명 바로 위) → 서명 → 대표이사
-                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:0 0 16px">' + wcDate + '</p>'
-                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap">'
+                    + '<p style="text-align:center;font-size:12px;font-weight:700;color:#222;margin:18px 0">' + wcDate + '</p>'
+                    + '<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:8px">'
                     + '<span style="font-size:12px;font-weight:800;color:#222">서명 :</span>'
-                    + '<span style="border-bottom:1.5px solid #333;min-width:60px;text-align:center;background:#eef4ff;padding:1px 8px;font-size:12px;font-weight:700">' + (fd.name || '') + '</span>'
                     + wcSign
                     + '<span style="font-size:12px;font-weight:700">(인)</span>'
                     + '</div>'
-                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>'
-                    + '</div>';
+                    + '<div style="text-align:right;margin-top:18px;font-size:12px;font-weight:700;color:#222">(주) 한연개발 동두천지점 대표이사 이상순</div>';
             }
 
             return '<p style="color:#e00;font-weight:700">알 수 없는 서류 유형: ' + type + '</p>';
@@ -5319,9 +4325,7 @@ function showKakaoModal(text, forced) {
             var type = sub.type || (req && req.type) || '';
             var sig = '';
             try { sig = localStorage.getItem('cgv_admin_sig') || ''; } catch(e) {}
-            // ★ 하단 확인란은 '이 서류를 보낸 관리자'(requested_by) 기준.
-            //   열람 중인 관리자 이름을 쓰면 서류마다 확인자가 뒤바뀐다.
-            var adminName = (req && req.requested_by) || sessionStorage.getItem('cgv_admin_name') || '관리자';
+            var adminName = sessionStorage.getItem('cgv_admin_name') || '관리자';
             var today = sub.submitted_at ? sub.submitted_at.substring(0,10) : getLocalYYYYMMDD(new Date());
 
             // 서류 원본 레이아웃으로 직접 표시 (가로 스크롤 허용)
@@ -5621,7 +4625,7 @@ function showKakaoModal(text, forced) {
               + '<label style="'+lblS+'">시프트</label><select id="us-code" style="'+inS+'">'+codeOpts+'</select>'
               + '<label style="'+lblS+'">포지션</label><select id="us-pos" style="'+inS+'">'+posOpts+'</select>'
               + '<label style="'+lblS+'">사유 (선택)</label><input type="text" id="us-reason" placeholder="예: 당일 결근" style="'+inS+'">'
-              + '<button onclick="submitUrgentSub()" style="width:100%;margin-top:18px;padding:14px 0;background:#D6001C;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">전체에 긴급 요청 보내기</button>'
+              + '<button onclick="submitUrgentSub()" style="width:100%;margin-top:18px;padding:14px 0;background:#e71a0f;color:#fff;border:none;border-radius:13px;font-size:13.5px;font-weight:900;cursor:pointer">전체에 긴급 요청 보내기</button>'
               + '</div></div>';
             var wrap = document.createElement('div'); wrap.id = 'urgent-sub-wrap'; wrap.innerHTML = html;
             document.body.appendChild(wrap);

@@ -1,0 +1,809 @@
+<!-- ── 로그인 오버레이 ── -->
+<div id="auth-overlay" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[9000] flex flex-col items-end justify-end transition-opacity duration-500">
+    <div class="bg-white rounded-t-[36px] w-full shadow-2xl overflow-hidden" style="max-height:90vh;overflow-y:auto;overscroll-behavior:contain">
+        <!-- 핸들 -->
+        <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+        <!-- 헤더 -->
+        <div class="px-6 pb-4 text-center border-b border-slate-100">
+            <div class="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em] mb-1">CGV DONGDUCHEON</div>
+            <h2 class="text-xl font-black text-slate-900 tracking-tight">교대 시스템 로그인</h2>
+        </div>
+
+        <!-- Step 1: 이름 선택 -->
+        <div id="auth-step-1" class="px-5 py-5">
+            <p class="text-[11px] font-black text-slate-400 mb-3 text-center uppercase tracking-wider">이름을 선택하세요</p>
+            <div id="auth-name-grid" class="grid grid-cols-3 gap-2 mb-4" style="max-height:220px;overflow-y:auto">
+                <div class="col-span-3 text-center py-6 text-slate-400 text-sm font-bold">로딩 중...</div>
+            </div>
+            <div class="border-t border-slate-100 pt-4">
+                <button onclick="showAdminLogin()" class="w-full btn-c2 btn-c2-ghost py-3.5 rounded-2xl text-sm active:scale-95 transition-all">🔐 관리자 로그인</button>
+            </div>
+        </div>
+
+        <!-- Step 2: PIN 입력 -->
+        <div id="auth-step-2" class="hidden px-5 py-5" style="display:none">
+            <div class="flex items-center gap-3 mb-6">
+                <button onclick="backToNameSelect()" class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center font-black text-slate-600 text-lg active:scale-95 transition-all">←</button>
+                <div>
+                    <p class="font-black text-slate-900 text-base" id="auth-pin-name"></p>
+                    <p class="text-[11px] text-slate-400 font-bold" id="auth-pin-desc"></p>
+                </div>
+            </div>
+            <!-- PIN 박스 -->
+            <div id="auth-pin-boxes" class="flex gap-3 justify-center mb-2"></div>
+            <!-- 숨긴 입력 -->
+            <input type="tel" id="auth-pin-input" maxlength="5" inputmode="numeric" pattern="[0-9]*"
+                   class="opacity-0 absolute w-0 h-0" oninput="onPinInput()" autocomplete="off">
+            <p id="auth-pin-error" class="text-red-500 text-xs font-bold text-center mb-3 min-h-[1.2rem]"></p>
+            <!-- 숫자패드 -->
+            <div class="grid grid-cols-3 gap-2 mb-2" id="auth-numpad"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── 관리자 PIN 모달 (이미 로그인 후 관리자 탭 접근) ── -->
+<div id="admin-pin-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[8500] flex items-end justify-center">
+    <div class="bg-white rounded-t-[32px] w-full shadow-2xl pb-6">
+        <div class="flex justify-center pt-4 pb-3"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+        <div class="px-6">
+            <h3 class="font-black text-slate-900 text-lg text-center mb-1">관리자 PIN</h3>
+            <p class="text-xs text-slate-400 font-bold text-center mb-5">4자리를 입력하세요</p>
+            <div id="admin-modal-pin-boxes" class="flex gap-3 justify-center mb-2"></div>
+            <input type="tel" id="admin-modal-pin-input" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                   class="opacity-0 absolute w-0 h-0" oninput="onAdminModalPinInput()" autocomplete="off">
+            <p id="admin-modal-pin-error" class="text-red-500 text-xs font-bold text-center mb-3 min-h-[1.2rem]"></p>
+            <div class="grid grid-cols-3 gap-2 mb-2" id="admin-modal-numpad"></div>
+            <button onclick="closeAdminPinModal()" class="w-full mt-2 py-3 text-slate-400 font-black text-sm active:scale-95">취소</button>
+        </div>
+    </div>
+</div>
+
+    <header class="bg-white/95 backdrop-blur-md border-b-2 border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 flex flex-col">
+            <div class="flex items-center justify-between py-3 gap-2">
+                <div class="flex flex-col justify-center min-w-0">
+                    <div class="flex items-baseline gap-1 mb-0.5">
+                        <span style="color:#FF6B00;font-size:10px;font-weight:900;letter-spacing:0.18em;">CGV </span><span style="color:#e71a0f;font-size:10px;font-weight:900;letter-spacing:0.18em;"> DONGDUCHEON STAFF</span>
+                    </div>
+                    <h1 class="text-[17px] font-black tracking-tighter text-slate-900 leading-none whitespace-nowrap">동두천 미소지기 교대 신청</h1>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span id="header-datetime" class="text-[10px] font-bold text-slate-400 hidden sm:inline"></span>
+                    <button id="push-subscribe-btn" style="font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;border:2px solid #e71a0f;background:white;color:#e71a0f;cursor:pointer;white-space:nowrap">🔕 알림받기</button>
+                </div>
+            </div>
+            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner mb-2 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;">
+                <button onclick="switchTab('trade')" id="tab-trade-btn" class="tab-btn active flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg transition-all whitespace-nowrap">신청</button>
+                <button onclick="switchTab('schedule')" id="tab-schedule-btn" class="tab-btn flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg transition-all text-slate-500 whitespace-nowrap">근태</button>
+                <button onclick="switchTab('notice')" id="tab-notice-btn" class="tab-btn flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg transition-all text-slate-500 whitespace-nowrap">공지</button>
+                <button onclick="switchTab('manual')" id="tab-manual-btn" class="tab-btn flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg transition-all text-slate-500 whitespace-nowrap">매뉴얼</button>
+                <button onclick="switchTab('manager')" id="tab-manager-btn" class="tab-btn flex-1 text-center text-[12px] font-bold px-2 py-2 rounded-lg transition-all text-slate-500 whitespace-nowrap">관리자</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 알림 상태바 (로그인 후 항상 표시, 상태별 색상 변경) -->
+    <div id="push-banner" style="display:none;border-bottom:2px solid #bfdbfe;padding:10px 16px;transition:background 0.3s;">
+        <div style="max-width:768px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <span id="push-banner-msg" style="font-size:13px;font-weight:700;flex:1;"></span>
+            <div id="push-banner-actions" style="display:flex;gap:8px;flex-shrink:0;"></div>
+        </div>
+    </div>
+
+    <main class="w-full mt-6 px-4">
+        <div id="view-trade" class="max-w-3xl mx-auto space-y-6">
+
+            <div id="home-leaderboard"></div>
+
+            <section class="bg-white rounded-[24px] p-4 card-shadow border-2 border-slate-100">
+                <div class="flex items-center gap-3 mb-5">
+                    <div class="w-10 h-10 bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center text-slate-600 shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </div>
+                    <h2 class="text-xl font-black text-slate-900 tracking-tight">누구신가요?</h2>
+                </div>
+                <button onclick="openUserSelectModal()" id="user-display-btn" class="w-full p-5 bg-slate-50 border-2 border-slate-300 hover:border-red-400 rounded-[20px] font-black text-lg text-slate-500 text-left transition-all shadow-inner flex justify-between items-center">
+                    <span>이름을 선택해 주세요</span>
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </button>
+                <div id="name-guide" class="text-[12px] text-red-500 font-bold mt-3 ml-2 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span> 이름을 선택해야 모든 기능이 활성화됩니다.
+                </div>
+            </section>
+
+            <section class="bg-white rounded-[32px] p-5 card-shadow border-2 border-slate-100 section-accent-top">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-black text-slate-900 tracking-tighter text-red-600">공고 등록</h2>
+                    <p class="text-[12px] font-black text-red-500 mt-2">지각/결근 시 해당 주차 및 다음 주차 이용 불가</p>
+                </div>
+                <div class="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-[24px]">
+                    <button onclick="setTradeType('swap')" id="type-swap-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-dark transition-all">맞교대</button>
+                    <button onclick="setTradeType('sub')" id="type-sub-btn" class="flex-1 py-4 rounded-[18px] font-black text-[15px] btn-c2 btn-c2-ghost transition-all">단순 대타</button>
+                </div>
+                <input type="hidden" id="trade-type-input" value="swap">
+                <div class="space-y-8">
+                    <div class="p-5 rounded-[24px] border-2 border-red-200 bg-red-50/40 space-y-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded-md bg-red-600 flex items-center justify-center flex-shrink-0">
+                                <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 1v8M1 5l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                            </div>
+                            <span class="text-[13px] font-black text-red-700 tracking-tight">내가 보낼 근무 (OUT)</span>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1.5">
+                            <div onclick="setDayAndAutoDate('월','req')" class="req-day-chip day-chip chip font-bold text-slate-600">월</div>
+                            <div onclick="setDayAndAutoDate('화','req')" class="req-day-chip day-chip chip font-bold text-slate-600">화</div>
+                            <div onclick="setDayAndAutoDate('수','req')" class="req-day-chip day-chip chip font-bold text-slate-600">수</div>
+                            <div onclick="setDayAndAutoDate('목','req')" class="req-day-chip day-chip chip font-bold text-slate-600">목</div>
+                            <div onclick="setDayAndAutoDate('금','req')" class="req-day-chip day-chip chip font-bold text-slate-600">금</div>
+                            <div onclick="setDayAndAutoDate('토','req')" class="req-day-chip day-chip chip font-bold text-blue-600">토</div>
+                            <div onclick="setDayAndAutoDate('일','req')" class="req-day-chip day-chip chip font-bold text-red-600">일</div>
+                        </div>
+                        <input type="date" id="req-date-input" onchange="updateDayFromDate('req')" class="w-full p-5 bg-white border-2 border-slate-300 rounded-[22px] font-black text-slate-800 outline-none focus:border-red-500 text-lg shadow-sm">
+                        <div class="grid grid-cols-3 gap-2.5">
+                            <div onclick="setTimeGroup('D','req')" id="req-group-D" class="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">오픈(D)</div>
+                            <div onclick="setTimeGroup('M','req')" id="req-group-M" class="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">미들(M)</div>
+                            <div onclick="setTimeGroup('N','req')" id="req-group-N" class="req-time-group time-chip chip py-4 rounded-2xl font-black text-sm text-slate-600">마감(N)</div>
+                        </div>
+                        <div id="req-code-grid" class="grid grid-cols-3 gap-2 hidden border-t-2 border-red-100 pt-6"></div>
+                        <input type="hidden" id="req-selected-day"><input type="hidden" id="req-selected-code">
+                        <div class="pt-5 border-t-2 border-red-100">
+                            <label class="text-[10px] text-red-600 font-black mb-3 block">본인 직무에 맞는 포지션만 선택 가능합니다.</label>
+                            <div class="flex flex-wrap gap-2">
+                                <div onclick="setReqPosition('통합')" id="req-pos-통합" class="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
+                                <div onclick="setReqPosition('매점')" id="req-pos-매점" class="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
+                                <div onclick="setReqPosition('매점마감')" id="req-pos-매점마감" class="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
+                                <div onclick="setReqPosition('플로어')" id="req-pos-플로어" class="req-pos-chip chip py-3 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
+                            </div>
+                            <input type="hidden" id="req-selected-pos">
+                        </div>
+                    </div>
+
+                    <div id="sub-warning-section" class="hidden bg-orange-50 border-2 border-orange-300 p-6 rounded-[28px] shadow-sm">
+                        <p class="text-orange-900 font-black mb-2 text-[15px]">단순 대타 요청 전 필수 확인 사항</p>
+                        <p class="text-[12px] font-bold text-orange-800 leading-relaxed">피치 못할 사유(병결, 경조사 등)가 아닌 무분별한 단순 대타 요청은 매니저 검토 후 승인이 엄격히 반려됩니다.</p>
+                    </div>
+
+                    <div id="wish-section" class="p-5 rounded-[24px] border-2 border-blue-200 bg-blue-50/40 space-y-4">
+                        <div class="flex justify-between items-center gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-4 h-4 rounded-md bg-blue-600 flex items-center justify-center flex-shrink-0">
+                                    <svg width="8" height="8" viewBox="0 0 10 10" fill="white"><path d="M5 9V1M1 5l4 4 4-4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <span class="text-[13px] font-black text-blue-700 tracking-tight block">내가 받고 싶은 시간 (IN)</span>
+                                    <span class="text-[10px] font-bold text-blue-400">최대 2일 선택</span>
+                                </div>
+                            </div>
+                            <button onclick="clearWishData()" class="text-[10px] text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-md shadow-sm active:scale-95 font-black flex-shrink-0">초기화</button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1.5">
+                            <div onclick="toggleWishDay('월')" class="wish-day-chip day-chip chip font-bold text-slate-600">월</div>
+                            <div onclick="toggleWishDay('화')" class="wish-day-chip day-chip chip font-bold text-slate-600">화</div>
+                            <div onclick="toggleWishDay('수')" class="wish-day-chip day-chip chip font-bold text-slate-600">수</div>
+                            <div onclick="toggleWishDay('목')" class="wish-day-chip day-chip chip font-bold text-slate-600">목</div>
+                            <div onclick="toggleWishDay('금')" class="wish-day-chip day-chip chip font-bold text-slate-600">금</div>
+                            <div onclick="toggleWishDay('토')" class="wish-day-chip day-chip chip font-bold text-blue-600">토</div>
+                            <div onclick="toggleWishDay('일')" class="wish-day-chip day-chip chip font-bold text-red-600">일</div>
+                        </div>
+                        <div id="wish-details-container" class="mt-5 space-y-5">
+                            <div class="w-full p-4 bg-white border-2 border-slate-300 rounded-[22px] min-h-[64px] flex items-center justify-center shadow-sm font-black text-slate-400 text-[13px]">위에서 원하는 요일을 먼저 눌러주세요.</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="font-black text-slate-600 mb-3 block text-sm">사유 선택</label>
+                        <select id="reason-select" class="w-full p-5 bg-white border-2 border-slate-300 rounded-[28px] font-black text-lg text-slate-800 outline-none shadow-sm appearance-none">
+                            <option value="">사유를 선택해 주세요</option>
+                            <option value="개인사정">개인사정</option>
+                            <option value="학업/시험">학업/시험</option>
+                            <option value="병원방문">병원방문</option>
+                            <option value="경조사">경조사</option>
+                            <option value="기타(사전협의)">기타(사전협의)</option>
+                        </select>
+                    </div>
+                    <button onclick="submitNewTrade()" class="w-full btn-c2 btn-c2-primary py-5 rounded-[28px] font-black text-xl active:scale-95 transition-all">공고 등록 하기</button>
+                </div>
+            </section>
+
+            <section class="space-y-6 pb-10">
+                <div class="flex items-center justify-between px-4 border-l-8 border-red-600 ml-1">
+                    <h3 class="font-black text-slate-900 text-2xl italic tracking-tighter">실시간 현황</h3>
+                    <div class="flex items-center gap-3">
+                        <button onclick="sessionStorage.removeItem('cgv_miso');fetchData();" class="p-2 rounded-full bg-white border shadow-sm">
+                            <svg class="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+                        <div class="bg-white px-5 py-2 rounded-full border shadow-sm">
+                            <span id="total-count" class="text-sm font-black text-red-600 uppercase">0 건</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="filter-bar" class="flex gap-2 overflow-x-auto pb-1 px-1">
+                    <button onclick="setFilter('all')" id="flt-all" class="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-slate-900 text-white shadow-sm">전체</button>
+                    <button onclick="setFilter('mine')" id="flt-mine" class="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">내 공고</button>
+                    <button onclick="setFilter('open')" id="flt-open" class="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">모집중</button>
+                    <button onclick="setFilter('nego')" id="flt-nego" class="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">협의중</button>
+                    <button onclick="setFilter('wait')" id="flt-wait" class="filter-chip flex-shrink-0 px-4 py-2 rounded-full text-[12px] font-black bg-white text-slate-500 border border-slate-200 shadow-sm">승인대기</button>
+                </div>
+                <div id="my-action-list" class="grid gap-6"></div>
+                <div id="main-list-board" class="w-full"></div>
+            </section>
+        </div>
+
+        <div id="view-schedule" class="hidden max-w-3xl mx-auto pb-20 px-4">
+
+            <!-- ── 서브탭 (조회 / 스케줄 신청) ── -->
+            <div style="display:flex;gap:4px;background:#f1f5f9;border-radius:14px;padding:4px;margin-bottom:12px;border:1px solid #e2e8f0">
+                <button id="sched-sub-btn-view" onclick="switchSchedTab('view')"
+                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:#e71a0f;color:white;transition:all .15s">
+                    📅 조회
+                </button>
+                <button id="sched-sub-btn-roster" onclick="switchSchedTab('roster')"
+                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s">
+                    🗂 전체 근무표
+                </button>
+                <button id="sched-sub-btn-apply" onclick="switchSchedTab('apply')"
+                    style="flex:1;padding:8px 0;border:none;border-radius:10px;font-size:12px;font-weight:900;cursor:pointer;background:transparent;color:#64748b;transition:all .15s">
+                    ✍️ 신청
+                </button>
+            </div>
+
+            <!-- ── 서브뷰: 전체 근무표(시트 스냅샷) ── -->
+            <div id="sched-sub-roster" style="display:none">
+                <div id="roster-body"></div>
+            </div>
+
+            <!-- ── 서브뷰: 조회 ── -->
+            <div id="sched-sub-view">
+                <section class="bg-white rounded-[20px] p-4 card-shadow border border-slate-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span style="font-size:18px">📅</span>
+                            <h2 class="text-[15px] font-black text-slate-900 tracking-tight">미소지기 근태</h2>
+                        </div>
+                        <button onclick="onScheduleRefresh()" title="새로고침"
+                            style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;border:none;background:#f1f5f9;color:#64748b;cursor:pointer;font-size:14px;transition:background 0.15s">🔄</button>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                        <input type="date" id="sched-date-input" onchange="onScheduleDateChange()"
+                            style="flex:1;height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:10px;font-weight:700;font-size:13px;color:#0f172a;line-height:40px;box-sizing:border-box;background:white">
+                        <label style="display:inline-flex;align-items:center;gap:6px;height:40px;font-size:12px;font-weight:700;color:#475569;background:#f8fafc;padding:0 12px;border-radius:10px;cursor:pointer;border:1px solid #e2e8f0;box-sizing:border-box">
+                            <input type="checkbox" id="sched-only-me" onchange="onScheduleFilterToggle()" style="width:14px;height:14px;accent-color:#e71a0f;margin:0"> 본인만
+                        </label>
+                    </div>
+                    <input type="hidden" id="sched-weekkey" value="">
+                    <div id="sched-status" style="font-size:10px;color:#94a3b8;font-weight:600;margin-bottom:10px;padding:0 2px;min-height:14px"></div>
+                    <div id="sched-body"></div>
+                </section>
+            </div>
+
+            <!-- ── 서브뷰: 스케줄 신청 (Step 1 취합) ── -->
+            <div id="sched-sub-apply" style="display:none">
+                <!-- 주차 표시 -->
+                <div id="avail-week-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:10px 14px;background:white;border-radius:14px;border:1px solid #e2e8f0">
+                    <span style="font-size:11px;font-weight:800;color:#64748b">대상 주차</span>
+                    <span id="avail-week-label" style="font-size:13px;font-weight:900;color:#0f172a;background:#fef2f2;color:#e71a0f;padding:4px 12px;border-radius:8px"></span>
+                </div>
+                <!-- 콘텐츠 영역 -->
+                <div id="avail-body" style="min-height:120px">
+                    <div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-weight:700">로딩 중...</div>
+                </div>
+                <!-- 하단 고정 바 -->
+                <div id="avail-sticky-footer" style="position:sticky;bottom:0;left:0;right:0;padding:12px 0 4px;background:linear-gradient(to top,white 80%,transparent);margin-top:8px">
+                    <div style="display:flex;align-items:center;gap:10px;background:white;border-radius:16px;border:1px solid #e2e8f0;padding:10px 14px;box-shadow:0 -2px 12px rgba(0,0,0,.06)">
+                        <div style="flex:1;font-size:11px;font-weight:700;color:#64748b">
+                            선택 <b id="avail-footer-days" style="color:#0f172a">0</b>일
+                            &nbsp;/&nbsp; 계약 <b id="avail-footer-contract" style="color:#0f172a">5</b>일
+                        </div>
+                        <button id="avail-submit-btn" onclick="availSubmit()"
+                            style="padding:11px 28px;background:#e71a0f;color:white;border:none;border-radius:12px;font-size:13px;font-weight:900;cursor:pointer;letter-spacing:-0.02em">
+                            신청하기
+                        </button>
+                    </div>
+                </div>
+                <!-- 토스트 알림 -->
+                <div id="avail-toast" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#16a34a;color:white;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:900;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)"></div>
+            </div>
+
+        </div>
+
+        <div id="view-notice" class="hidden pb-20 w-full max-w-3xl mx-auto"></div>
+        <div id="view-manual" class="hidden pb-20 w-full max-w-3xl mx-auto"></div>
+
+        <div id="view-manager" class="hidden space-y-4 pb-20 w-full">
+            <div class="max-w-3xl mx-auto px-5">
+                <div class="bg-slate-900 rounded-[20px] p-5 text-white relative overflow-hidden shadow-xl border-b-[4px] border-red-600">
+                    <h2 class="text-2xl font-black italic tracking-tighter mb-1 text-red-500 font-mono">ADMIN</h2>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-80 mb-0">Final Approval Queue</p>
+                </div>
+            </div>
+            <div class="max-w-3xl mx-auto px-5">
+                <button onclick="EV.open()" class="w-full py-4 bg-indigo-600 text-white rounded-[18px] font-black text-[15px] active:scale-95 transition-all shadow-lg border-b-4 border-indigo-800">📋 월말평가 (배정·평가·순위)</button>
+            </div>
+            <div id="manager-list-board" class="max-w-3xl mx-auto space-y-8 px-4"></div>
+            <div class="max-w-3xl mx-auto px-5 mt-2">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleMisojigiPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <span class="font-black text-slate-800 text-base">👤 미소지기 관리</span>
+                        <span id="miso-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="miso-panel" class="hidden px-5 pb-5">
+                        <div class="pt-4 pb-2 flex gap-2 flex-wrap">
+                            <button onclick="showAddMisojigiForm()" class="btn-c2 btn-c2-dark text-xs font-black px-4 py-2 rounded-xl">+ 미소지기 추가</button>
+                            <button onclick="loadMisojigiAdmin()" class="bg-slate-100 text-slate-600 text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-200 transition-all">↺ 새로고침</button>
+                            <button onclick="openAdminManageModal()" class="bg-white text-slate-600 border border-slate-200 text-xs font-black px-4 py-2 rounded-xl hover:bg-slate-50 transition-all">관리자 관리</button>
+                        </div>
+                        <!-- 추가 폼 (기본 숨김) -->
+                        <div id="miso-add-form" class="hidden bg-slate-50 rounded-2xl p-4 mb-4 space-y-3 border-2 border-slate-200">
+                            <p class="font-black text-slate-700 text-sm">새 미소지기 추가</p>
+                            <input id="miso-add-name" type="text" placeholder="이름" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-slate-400" />
+                            <input id="miso-add-empid" type="text" placeholder="사원번호 (예: 38128)" maxlength="10" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:border-slate-400" />
+                            <div class="flex gap-2 flex-wrap">
+                                <label class="flex items-center gap-1 text-sm font-bold cursor-pointer"><input type="checkbox" id="miso-pos-매점" value="매점" class="accent-slate-700"> 매점</label>
+                                <label class="flex items-center gap-1 text-sm font-bold cursor-pointer"><input type="checkbox" id="miso-pos-플로어" value="플로어" class="accent-slate-700"> 플로어</label>
+                                <label class="flex items-center gap-1 text-sm font-bold cursor-pointer"><input type="checkbox" id="miso-pos-통합" value="통합" class="accent-slate-700"> 통합</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs font-bold text-slate-500">근무시간</label>
+                                <input id="miso-add-hours" type="number" value="5.5" step="0.5" min="1" max="12" class="w-24 border-2 border-slate-200 rounded-xl px-3 py-1 text-sm font-bold outline-none focus:border-slate-400" />
+                                <span class="text-xs text-slate-400">시간</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="submitAddMisojigi()" class="flex-1 btn-c2 btn-c2-dark text-sm font-black py-2 rounded-xl">추가</button>
+                                <button onclick="document.getElementById('miso-add-form').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-500 text-sm font-black py-2 rounded-xl hover:bg-slate-200 transition-all">취소</button>
+                            </div>
+                        </div>
+                        <div id="miso-admin-list" class="space-y-2 text-sm">
+                            <p class="text-slate-400 text-xs text-center py-4">▲ 새로고침을 눌러 불러오세요</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="max-w-3xl mx-auto px-5 mt-4">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleStatsPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <span class="font-black text-slate-800 text-base">📊 인력풀 현황</span>
+                        <span id="stats-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="stats-panel" class="hidden px-5 pb-5">
+                        <p class="text-xs font-bold text-slate-400 mb-3 pt-4 border-b border-slate-100 pb-2">
+                            직원별 주간 단위 지각/결근 횟수를 파악합니다.<br>
+                            <span class="text-red-500 text-xs">지각 1회 시 당해 주차 이용 정지 / 결근 1회 시 2주간 이용이 자동 차단됩니다.</span>
+                        </p>
+                        <div id="staff-stats-header"></div>
+                        <div id="staff-stats-grid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 근태 서류 관리 섹션 ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-4">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleFormPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-slate-800 text-base">📋 근태 서류 관리</span>
+                            <span id="form-pending-badge" class="hidden bg-red-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full"></span>
+                        </div>
+                        <span id="form-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="form-panel" class="hidden px-5 pb-5">
+                        <!-- 서류 요청 버튼 영역 -->
+                        <div class="pt-4 pb-3 border-b border-slate-100 mb-4">
+                            <p class="text-xs font-bold text-slate-500 mb-3">미소지기 선택 후 서류를 요청하세요</p>
+                            <div id="form-req-name-grid" class="flex flex-wrap gap-1.5 mb-3"></div>
+                            <div id="form-req-selected" class="hidden">
+                                <p class="text-xs font-black text-slate-700 mb-2">요청 서류 선택 <span id="form-req-target-label" class="text-red-600"></span></p>
+                                <!-- 일반 서류: 1열 텍스트 리스트 -->
+                                <div class="flex flex-col gap-1">
+                                    <button onclick="openFormRequestModal('late')" class="flex items-center gap-2.5 w-full text-left bg-yellow-50 border border-yellow-200 text-yellow-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">⏰</span><span>지각확인서</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('absent')" class="flex items-center gap-2.5 w-full text-left bg-red-50 border border-red-200 text-red-800 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">❌</span><span>결근사유서</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('resign')" class="flex items-center gap-2.5 w-full text-left bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">📄</span><span>사직원</span>
+                                    </button>
+                                    <button onclick="openFormRequestModal('earlyLeave')" class="flex items-center gap-2.5 w-full text-left bg-blue-50 border border-blue-200 text-blue-800 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span class="text-base">🕐</span><span>희망조퇴확인서</span>
+                                    </button>
+                                </div>
+                                <!-- 신규입사자용 접기/펴기 -->
+                                <div class="mt-1.5">
+                                    <button onclick="toggleNewcomerForms()" class="flex items-center gap-2 w-full text-left text-sm font-black text-purple-700 bg-purple-50 border border-purple-200 px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                        <span id="newcomer-arrow" class="text-[11px]">▶</span>
+                                        <span>🆕 신규입사자용 서류</span>
+                                    </button>
+                                    <div id="newcomer-form-btns" style="display:none" class="flex flex-col gap-1 mt-1">
+                                        <button onclick="openFormRequestModal('privacy')" class="flex items-center gap-2.5 w-full text-left bg-purple-50 border border-purple-200 text-purple-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">🔒</span><span>개인정보보호 서약서</span>
+                                        </button>
+                                        <button onclick="openFormRequestModal('overtime')" class="flex items-center gap-2.5 w-full text-left bg-orange-50 border border-orange-200 text-orange-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">🌙</span><span>연장·야간·휴일 근로동의서</span>
+                                        </button>
+                                        <button onclick="openFormRequestModal('workCondition')" class="flex items-center gap-2.5 w-full text-left bg-teal-50 border border-teal-200 text-teal-900 text-sm font-bold px-3.5 py-2.5 rounded-xl active:scale-95 transition-all">
+                                            <span class="text-base">📋</span><span>근로조건 변경동의서</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button onclick="clearFormReqName()" class="text-xs text-slate-400 font-bold underline mt-2 block">선택 취소</button>
+                            </div>
+                        </div>
+                        <!-- 제출된/대기 중 서류 목록 -->
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-xs font-black text-slate-700">서류 현황</p>
+                            <button onclick="loadAdminForms()" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">↺ 새로고침</button>
+                        </div>
+                        <div id="form-admin-list" class="space-y-2">
+                            <p class="text-slate-400 text-xs text-center py-4">▲ 새로고침을 눌러 불러오세요</p>
+                        </div>
+                        <!-- 서명 등록 -->
+                        <div class="mt-4 pt-3 border-t border-slate-100">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-xs font-black text-slate-500">관리자 서명 등록</p>
+                                <div id="sig-preview-wrap" class="hidden">
+                                    <img id="sig-preview-img" src="" alt="서명" class="h-8 object-contain border border-slate-200 rounded px-2 bg-white">
+                                </div>
+                            </div>
+                            <label class="block">
+                                <input type="file" id="sig-upload-input" accept="image/*" class="hidden" onchange="handleSigUpload(this)">
+                                <span class="inline-block text-[11px] font-black bg-slate-100 text-slate-600 px-4 py-2 rounded-xl cursor-pointer active:scale-95 transition-all border border-slate-200">🖊️ 서명 이미지 업로드</span>
+                            </label>
+                            <p class="text-[10px] text-slate-400 font-bold mt-1">흰 종이에 서명 후 사진 찍어 PNG로 업로드 → 폼 하단에 자동 삽입됩니다</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- ── 근로계약서 관리 (관리자) ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-4">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <button onclick="toggleContractPanel()" class="w-full flex items-center justify-between px-6 py-4 bg-slate-50 hover:bg-slate-100 transition-all">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-slate-800 text-base">📄 근로계약서 관리</span>
+                        </div>
+                        <span id="contract-panel-arrow" class="text-slate-400 font-black text-lg">▼</span>
+                    </button>
+                    <div id="contract-panel" class="hidden px-5 pb-5">
+                        <!-- 발송 영역 -->
+                        <div class="pt-4 pb-4 border-b border-slate-100 mb-4">
+                            <p class="text-xs font-black text-slate-700 mb-2">📨 계약서 발송</p>
+                            <select id="contract-week-select" onchange="onContractWeekChange(this.value)" class="w-full border-2 border-slate-200 rounded-2xl px-3 py-2.5 text-sm font-bold outline-none focus:border-blue-400 mb-3">
+                                <option value="">불러오는 중...</option>
+                            </select>
+                            <div id="contract-emp-list"></div>
+                        </div>
+                        <!-- 완료 목록 -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-xs font-black text-slate-700">✅ 서명완료 계약서</p>
+                                <button onclick="refreshCompletedContracts()" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">↺ 새로고침</button>
+                            </div>
+                            <div id="contract-completed-list">
+                                <p class="text-xs text-slate-400 py-3 text-center">불러오는 중...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 스케줄 신청 관리 ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-2">
+                <div class="bg-white rounded-[28px] shadow-xl border-2 border-slate-100 overflow-hidden">
+                    <div class="px-5 py-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-black text-slate-800 text-sm">📅 스케줄 신청 관리</h3>
+                            <button onclick="loadAvailOpenStatus()" class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg">↺ 새로고침</button>
+                        </div>
+                        <!-- 현재 상태 표시 -->
+                        <div id="avail-open-status" class="rounded-xl p-3 mb-3 text-xs font-bold text-center bg-slate-50 text-slate-400">
+                            상태 확인 중...
+                        </div>
+                        <!-- 주차 선택 -->
+                        <div class="mb-3">
+                            <label class="text-[10px] font-black text-slate-500 mb-1.5 block">대상 주차</label>
+                            <select id="avail-week-picker"
+                                style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#0f172a;background:white;text-overflow:ellipsis">
+                                <option value="">주차를 선택하세요...</option>
+                            </select>
+                        </div>
+                        <!-- 직접 입력 -->
+                        <div class="mb-3">
+                            <label class="text-[10px] font-black text-slate-500 mb-1.5 block">또는 직접 입력 (월요일 날짜)</label>
+                            <input type="date" id="avail-week-manual"
+                                style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700;color:#0f172a;background:white;box-sizing:border-box"
+                                oninput="snapToMonday(this)">
+                        </div>
+                        <!-- 버튼 -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                            <button onclick="openAvailWeek()"
+                                style="padding:13px 0;background:#e71a0f;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                                📬 신청 열기 + 알림
+                            </button>
+                            <button onclick="closeAvailWeek()"
+                                style="padding:13px 0;background:#f1f5f9;color:#64748b;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer">
+                                🔒 신청 마감
+                            </button>
+                        </div>
+                        <!-- 데이터 초기화 (앱 데이터만 삭제 · 시트 탭은 안전) -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+                            <button onclick="resetAvailWeek()"
+                                style="padding:9px 0;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:12px;font-size:11px;font-weight:800;cursor:pointer">
+                                신청 초기화
+                            </button>
+                            <button onclick="resetArrangeWeek()"
+                                style="padding:9px 0;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:12px;font-size:11px;font-weight:800;cursor:pointer">
+                                편성 초기화
+                            </button>
+                        </div>
+                        <div style="font-size:9.5px;color:#94a3b8;font-weight:700;text-align:center;margin-top:5px">초기화는 앱 데이터만 삭제하며 시트 탭은 건드리지 않습니다</div>
+                        <!-- 신청현황 시트 내보내기 -->
+                        <button onclick="exportAvailSheet()"
+                            style="width:100%;margin-top:8px;padding:11px 0;background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                            신청현황 시트로 내보내기
+                        </button>
+                        <!-- 편성 진입 -->
+                        <button onclick="openArrangeScreen()"
+                            style="width:100%;margin-top:8px;padding:13px 0;background:#0f172a;color:white;border:none;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                            📋 스케줄 편성하기
+                        </button>
+                        <!-- 긴급 대타 요청 -->
+                        <button onclick="openUrgentSubModal()"
+                            style="width:100%;margin-top:8px;padding:13px 0;background:#fff;color:#e71a0f;border:1.5px solid #e71a0f;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                            긴급 대타 요청
+                        </button>
+                        <!-- 이벤트 / 공휴일 설정 -->
+                        <button onclick="openEventModal()"
+                            style="width:100%;margin-top:8px;padding:13px 0;background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:14px;font-size:12px;font-weight:900;cursor:pointer;letter-spacing:-0.01em">
+                            이벤트 / 공휴일 설정
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 유틸리티 버튼 (최하단) ── -->
+            <div class="max-w-3xl mx-auto px-5 mt-2 mb-6 space-y-2">
+                <button onclick="cleanupOldTrades()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">🗑️ 7일 이상 만료 데이터 DB 삭제</button>
+                <button onclick="(function(){ var n=sessionStorage.getItem('cgv_admin_name')||'관리자'; testPushNotification(n); })()" class="w-full btn-c2 btn-c2-ghost py-4 rounded-2xl font-black text-sm text-blue-600 border-blue-200 hover:bg-blue-50 transition-all">🔔 내 알림 테스트 발송</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── 직원용: 내 서류 제출 플로팅 버튼 ── -->
+    <div id="my-forms-fab" class="hidden fixed bottom-6 right-4 z-[8000]">
+        <button onclick="openMyFormsModal()" class="flex items-center gap-2 bg-red-600 text-white font-black text-sm px-4 py-3 rounded-2xl shadow-2xl active:scale-95 transition-all border-2 border-red-700">
+            📋 <span>서류 제출</span>
+            <span id="my-forms-badge" class="bg-white text-red-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center"></span>
+        </button>
+    </div>
+
+    <!-- ── 직원용: 받은 계약서 플로팅 버튼 (요청받은 계약서가 있을 때만 표시) ── -->
+    <div id="my-contracts-fab" class="hidden fixed bottom-24 right-4 z-[8000]">
+        <button onclick="openMyContracts()" style="position:relative" class="flex items-center gap-2 bg-blue-600 text-white font-black text-sm px-4 py-3 rounded-2xl shadow-2xl active:scale-95 transition-all border-2 border-blue-700">
+            📄 <span>계약서</span>
+            <span id="my-contracts-fab-badge" class="hidden" style="position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#dc2626;color:white;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid white">0</span>
+        </button>
+    </div>
+
+    <!-- ── 계약서 전체화면 PDF 뷰어 모달 (핀치-줌 가능) ── -->
+    <div id="contract-pdf-fullscreen" class="hidden fixed inset-0 bg-slate-900 z-[8600]" style="display:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
+        <div class="flex items-center justify-between px-4 py-3 bg-slate-800 text-white" style="height:54px">
+            <span class="font-black text-sm truncate" id="contract-pdf-title">계약서 보기</span>
+            <button onclick="closeContractPdfFullscreen()" aria-label="닫기"
+                style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:#dc2626;color:white;font-size:24px;font-weight:900;border:none;cursor:pointer;line-height:1">✕</button>
+        </div>
+        <div style="position:relative;height:calc(100% - 54px);background:#525659">
+            <iframe id="contract-pdf-iframe" src="" style="width:100%;height:100%;border:0;display:block;background:white"></iframe>
+            <!-- 워터마크 (스크린샷 억제용) -->
+            <div id="contract-pdf-watermark" style="position:absolute;inset:0;pointer-events:none;display:flex;flex-wrap:wrap;align-content:space-around;justify-content:space-around;opacity:0.08;overflow:hidden">
+            </div>
+            <!-- 하단 닫기 바 (스크롤 후에도 바로 닫기 가능) -->
+            <button onclick="closeContractPdfFullscreen()"
+                style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);color:white;font-weight:900;font-size:13px;padding:12px 28px;border-radius:999px;border:none;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:10">✕ 닫기</button>
+        </div>
+    </div>
+
+    <!-- 지원 모달 -->
+    <div id="support-modal" class="modal-overlay">
+        <div class="support-modal-content shadow-2xl border-t-4 border-blue-500">
+            <div class="flex justify-between items-center mb-4 px-1">
+                <h2 class="text-2xl font-black italic tracking-tighter text-slate-800 uppercase">지원하기</h2>
+                <button onclick="closeModal()" class="text-slate-400 text-4xl font-light leading-none">&times;</button>
+            </div>
+            <div class="space-y-4 pb-4">
+                <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-200 text-center space-y-3">
+                    <div>
+                        <p class="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1.5">상대방의 근무 (OUT)</p>
+                        <div id="modal-target-shift" class="text-slate-900"></div>
+                        <span id="modal-target-pos" class="inline-block mt-2 px-3 py-1 bg-white text-blue-700 text-[11px] font-black rounded-full border-2 border-blue-200 shadow-sm"></span>
+                    </div>
+                    <div class="text-blue-300 text-xl font-black italic">&#8645;</div>
+                    <div>
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-1.5">📥 받고 싶은 근무 (IN)</p>
+                        <div id="modal-target-wish" class="space-y-1.5 text-left"></div>
+                    </div>
+                    <div id="support-day-section" class="bg-white p-3 rounded-2xl border border-blue-100 hidden">
+                        <p class="text-[10px] text-blue-600 font-black uppercase tracking-widest mb-2">내가 들어갈 날짜를 먼저 하나 선택하세요</p>
+                        <div id="support-day-chips" class="flex flex-col gap-2"></div>
+                        <input type="hidden" id="support-selected-target-date">
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <label class="text-[11px] text-slate-500 font-black block text-center">내 투입 포지션을 확인하세요.</label>
+                    <div class="flex flex-wrap gap-2 justify-center" id="support-pos-container">
+                        <div onclick="setSupportPosition('통합')" id="support-pos-통합" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">통합</div>
+                        <div onclick="setSupportPosition('매점')" id="support-pos-매점" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">매점</div>
+                        <div onclick="setSupportPosition('매점마감')" id="support-pos-매점마감" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">매점마감</div>
+                        <div onclick="setSupportPosition('플로어')" id="support-pos-플로어" class="support-pos-chip chip py-2.5 px-4 rounded-xl font-black text-xs text-slate-700">플로어</div>
+                    </div>
+                    <input type="hidden" id="support-selected-pos">
+                </div>
+                <div id="supporter-time-section" class="hidden p-4 rounded-2xl border-2 border-green-200 bg-green-50/40 space-y-3">
+                    <span class="text-[11px] font-black text-green-700 uppercase tracking-widest bg-white border-2 border-green-200 px-3 py-1.5 rounded-lg shadow-sm inline-block">내 실제 근무 시간 제안</span>
+                    <div id="support-code-grid" class="grid grid-cols-2 gap-2 border-t-2 border-green-100 pt-4"></div>
+                    <input type="hidden" id="support-selected-code">
+                </div>
+                <button onclick="confirmSupport()" class="w-full btn-c2 btn-c2-blue py-5 rounded-2xl font-black text-lg active:scale-95 transition-all">조건 확인 후 지원</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이름 선택 모달 -->
+    <div id="user-select-modal" class="modal-overlay">
+        <div class="modal-content shadow-2xl relative border-4 border-slate-100">
+            <button onclick="closeUserSelectModal()" class="absolute top-6 right-6 text-slate-400 hover:text-red-500 text-3xl font-light bg-slate-100 rounded-full w-10 h-10 flex items-center justify-center">&times;</button>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight mb-6">내 이름과 직무 찾기</h2>
+            <div class="space-y-6" id="user-grid-container"></div>
+        </div>
+    </div>
+
+
+    <!-- 카카오 공유 강제 모달 -->
+    <div id="kakao-modal" class="modal-overlay" style="z-index:9500;">
+        <div class="kakao-modal-content" style="position:relative;">
+            <button id="kakao-close-btn" onclick="document.getElementById('kakao-modal').style.display='none'" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;padding:4px;">&#10005;</button>
+            <p id="kakao-force-msg" style="display:none;" class="text-[11px] font-black text-red-500 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-2">&#9888; 단톡방 공유 전까지 닫기가 안 돼요. 반드시 공유 후 완료 버튼을 눌러주세요!</p>
+            <div class="w-14 h-14 bg-[#fae100] rounded-[18px] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <span style="font-size:28px;line-height:1;">&#128172;</span>
+            </div>
+            <h3 class="text-xl font-black text-slate-900 mb-2">단톡방에 꼭 공유해주세요!</h3>
+            <p class="text-[13px] font-bold text-slate-500 mb-1 leading-relaxed">단톡방 공유 없이는 <span class="text-red-500 font-black">공식 신청으로 인정되지 않아요.</span></p>
+            <textarea id="kakao-copy-textarea" readonly onclick="this.select();"
+                style="width:100%;height:120px;margin:8px 0 10px;padding:10px;border-radius:12px;border:2px solid #e2e8f0;font-size:11px;font-family:inherit;resize:none;background:#f8fafc;color:#334155;cursor:pointer;outline:none;"
+                placeholder=""></textarea>
+            <p id="kakao-copy-hint" class="text-[11px] text-blue-600 font-black mb-2" style="display:none;">&#9757; PC: 위 텍스트를 클릭 후 Ctrl+C 로 복사하세요</p>
+            <button onclick="doKakaoOpen()" class="w-full bg-[#fae100] text-amber-900 py-5 rounded-2xl font-black text-base shadow-lg active:scale-95 transition-all mb-3 hover:bg-yellow-300">
+                복사 후 카톡방 열기
+            </button>
+            <button id="kakao-done-btn" onclick="closeKakaoModal()" disabled
+                class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-sm border-2 border-slate-200 cursor-not-allowed">
+                공유 완료했어요 (카톡방 열기 후 활성화)
+            </button>
+            <p class="text-[10px] text-slate-400 font-bold mt-3">카톡방 열기를 누른 후 완료 버튼이 활성화됩니다.</p>
+        </div>
+    </div>
+
+    <!-- 로딩 -->
+    <div id="loader" style="display:none;" class="fixed inset-0 bg-white/90 backdrop-blur-md z-[8000] flex flex-col items-center justify-center">
+        <div class="w-16 h-16 border-8 border-slate-200 border-t-red-600 rounded-full animate-spin mb-6"></div>
+        <p class="font-black text-slate-900 tracking-tighter text-xl uppercase animate-pulse" id="loader-msg">Syncing...</p>
+    </div>
+
+    <!-- ── 서류 요청 메모 모달 (관리자) ── -->
+    <div id="form-request-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[8200] flex items-end justify-center">
+        <div class="bg-white rounded-t-[32px] w-full shadow-2xl pb-8" style="max-width:640px">
+            <div class="flex justify-center pt-4 pb-3"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6">
+                <h3 class="font-black text-slate-900 text-lg mb-1" id="form-req-modal-title">서류 제출 요청</h3>
+                <p class="text-xs text-slate-400 font-bold mb-4" id="form-req-modal-desc"></p>
+                <textarea id="form-req-note" placeholder="관리자 메모 (선택사항, 예: 4/15 지각 관련)" rows="3"
+                    class="w-full border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold outline-none focus:border-red-400 resize-none mb-4"></textarea>
+                <button onclick="submitFormRequest()" class="w-full btn-c2 btn-c2-primary py-4 rounded-2xl font-black text-base active:scale-95 mb-3">📨 제출 요청 발송</button>
+                <button onclick="closeFormRequestModal()" class="w-full py-3 text-slate-400 font-black text-sm">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 직원용 내 서류 모달 ── -->
+    <div id="my-forms-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8200] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:90vh;overflow-y:auto;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-black text-slate-900 text-lg">📋 내 서류 제출 요청</h3>
+                <button onclick="closeMyFormsModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div id="my-forms-list" class="px-5 py-4 space-y-3">
+                <p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 서류 작성 모달 (직원) ── -->
+    <div id="form-fill-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8400] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-black text-slate-900 text-lg" id="form-fill-title">서류 작성</h3>
+                <button onclick="closeFormFillModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div id="form-fill-body" class="px-3 py-4 space-y-4"></div>
+            <div class="px-5 pb-8 space-y-3 sticky bottom-0 bg-white pt-3 border-t border-slate-100">
+                <button onclick="submitFormFill()" class="w-full btn-c2 btn-c2-primary py-5 rounded-[28px] font-black text-lg active:scale-95">✅ 제출하기</button>
+                <button onclick="closeFormFillModal()" class="w-full py-3 text-slate-400 font-black text-sm">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 서류 열람 모달 (관리자) ── -->
+    <div id="form-view-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8300] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-black text-slate-900 text-lg" id="form-view-title">서류 열람</h3>
+                <button onclick="closeFormViewModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div id="form-view-body" class="px-3 py-4"></div>
+            <div class="px-5 pb-8 pt-3 border-t border-slate-100 space-y-2">
+                <button onclick="printFormView()" class="w-full py-4 rounded-2xl font-black text-sm active:scale-95 transition-all" style="background:#0f172a;color:#fff">📄 PDF 저장 / 인쇄</button>
+                <p class="text-center text-[11px] text-slate-400 font-bold">버튼 클릭 → 인쇄 화면 → "PDF로 저장" 선택</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 미소지기 내 계약서 목록 모달 ── -->
+    <div id="my-contracts-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[8200] flex items-end justify-center">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:90vh;overflow-y:auto;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between">
+                <h3 class="font-black text-slate-900 text-lg">📄 내 근로계약서</h3>
+                <button onclick="closeMyContractsModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div id="my-contracts-list" class="px-5 py-4 space-y-3">
+                <p class="text-slate-400 text-sm text-center py-6">불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 계약서 서명 모달 (캔버스 2개) ── -->
+    <div id="contract-sign-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[8400] flex items-end justify-center" style="user-select:none;-webkit-user-select:none;-webkit-touch-callout:none">
+        <div class="bg-white rounded-t-[36px] w-full shadow-2xl" style="max-height:95vh;overflow-y:auto;overflow-x:hidden;max-width:640px;overscroll-behavior:contain">
+            <div class="flex justify-center pt-4 pb-2"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
+            <div class="px-6 pb-3 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <h3 class="font-black text-slate-900 text-base" id="contract-sign-title">계약서 서명</h3>
+                <button onclick="closeContractSignModal()" class="text-slate-400 text-3xl font-light">&times;</button>
+            </div>
+            <div class="px-4 py-3 space-y-3">
+                <!-- 계약서 미리보기 (소형) + 전체보기 버튼 -->
+                <div class="space-y-2">
+                    <button onclick="openContractPdfFullscreen()" type="button"
+                        class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-black text-sm px-4 py-3 rounded-2xl shadow-md active:scale-95">
+                        🔍 계약서 전체화면으로 보기 (확대/축소 가능)
+                    </button>
+                    <div class="border-2 border-slate-200 rounded-2xl bg-white overflow-hidden" style="height:180px;position:relative">
+                        <embed id="contract-sign-preview" src="" type="application/pdf"
+                            style="width:100%;height:100%;display:block;pointer-events:none">
+                        <div onclick="openContractPdfFullscreen()" style="position:absolute;inset:0;cursor:pointer;background:transparent"></div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-bold text-center">미리보기 (탭하면 전체화면) · 자세히 확인 후 아래 서명해주세요 ⬇</p>
+                </div>
+                <!-- 이름 캔버스 -->
+                <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-black text-blue-900">✏️ 이름 (터치/마우스로 작성)</p>
+                        <button onclick="clearPad('name')" class="text-[11px] font-black text-blue-600 underline">지우기</button>
+                    </div>
+                    <canvas id="pad-name" class="bg-white rounded-xl border border-blue-200" style="width:100%;height:80px;touch-action:none;display:block;"></canvas>
+                </div>
+                <!-- 서명 캔버스 -->
+                <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-xs font-black text-amber-900">✍️ 서명</p>
+                        <button onclick="clearPad('sig')" class="text-[11px] font-black text-amber-700 underline">지우기</button>
+                    </div>
+                    <canvas id="pad-sig" class="bg-white rounded-xl border border-amber-200" style="width:100%;height:120px;touch-action:none;display:block;"></canvas>
+                </div>
+            </div>
+            <div class="px-5 pb-8 pt-3 border-t border-slate-100 space-y-2 sticky bottom-0 bg-white">
+                <button id="contract-sign-submit-btn" onclick="submitContractSign()" class="w-full btn-c2 btn-c2-primary py-5 rounded-[28px] font-black text-lg active:scale-95">✅ 서명 제출하기</button>
+                <button onclick="closeContractSignModal()" class="w-full py-3 text-slate-400 font-black text-sm">취소</button>
+            </div>
+        </div>
+    </div>

@@ -1,0 +1,75 @@
+import type { Metadata, Viewport } from 'next';
+import './globals.css';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'CGV동두천 미소지기 교대 신청',
+  description: 'CGV동두천 미소지기 근무 교대 신청 시스템',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'CGV교대',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#e71a0f',
+};
+
+const publicDir = path.join(process.cwd(), 'public');
+const cssContent = fs.readFileSync(path.join(publicDir, 'cgv.css'), 'utf8');
+
+function fileVer(filename: string): string {
+  const buf = fs.readFileSync(path.join(publicDir, filename));
+  return crypto.createHash('md5').update(buf).digest('hex').slice(0, 8);
+}
+const shimVer  = fileVer('gas-shim.js');
+const appVer   = fileVer('cgv-app.js');
+const ctrVer   = fileVer('contract-ui.js');
+const schVer   = fileVer('schedule-ui.js');
+const availVer = fileVer('availability-ui.js');
+const arrVer   = fileVer('arrange-ui.js');
+const nmVer    = fileVer('notice-manual-ui.js');
+const evVer    = fileVer('eval-ui.js');
+const roVer    = fileVer('roster-ui.js');
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
+        />
+        {/* CSS 인라인 주입 — 캐시 완전 우회 */}
+        <style dangerouslySetInnerHTML={{ __html: cssContent }} />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        {/* Tailwind CDN — 블로킹으로 body 렌더 전 스타일 적용 보장 (FOUC 방지) */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://cdn.tailwindcss.com" />
+        {/* GAS shim + 앱 메인 JS — defer: HTML 파싱과 병렬 다운로드, 파싱 완료 후 실행 */}
+        <script src={`/gas-shim.js?v=${shimVer}`} defer />
+        <script src={`/cgv-app.js?v=${appVer}`} defer />
+        <script src={`/contract-ui.js?v=${ctrVer}`} defer />
+        <script src={`/schedule-ui.js?v=${schVer}`} defer />
+        <script src={`/availability-ui.js?v=${availVer}`} defer />
+        <script src={`/arrange-ui.js?v=${arrVer}`} defer />
+        <script src={`/notice-manual-ui.js?v=${nmVer}`} defer />
+        <script src={`/eval-ui.js?v=${evVer}`} defer />
+        <script src={`/roster-ui.js?v=${roVer}`} defer />
+      </head>
+      <body suppressHydrationWarning>
+        {children}
+      </body>
+    </html>
+  );
+}

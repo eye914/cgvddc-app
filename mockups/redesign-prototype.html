@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>CGV 맞교대 — 리디자인 프로토타입</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#C8C8C8;font-family:-apple-system,"Noto Sans KR","Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased}
+  #stage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px}
+  ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
+  button{font-family:inherit;-webkit-tap-highlight-color:transparent;cursor:pointer}
+  @keyframes mosPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.8)}}
+  .frame{width:380px;height:800px;background:#F2F2F2;border-radius:30px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 8px #1A1A1A,0 0 0 9px #333,0 30px 60px rgba(0,0,0,.45);position:relative}
+  .hd{background:#D32F2F;padding:14px 16px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0}
+  .hd .sub{font-size:9px;font-weight:500;color:rgba(255,255,255,.65);letter-spacing:.14em;margin-bottom:3px}
+  .hd .ti{font-size:18px;font-weight:600;color:#fff;letter-spacing:-.02em}
+  .chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.2);font-size:12px;font-weight:500;color:#fff}
+  .body{flex:1;overflow-y:auto;padding:12px}
+  .tabbar{display:flex;background:#fff;border-top:1px solid #E0E0E0;flex-shrink:0}
+  .tabbar button{flex:1;padding:9px 0 7px;border:none;background:transparent;color:#9E9E9E;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabbar button.on{color:#D32F2F;font-weight:500}
+  .tabbar .dot{width:18px;height:18px;border-radius:50%;border:1.8px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:10px}
+  .card{background:#fff;border:1px solid #E0E0E0;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex}
+  .acc{width:3px;flex-shrink:0}
+  .av{width:34px;height:34px;border-radius:50%;background:#F5F5F5;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#616161;flex-shrink:0}
+  .badge{font-size:10px;font-weight:500;padding:1px 6px;border-radius:3px}
+  .chipf{padding:6px 14px;border-radius:999px;border:1px solid #E0E0E0;background:#fff;color:#616161;font-size:12px;font-weight:500;white-space:nowrap}
+  .chipf.on{border-color:#D32F2F;background:#D32F2F;color:#fff}
+  .obox{background:#F5F5F5;border-radius:6px;padding:10px 12px;margin-bottom:10px}
+  .otag{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;letter-spacing:.05em;margin-top:2px}
+  .btnP{width:100%;padding:11px;border-radius:6px;background:#D32F2F;color:#fff;border:none;font-size:14px;font-weight:500}
+  .mbtn{font-size:11px;font-weight:500;padding:6px 10px;border-radius:7px;border:none}
+</style>
+</head>
+<body>
+<div id="stage"><div class="frame" id="frame"></div></div>
+<script>
+const M={red:'#D32F2F',redLight:'#FFEBEE',redMid:'#FFCDD2',bg:'#F2F2F2',sep:'#E0E0E0',label:'#212121',sec:'#616161',ter:'#9E9E9E',fill:'#F5F5F5',green:'#388E3C',greenBg:'#E8F5E9',blue:'#1976D2',blueBg:'#E3F2FD',orange:'#F57C00',orangeBg:'#FFF3E0'};
+const STATUS={'모집중':{c:M.green,bg:M.greenBg,l:'모집중',p:1},'협의중':{c:M.blue,bg:M.blueBg,l:'협의중'},'승인대기':{c:M.orange,bg:M.orangeBg,l:'승인대기'},'승인완료':{c:M.sec,bg:M.fill,l:'완료'}};
+
+let S={ auth:null, tab:'list', filter:'all' };
+
+const USERS=[{name:'홍성현',role:'user'},{name:'관리자',role:'admin'}];
+let TRADES=[
+ {id:1,reqName:'손정현',reqPos:'매점',reqHours:4.5,reason:'병원 예약',shiftDate:'5/24 (토) / 마감 N1 18:00–23:30',desiredShift:'',tradeType:'sub',subName:'모집중',status:'모집중'},
+ {id:2,reqName:'홍성현',reqPos:'통합',reqHours:4.5,reason:'가족 행사',shiftDate:'5/22 (목) / 미들 M3 13:00–18:30',desiredShift:'5/25 (일) 미들 M5',tradeType:'swap',subName:'방회윤',subPos:'통합',subHours:4.5,status:'협의중'},
+ {id:3,reqName:'신재용',reqPos:'통합',reqHours:5.5,reason:'개인 사정',shiftDate:'5/23 (금) / 오픈 D2 09:30–15:00',desiredShift:'',tradeType:'sub',subName:'김나은',subPos:'통합',subHours:4.5,status:'승인대기'},
+ {id:4,reqName:'이예빈',reqPos:'통합',reqHours:5.5,reason:'시험',shiftDate:'5/21 (수) / 미들 M6 14:30–20:00',desiredShift:'',tradeType:'sub',subName:'김나은',subPos:'통합',subHours:4.5,status:'승인완료'},
+];
+const STAFF=[
+ {n:'조동우',h:5.5,cd:2,pos:'통합',ext:'~7/5',exp:1,end:'2026-06-07',tel:'010-5417-9730'},
+ {n:'신민경',h:5.5,cd:2,pos:'통합'},
+ {n:'김하현',h:4.5,cd:3,pos:'플로어 전용'},
+ {n:'손정현',h:4.5,cd:3,pos:'매점·플로어'},
+ {n:'최재은',h:4.5,cd:3,pos:'플로어 전용',retired:1,end:'2026-04-26'},
+];
+let openStaff={'조동우':true};
+
+function statusBadge(st){const s=STATUS[st]||STATUS['모집중'];return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;background:${s.bg};font-size:11px;font-weight:500;color:${s.c}"><span style="width:5px;height:5px;border-radius:50%;background:${s.c};${s.p?'animation:mosPulse 2s ease-in-out infinite':''}"></span>${s.l}</span>`;}
+function typeTag(t){const sw=t==='swap';return `<span class="badge" style="background:${sw?M.blueBg:M.orangeBg};color:${sw?M.blue:M.orange}">${sw?'맞교대':'대타'}</span>`;}
+
+function tradeCard(t){
+ const s=STATUS[t.status]||STATUS['모집중'];const cu=S.auth.name;
+ const isOwner=t.reqName===cu, isApp=t.subName===cu&&t.status!=='모집중', mine=isOwner||isApp;
+ const parts=(t.shiftDate||'').split(' / ');
+ let h=`<div class="card"><div class="acc" style="background:${mine?M.red:s.c}"></div><div style="flex:1;padding:14px 14px 14px 12px">`;
+ h+=`<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px"><div style="display:flex;align-items:center;gap:9px"><div class="av" style="${mine?`background:${M.redLight};color:${M.red}`:''}">${t.reqName[0]}</div><div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="font-size:15px;font-weight:500;color:${M.label}">${t.reqName}</span>${mine?`<span class="badge" style="color:${M.red};background:${M.redLight}">${isOwner?'내 공고':'지원함'}</span>`:''}</div><span style="font-size:12px;color:${M.ter}">${t.reason}</span></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${statusBadge(t.status)}${typeTag(t.tradeType)}</div></div>`;
+ h+=`<div class="obox"><div style="display:flex;align-items:flex-start;gap:8px"><span class="otag" style="color:${M.red};background:${M.redLight}">OUT</span><div><div style="font-size:13px;font-weight:500;color:${M.label}">${parts[0]||'—'}</div>${parts[1]?`<div style="font-size:11px;color:${M.ter};margin-top:2px">${parts[1]}</div>`:''}<div style="display:flex;gap:5px;margin-top:4px"><span style="font-size:10px;color:${M.sec};background:#fff;border:1px solid ${M.sep};padding:1px 6px;border-radius:3px">${t.reqPos}</span><span style="font-size:10px;color:${M.ter}">${t.reqHours}h</span></div></div></div>`;
+ if(t.tradeType==='swap'&&t.desiredShift){h+=`<div style="height:1px;background:${M.sep};margin:8px 0"></div><div style="display:flex;align-items:flex-start;gap:8px"><span class="otag" style="color:${M.blue};background:${M.blueBg}">IN</span><div style="font-size:13px;color:${M.label}">${t.desiredShift}</div></div>`;}
+ h+=`</div>`;
+ if(t.status!=='모집중'&&t.subName&&t.subName!=='모집중'){h+=`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;margin-bottom:10px;background:${M.blueBg};border:1px solid ${M.sep}"><div style="width:24px;height:24px;border-radius:50%;background:rgba(25,118,210,.15)"></div><div style="flex:1;display:flex;align-items:center;gap:6px"><span style="font-size:13px;font-weight:500;color:${M.blue}">${t.subName}</span>${t.subPos?`<span style="font-size:11px;color:${M.sec}">${t.subPos}${t.subHours?' · '+t.subHours+'h':''}</span>`:''}</div><span style="font-size:10px;color:${M.ter}">지원자</span></div>`;}
+ if(t.status==='모집중'&&!isOwner)h+=`<button class="btnP" onclick="apply(${t.id})">지원하기</button>`;
+ else if(t.status==='협의중'&&isOwner)h+=`<div style="display:flex;gap:8px"><button class="btnP" style="flex:1;background:${M.green};padding:10px;font-size:13px" onclick="accept(${t.id})">수락 → 승인 요청</button><button class="mbtn" style="flex:1;background:${M.fill};color:${M.red};border:1px solid ${M.redMid};padding:10px;font-size:13px" onclick="reject(${t.id})">거절</button></div>`;
+ else if(t.status==='승인대기')h+=`<div style="padding:9px 12px;border-radius:6px;text-align:center;background:${M.orangeBg};border:1px solid #FFE0B2;font-size:12px;font-weight:500;color:${M.orange}">관리자 최종 승인 대기 중</div>`;
+ else if(t.status==='승인완료')h+=`<div style="padding:9px 12px;border-radius:6px;text-align:center;background:${M.greenBg};border:1px solid #C8E6C9;font-size:12px;font-weight:500;color:${M.green}">교대 확정 완료</div>`;
+ h+=`</div></div>`;return h;
+}
+
+function screenList(){
+ const F=[['all','전체'],['open','모집중'],['mine','내 공고'],['nego','협의중'],['wait','승인대기']];
+ let arr=TRADES.filter(t=>{const f=S.filter;if(f==='all')return 1;if(f==='open')return t.status==='모집중';if(f==='mine')return t.reqName===S.auth.name||t.subName===S.auth.name;if(f==='nego')return t.status==='협의중';if(f==='wait')return t.status==='승인대기';});
+ let h='';
+ const act=TRADES.filter(t=>t.reqName===S.auth.name&&t.status==='협의중').length;
+ if(act)h+=`<div style="margin-bottom:10px;padding:11px 14px;border-radius:6px;background:${M.blueBg};border:1px solid #BBDEFB;display:flex;align-items:center;gap:10px"><span style="font-size:18px">🔔</span><div><div style="font-size:13px;font-weight:500;color:${M.blue}">처리 필요 ${act}건</div><div style="font-size:11px;color:${M.ter}">내 공고에 새 지원이 있습니다</div></div></div>`;
+ h+=`<div style="display:flex;gap:6px;padding-bottom:8px;overflow-x:auto">`+F.map(f=>`<button class="chipf ${S.filter===f[0]?'on':''}" onclick="setF('${f[0]}')">${f[1]}</button>`).join('')+`</div>`;
+ h+=`<div style="display:flex;justify-content:space-between;padding:0 2px 8px"><span style="font-size:11px;color:${M.ter}">${arr.length}건</span><span style="font-size:11px;color:${M.ter}">최신순</span></div>`;
+ h+=arr.length?arr.map(tradeCard).join(''):`<div style="text-align:center;padding:48px 0;color:${M.ter};font-size:13px">공고가 없습니다</div>`;
+ return h;
+}
+function screenStaff(){
+ let h=`<div style="display:flex;gap:8px;margin-bottom:10px"><div style="flex:1;background:#fff;border:1px solid ${M.sep};border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:${M.ter}">재직</div><div style="font-size:20px;font-weight:600">17<span style="font-size:12px;color:${M.ter};font-weight:400">명</span></div></div><div style="flex:1;background:#fff;border:1px solid ${M.sep};border-radius:8px;padding:10px 12px"><div style="font-size:11px;color:${M.ter}">통합 / 제한</div><div style="font-size:20px;font-weight:600">13<span style="font-size:12px;color:${M.ter};font-weight:400"> / 4</span></div></div></div>`;
+ h+=`<button class="btnP" style="margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px">＋ 신규 미소지기 추가</button>`;
+ h+=`<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid ${M.sep};border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:13px;color:${M.ter}">🔍 이름 검색…</div>`;
+ STAFF.forEach(s=>{
+  if(s.retired){h+=`<div class="card" style="opacity:.7;background:#FAFAFA"><div class="acc" style="background:#BDBDBD"></div><div style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px"><div class="av" style="background:#EEE;color:#9E9E9E">${s.n[0]}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:500;color:#9E9E9E;text-decoration:line-through">${s.n}</span><span class="badge" style="background:#BDBDBD;color:#fff">퇴사</span></div><div style="font-size:11px;color:#bbb;margin-top:4px">계약종료 ${s.end}</div></div></div></div>`;return;}
+  const op=openStaff[s.n];
+  h+=`<div class="card"><div class="acc" style="background:${M.green}"></div><div style="flex:1"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px" onclick="tog('${s.n}')"><div class="av">${s.n[0]}</div><div style="flex:1"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:15px;font-weight:500">${s.n}</span><span class="badge" style="background:${s.h>=5.5?M.blueBg:M.fill};color:${s.h>=5.5?M.blue:M.sec}">${s.h}h</span><span class="badge" style="background:${M.fill};color:${M.sec}">근로 ${s.cd}일</span></div><div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap"><span class="badge" style="background:#fff;border:1px solid ${M.sep};color:${M.sec}">${s.pos}</span><span class="badge" style="background:${M.greenBg};color:${M.green}">재직</span>${s.ext?`<span class="badge" style="background:${M.orangeBg};color:${M.orange}">연장중 ${s.ext}</span>`:''}</div></div><span style="color:${M.ter}">${op?'▲':'▼'}</span></div>`;
+  if(op){h+=`<div style="border-top:1px solid #F0F0F0;background:#FAFAFA;padding:11px 14px"><div style="font-size:11px;color:${M.ter};margin-bottom:8px">${s.end?'계약종료 '+s.end+(s.ext?' · 연장종료 '+s.ext.replace('~',''):''):'계약 정보 없음'}${s.tel?' · 전화 '+s.tel:''}</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="mbtn" style="color:#1a56db;background:${M.blueBg}">📄 계약서</span><span class="mbtn" style="color:#b45309;background:#FFF4E5">📅 +1개월</span><span class="mbtn" style="color:#b45309;background:#FFF4E5">📅 +3개월</span><span class="mbtn" style="color:${M.sec};background:#F0F0F0">근무시간</span><span class="mbtn" style="color:${M.sec};background:#F0F0F0">근로일수</span><span class="mbtn" style="color:${M.sec};background:#F0F0F0">PIN</span><span class="mbtn" style="color:#c62828;background:#FDECEA">퇴사 처리</span></div></div>`;}
+  h+=`</div></div>`;
+ });
+ return h;
+}
+function screenArrange(){
+ const days=['월','화','수','목','금','토','일'];
+ let h=`<div style="background:#fff;border:1px solid ${M.sep};border-radius:8px;padding:12px;margin-bottom:10px"><div style="font-size:13px;font-weight:500;margin-bottom:8px">26년 7월 2주차 (7/6~7/12)</div><div style="display:flex;gap:4px">`;
+ days.forEach((d,i)=>{h+=`<div style="flex:1;text-align:center;padding:8px 0;border-radius:8px;background:${i===2?M.red:'#F5F5F5'};color:${i===2?'#fff':(i>=5?'#cf6b62':M.sec)}"><div style="font-size:11px;font-weight:500">${d}</div><div style="font-size:13px;font-weight:600">${6+i}</div></div>`;});
+ h+=`</div></div>`;
+ h+=`<div style="background:#fff;border:1px solid ${M.sep};border-radius:8px;padding:12px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:500;margin-bottom:6px"><span>수요일 7/8 배정</span><span style="color:${M.ter};font-size:11px">배정 3 · 가능 9</span></div><div style="font-size:11px;color:${M.sec};margin-bottom:4px">오픈 1 · 미들 1 · 마감 1</div><div style="font-size:11px;color:${M.sec}">신청 구성: 통합 7 · <span style="color:#c2410c">플로어전용 3</span> · 마감가능 5</div></div>`;
+ h+=`<div style="font-size:12px;font-weight:500;color:${M.sec};margin:6px 2px">슬롯 — 탭하여 후보 배정</div>`;
+ [['오픈','D1','매점','신재용','5.5'],['미들','M5','플로어','김하현','4.5'],['마감','N1','매점','—','']].forEach(s=>{
+  h+=`<div class="card"><div class="acc" style="background:${s[3]==='—'?M.sep:M.green}"></div><div style="flex:1;display:flex;align-items:center;gap:10px;padding:12px 14px"><div style="width:46px"><div style="font-size:13px;font-weight:600">${s[1]}</div><div style="font-size:10px;color:${M.ter}">${s[0]}</div></div><span class="badge" style="background:#fff;border:1px solid ${M.sep};color:${M.sec}">${s[2]}</span><div style="flex:1;text-align:right">${s[3]==='—'?`<span style="font-size:12px;color:${M.red}">비어있음</span>`:`<span style="font-size:14px;font-weight:500">${s[3]}</span> <span style="font-size:11px;color:${M.ter}">${s[4]}h</span>`}</div><span style="color:${M.ter}">›</span></div></div>`;
+ });
+ return h;
+}
+function screenAdmin(){
+ const wait=TRADES.filter(t=>t.status==='승인대기');
+ let h=`<div style="font-size:12px;color:${M.ter};margin:0 2px 8px">최종 승인 대기 ${wait.length}건</div>`;
+ if(!wait.length)h+=`<div style="text-align:center;padding:48px 0;color:${M.ter};font-size:13px">승인 대기 건이 없습니다</div>`;
+ wait.forEach(t=>{
+  const parts=t.shiftDate.split(' / ');
+  h+=`<div class="card"><div class="acc" style="background:${M.orange}"></div><div style="flex:1;padding:14px"><div style="display:flex;justify-content:space-between;margin-bottom:10px"><div style="display:flex;align-items:center;gap:9px"><div class="av">${t.reqName[0]}</div><div><div style="font-size:15px;font-weight:500">${t.reqName} <span style="font-size:12px;color:${M.ter}">→ ${t.subName}</span></div><span style="font-size:12px;color:${M.ter}">${t.reason}</span></div></div>${statusBadge(t.status)}</div><div class="obox" style="margin-bottom:10px"><div style="font-size:13px;font-weight:500">${parts[0]}</div><div style="font-size:11px;color:${M.ter};margin-top:2px">${parts[1]||''}</div></div><div style="display:flex;gap:8px"><button class="btnP" style="flex:1;background:${M.green};padding:10px;font-size:13px" onclick="approve(${t.id})">승인 확정</button><button class="mbtn" style="flex:1;background:${M.fill};color:${M.red};border:1px solid ${M.redMid};padding:10px;font-size:13px" onclick="reject(${t.id})">반려</button></div></div></div>`;
+ });
+ return h;
+}
+
+function render(){
+ const f=document.getElementById('frame');
+ if(!S.auth){
+  f.innerHTML=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;padding:30px"><div style="width:64px;height:64px;border-radius:18px;background:${M.red};display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;margin-bottom:14px">CGV</div><div style="font-size:18px;font-weight:600;margin-bottom:2px">동두천 교대 시스템</div><div style="font-size:12px;color:${M.ter};margin-bottom:28px">이름을 선택해 로그인</div>`+
+   USERS.map(u=>`<button class="btnP" style="${u.role==='admin'?`background:#fff;color:${M.red};border:1.5px solid ${M.red}`:''};margin-bottom:10px;max-width:240px" onclick="login('${u.name}','${u.role}')">${u.name}${u.role==='admin'?' (관리자)':''}</button>`).join('')+`</div>`;
+  return;
+ }
+ const admin=S.auth.role==='admin';
+ const tabs=admin?[['list','현황','☰'],['arrange','편성','▦'],['staff','미소지기','👥'],['admin','승인','✓']]:[['list','현황','☰'],['register','공고 등록','＋']];
+ let body= S.tab==='list'?screenList(): S.tab==='staff'?screenStaff(): S.tab==='arrange'?screenArrange(): S.tab==='admin'?screenAdmin(): `<div style="text-align:center;padding:60px 0;color:${M.ter}">공고 등록 화면 (준비 중)</div>`;
+ const title=({list:'교대 신청',register:'공고 등록',staff:'미소지기 관리',arrange:'스케줄 편성',admin:'맞교대 승인'})[S.tab]||'교대';
+ f.innerHTML=`<div class="hd"><div><div class="sub">CGV DONGDUCHEON${admin?' · 관리자':''}</div><div class="ti">${title}</div></div><div style="display:flex;gap:8px;align-items:center"><div class="chip">👤 ${S.auth.name}</div><button onclick="logout()" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);border:none;color:#fff">↩</button></div></div><div class="body">${body}</div><div class="tabbar">`+
+  tabs.map(t=>`<button class="${S.tab===t[0]?'on':''}" onclick="go('${t[0]}')"><span class="dot">${t[2]}</span>${t[1]}</button>`).join('')+`</div>`;
+}
+function login(n,r){S.auth={name:n,role:r};S.tab=r==='admin'?'staff':'list';render();}
+function logout(){S.auth=null;render();}
+function go(t){S.tab=t;render();}
+function setF(f){S.filter=f;render();}
+function tog(n){openStaff[n]=!openStaff[n];render();}
+function apply(id){TRADES=TRADES.map(t=>t.id===id?{...t,status:'협의중',subName:S.auth.name,subPos:'통합',subHours:4.5}:t);render();}
+function accept(id){TRADES=TRADES.map(t=>t.id===id?{...t,status:'승인대기'}:t);render();}
+function reject(id){TRADES=TRADES.map(t=>t.id===id?{...t,status:'모집중',subName:'모집중',subPos:'',subHours:null}:t);render();}
+function approve(id){TRADES=TRADES.map(t=>t.id===id?{...t,status:'승인완료'}:t);render();}
+render();
+</script>
+</body>
+</html>

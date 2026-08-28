@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>[MOCKUP] 스케줄 신청 - Step 1 취합</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --cgv-red:#e71a0f; --cgv-orange:#FF6B00;
+    --pos-mart:#fef2f2; --pos-mart-fg:#b91c1c; --pos-mart-bd:#fecaca;
+    --pos-mc:#fdf4ff;  --pos-mc-fg:#a21caf;  --pos-mc-bd:#f5d0fe;
+    --pos-floor:#f0fdf4; --pos-floor-fg:#15803d; --pos-floor-bd:#bbf7d0;
+    --pos-int:#f5f3ff; --pos-int-fg:#6d28d9; --pos-int-bd:#ddd6fe;
+    --ok:#16a34a; --warn:#ea580c; --over:#dc2626;
+    --slate-50:#f8fafc; --slate-100:#f1f5f9; --slate-200:#e2e8f0;
+    --slate-400:#94a3b8; --slate-500:#64748b; --slate-700:#334155; --slate-900:#0f172a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family:'Pretendard', system-ui, sans-serif; background:#f8fafc; color:var(--slate-900); padding-bottom:96px; }
+  .wrap { max-width:520px; margin:0 auto; }
+
+  header { background:white; border-bottom:2px solid var(--slate-200); padding:14px 16px; position:sticky; top:0; z-index:10; }
+  .brand { font-size:10px; font-weight:900; letter-spacing:0.18em; margin-bottom:2px; }
+  .brand .o { color:var(--cgv-orange); } .brand .r { color:var(--cgv-red); }
+  .title { font-size:17px; font-weight:900; letter-spacing:-0.03em; line-height:1; }
+  .mockup-tag { display:inline-block; margin-left:6px; padding:2px 6px; background:#fef3c7; color:#92400e; font-size:9px; font-weight:900; border-radius:4px; vertical-align:middle; }
+
+  .week-bar { display:flex; gap:8px; padding:12px 16px; background:white; border-bottom:1px solid var(--slate-200); overflow-x:auto; }
+  .week-chip { flex:0 0 auto; padding:8px 14px; background:var(--slate-100); border:1.5px solid var(--slate-200); border-radius:10px; font-size:12px; font-weight:800; color:var(--slate-500); cursor:pointer; white-space:nowrap; }
+  .week-chip.active { background:var(--cgv-red); color:white; border-color:var(--cgv-red); }
+
+  .admin-notice { margin:12px 16px; padding:10px 12px; background:#ecfeff; border:1px solid #a5f3fc; border-radius:10px; font-size:11px; color:#155e75; font-weight:700; line-height:1.55; display:flex; gap:8px; align-items:flex-start; }
+  .admin-notice .ic { font-size:14px; flex-shrink:0; }
+  .admin-notice b { color:#0e7490; }
+
+  /* Profile + 계약일수 차감 */
+  .profile { margin:12px 16px; padding:14px; background:white; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,.04); border:1px solid var(--slate-200); }
+  .pf-top { display:flex; align-items:center; gap:8px; }
+  .pf-name { font-size:16px; font-weight:900; }
+  .pf-badge { display:inline-block; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:900; }
+  .pf-45 { background:#eff6ff; color:#1d4ed8; } .pf-55 { background:#f5f3ff; color:#6d28d9; }
+  .pf-qual { font-size:10px; color:var(--slate-500); font-weight:700; margin-top:6px; display:block; }
+  .pf-qual b { color:var(--slate-900); }
+
+  .days-counter { margin-top:12px; padding-top:12px; border-top:1px dashed var(--slate-200); }
+  .dc-head { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px; }
+  .dc-title { font-size:11px; font-weight:800; color:var(--slate-500); }
+  .dc-title b { color:var(--slate-900); font-size:13px; font-weight:900; }
+  .dc-state { font-size:11px; font-weight:900; }
+  .dc-state.short { color:var(--warn); }
+  .dc-state.ok { color:var(--ok); }
+  .dc-state.over { color:var(--over); }
+  .dc-pips { display:flex; gap:4px; align-items:center; }
+  .pip { flex:1; height:8px; border-radius:4px; background:var(--slate-100); transition:all .15s; }
+  .pip.on { background:var(--cgv-red); }
+  .pip.over { background:var(--over); }
+  .pip.contract-edge { position:relative; }
+  .pip.contract-edge::after { content:''; position:absolute; right:-3px; top:-3px; bottom:-3px; width:2px; background:var(--slate-900); border-radius:1px; }
+  .dc-note { margin-top:6px; font-size:10px; color:var(--slate-400); font-weight:700; }
+  .dc-note .lock { color:var(--slate-500); }
+
+  /* Quick patterns */
+  .qp { display:flex; gap:6px; padding:4px 16px 8px; flex-wrap:wrap; }
+  .qp-btn { padding:6px 12px; background:white; border:1.5px solid var(--slate-200); border-radius:10px; font-size:11px; font-weight:800; color:var(--slate-500); cursor:pointer; }
+  .qp-btn.primary { background:#fef2f2; color:var(--cgv-red); border-color:#fecaca; }
+  .qp-btn.warn { color:var(--cgv-red); border-color:#fecaca; }
+
+  /* Day cards */
+  .days { padding:0 16px; }
+  .day-card { background:white; border-radius:14px; margin-bottom:12px; border:1px solid var(--slate-200); box-shadow:0 1px 3px rgba(0,0,0,.03); overflow:hidden; }
+  .day-card.picked { border-color:var(--cgv-red); box-shadow:0 4px 14px rgba(231,26,15,.10); }
+  .day-card.picked .day-head { background:linear-gradient(to right, #fef2f2, white); }
+  .day-head { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--slate-50); border-bottom:1px solid var(--slate-100); }
+  .day-title { display:flex; align-items:center; gap:8px; }
+  .day-name { font-size:14px; font-weight:900; color:var(--slate-700); }
+  .day-name.sat { color:#2563eb; } .day-name.sun { color:#dc2626; }
+  .day-name.holiday { color:#dc2626; }
+  .day-date { font-size:11px; color:var(--slate-400); font-weight:700; }
+  .flag { font-size:9px; font-weight:900; padding:2px 6px; border-radius:5px; }
+  .flag.holiday { background:#fef2f2; color:#dc2626; }
+  .flag.admin { background:#ecfeff; color:#0e7490; }
+  .day-count-mini { font-size:10px; color:var(--slate-400); font-weight:800; margin-left:4px; }
+  .day-count-mini.on { color:var(--cgv-red); }
+  .all-toggle { display:flex; align-items:center; gap:5px; padding:6px 11px; border-radius:9px; font-size:11px; font-weight:900; cursor:pointer; border:1.5px solid var(--slate-200); background:white; color:var(--slate-500); user-select:none; }
+  .all-toggle.on { background:var(--cgv-red); border-color:var(--cgv-red); color:white; box-shadow:0 2px 6px rgba(231,26,15,.25); }
+  .all-toggle .ic { font-size:13px; }
+
+  .pos-rows { padding:8px 12px 12px; }
+  .pos-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px dashed var(--slate-100); }
+  .pos-row:last-child { border-bottom:none; }
+  .pos-label { flex:0 0 60px; font-size:11px; font-weight:900; }
+  .pos-label.mart       { color:var(--pos-mart-fg); }
+  .pos-label.mart-close { color:var(--pos-mc-fg); }
+  .pos-label.floor      { color:var(--pos-floor-fg); }
+  .pos-label.int        { color:var(--pos-int-fg); }
+  .pos-chips { display:flex; gap:6px; flex-wrap:wrap; flex:1; }
+  .chip { display:flex; align-items:center; gap:3px; padding:6px 10px; border-radius:9px; font-size:11px; font-weight:800; cursor:pointer; border:1.5px solid transparent; transition:all .12s; user-select:none; }
+  .chip .ic { font-size:13px; }
+  .chip .tm { font-size:9px; opacity:0.7; font-weight:700; margin-left:2px; }
+  .chip.mart       { background:var(--pos-mart);  color:var(--pos-mart-fg);  border-color:var(--pos-mart-bd); }
+  .chip.mart-close { background:var(--pos-mc);    color:var(--pos-mc-fg);    border-color:var(--pos-mc-bd); }
+  .chip.floor      { background:var(--pos-floor); color:var(--pos-floor-fg); border-color:var(--pos-floor-bd); }
+  .chip.int        { background:var(--pos-int);   color:var(--pos-int-fg);   border-color:var(--pos-int-bd); }
+  .chip.on { background:var(--cgv-red); color:white; border-color:var(--cgv-red); box-shadow:0 2px 6px rgba(231,26,15,.25); }
+
+  /* Reason */
+  .reason { margin:14px 16px; padding:14px; background:white; border-radius:14px; border:1px solid var(--slate-200); }
+  .reason label { font-size:12px; font-weight:800; color:var(--slate-700); display:block; margin-bottom:6px; }
+  .reason textarea { width:100%; min-height:60px; border:1.5px solid var(--slate-200); border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; resize:vertical; }
+  .reason textarea:focus { outline:none; border-color:var(--cgv-red); }
+
+  /* Submit */
+  .submit-bar { position:fixed; bottom:0; left:0; right:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:white; border-top:1px solid var(--slate-200); box-shadow:0 -2px 12px rgba(0,0,0,.04); }
+  .submit-bar .max { max-width:520px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+  .summary-mini { flex:1; font-size:11px; color:var(--slate-500); font-weight:700; line-height:1.45; }
+  .summary-mini b { color:var(--slate-900); font-weight:900; }
+  .summary-mini .badge { display:inline-block; padding:2px 7px; border-radius:6px; font-size:10px; font-weight:900; margin-left:4px; }
+  .badge.short { background:#fff7ed; color:var(--warn); }
+  .badge.ok { background:#f0fdf4; color:var(--ok); }
+  .badge.over { background:#fef2f2; color:var(--over); }
+  .submit-btn { padding:13px 22px; background:var(--cgv-red); color:white; border:none; border-radius:12px; font-size:14px; font-weight:900; cursor:pointer; box-shadow:0 4px 10px rgba(231,26,15,.25); }
+  .submit-btn:disabled { background:var(--slate-200); color:var(--slate-400); box-shadow:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand"><span class="o">CGV </span><span class="r"> DONGDUCHEON STAFF</span></div>
+    <div class="title">스케줄 신청 <span class="mockup-tag">MOCKUP v5</span></div>
+  </header>
+
+  <div class="week-bar">
+    <div class="week-chip">전주 (5/19~5/25)</div>
+    <div class="week-chip active">이번주 (5/26~6/1)</div>
+    <div class="week-chip">다음주 (6/2~6/8)</div>
+    <div class="week-chip">+2주 (6/9~6/15)</div>
+  </div>
+
+  <div class="admin-notice">
+    <span class="ic">⚑</span>
+    <div><b>관리자 공지</b> — 5/29(목) 단체 손님 예정. <b>통합 포지션 추가 모집</b>합니다.</div>
+  </div>
+
+  <div class="profile">
+    <div class="pf-top">
+      <span class="pf-name">홍성현</span><span class="pf-badge pf-45">4.5h</span>
+    </div>
+    <span class="pf-qual">자격: <b>통합</b> (매점/매점마감/플로어/통합 모두 신청 가능)</span>
+
+    <!-- 계약 근로일수 차감 -->
+    <div class="days-counter">
+      <div class="dc-head">
+        <div class="dc-title">근로일수 <b id="dcContract">4일</b> · 선택 <b id="dcSel">0일</b> / 7일</div>
+        <div class="dc-state" id="dcState">—</div>
+      </div>
+      <div class="dc-pips" id="dcPips"></div>
+      <div class="dc-note"><span class="lock">🔒 근로일수는 관리자가 「미소지기 관리」에서 변경합니다.</span></div>
+    </div>
+  </div>
+
+  <div class="qp">
+    <button class="qp-btn primary" onclick="pattern('all')">매일 전부 가능</button>
+    <button class="qp-btn" onclick="pattern('weekday')">평일만(월~목)</button>
+    <button class="qp-btn" onclick="pattern('weekend')">주말만(금~일)</button>
+    <button class="qp-btn" onclick="pattern('midOnly')">미들만</button>
+    <button class="qp-btn warn" onclick="pattern('reset')">초기화</button>
+  </div>
+
+  <div class="days" id="days"></div>
+
+  <div class="reason">
+    <label>특이사항 / 요청사항 (선택)</label>
+    <textarea placeholder="예) 6/1(일)은 가족행사로 불가합니다. 매점마감 위주 부탁드려요."></textarea>
+  </div>
+
+</div>
+
+<div class="submit-bar">
+  <div class="max">
+    <div class="summary-mini">
+      선택 <b id="dayCount">0</b>일 / 계약 <b id="contractEcho">4</b>일
+      <span class="badge" id="sumBadge">—</span><br>
+      <span style="opacity:0.7">슬롯 <b id="slotCount">0</b>개</span>
+    </div>
+    <button class="submit-btn" id="submit">신청하기</button>
+  </div>
+</div>
+
+<script>
+  // ===== Mock user / 계약일수 =====
+  // contractDays: 관리자가 「미소지기 관리」에서 설정 (여기선 4일로 시연)
+  var USER = { name:'홍성현', hours:4.5, qual:['mart','mart-close','floor','int'], contractDays:4 };
+  var BASE_DATE = new Date(2026, 4, 26);
+  var DAY_KOR = ['월','화','수','목','금','토','일'];
+  var HOLIDAYS = [];
+  var ADMIN_INT_DAYS = [3]; // 목요일 = idx 3
+
+  var POSITIONS = [
+    { id:'mart',       label:'매점',   groups:['open','mid'],
+      cellActive: function(idx, g){ return true; } },
+    { id:'mart-close', label:'매감',   groups:['close'],
+      cellActive: function(idx, g){ return true; } },
+    { id:'floor',      label:'플로어', groups:['open','mid','close'],
+      cellActive: function(idx, g){ if (g === 'open' && idx < 4) return false; return true; } },
+    { id:'int',        label:'통합',   groups:['open','mid','close'],
+      cellActive: function(idx, g){
+        var isSatSun = idx === 5 || idx === 6;
+        var isHoliday = HOLIDAYS.indexOf(idx) > -1;
+        var isAdmin = ADMIN_INT_DAYS.indexOf(idx) > -1;
+        return isSatSun || isHoliday || isAdmin;
+      } }
+  ];
+
+  var TIMES = {
+    open:  { '5.5':'09:00~16:00', '4.5':'09:00~15:00', icon:'☀', label:'오픈' },
+    mid:   { '5.5':'11:30~22:00', '4.5':'11:30~21:00', icon:'🌤', label:'미들' },
+    close: { '5.5':'18:00~24:30', '4.5':'19:00~24:30', icon:'🌙', label:'마감' }
+  };
+  function hKey() { return USER.hours <= 4.5 ? '4.5' : '5.5'; }
+
+  var selected = {};
+
+  function k(posId, idx, g) { return posId + ':' + idx + ':' + g; }
+
+  function activeCellsOfDay(idx) {
+    var cells = [];
+    USER.qual.forEach(function(posId){
+      var p = POSITIONS.find(function(x){ return x.id === posId; });
+      p.groups.forEach(function(g){
+        if (p.cellActive(idx, g)) cells.push({ posId:posId, g:g });
+      });
+    });
+    return cells;
+  }
+  function isDayAllOn(idx) {
+    var cells = activeCellsOfDay(idx);
+    if (!cells.length) return false;
+    return cells.every(function(c){ return selected[k(c.posId, idx, c.g)]; });
+  }
+  function isDayPicked(idx) {
+    var cells = activeCellsOfDay(idx);
+    return cells.some(function(c){ return selected[k(c.posId, idx, c.g)]; });
+  }
+  function dayPickedCount(idx) {
+    var cells = activeCellsOfDay(idx);
+    var c = 0;
+    cells.forEach(function(x){ if (selected[k(x.posId, idx, x.g)]) c++; });
+    return c;
+  }
+  function selectedDayCount() {
+    var n = 0;
+    for (var i = 0; i < 7; i++) if (isDayPicked(i)) n++;
+    return n;
+  }
+
+  function renderDays() {
+    var html = '';
+    var hk = hKey();
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(BASE_DATE); d.setDate(BASE_DATE.getDate() + i);
+      var dateStr = (d.getMonth()+1) + '/' + d.getDate();
+      var allOn = isDayAllOn(i);
+      var picked = isDayPicked(i);
+      var picks = dayPickedCount(i);
+      var cls = i === 5 ? 'sat' : (i === 6 ? 'sun' : '');
+      if (HOLIDAYS.indexOf(i) > -1) cls += ' holiday';
+
+      html += '<div class="day-card' + (picked ? ' picked' : '') + '" data-idx="' + i + '">';
+      html += '<div class="day-head">';
+      html += '<div class="day-title">';
+      html += '<span class="day-name ' + cls + '">' + DAY_KOR[i] + '</span>';
+      html += '<span class="day-date">' + dateStr + '</span>';
+      if (HOLIDAYS.indexOf(i) > -1) html += '<span class="flag holiday">공휴일</span>';
+      if (ADMIN_INT_DAYS.indexOf(i) > -1) html += '<span class="flag admin">⚑ 통합모집</span>';
+      if (picks > 0) html += '<span class="day-count-mini on">' + picks + '개 선택</span>';
+      html += '</div>';
+      html += '<div class="all-toggle' + (allOn ? ' on' : '') + '" onclick="toggleAll(' + i + ')"><span class="ic">' + (allOn ? '✓' : '○') + '</span>전부 가능</div>';
+      html += '</div>';
+
+      html += '<div class="pos-rows">';
+      USER.qual.forEach(function(posId){
+        var p = POSITIONS.find(function(x){ return x.id === posId; });
+        var activeGroups = p.groups.filter(function(g){ return p.cellActive(i, g); });
+        if (activeGroups.length === 0) return;
+        html += '<div class="pos-row">';
+        html += '<div class="pos-label ' + posId + '">' + p.label + '</div>';
+        html += '<div class="pos-chips">';
+        activeGroups.forEach(function(g){
+          var key = k(posId, i, g);
+          var on = !!selected[key];
+          var t = TIMES[g];
+          html += '<div class="chip ' + posId + (on ? ' on' : '') + '" data-key="' + key + '" onclick="toggleChip(\'' + key + '\')"><span class="ic">' + t.icon + '</span>' + t.label + '<span class="tm">' + t[hk] + '</span></div>';
+        });
+        html += '</div></div>';
+      });
+      html += '</div></div>';
+    }
+    document.getElementById('days').innerHTML = html;
+    updateCounter();
+  }
+
+  function toggleChip(key) {
+    selected[key] = !selected[key];
+    renderDays();
+  }
+  function toggleAll(idx) {
+    var allOn = isDayAllOn(idx);
+    var cells = activeCellsOfDay(idx);
+    cells.forEach(function(c){ selected[k(c.posId, idx, c.g)] = !allOn; });
+    renderDays();
+  }
+  function pattern(mode) {
+    if (mode === 'reset') { selected = {}; renderDays(); return; }
+    selected = {};
+    for (var i = 0; i < 7; i++) {
+      var isWeekend = i >= 4;
+      var cells = activeCellsOfDay(i);
+      cells.forEach(function(c){
+        if (mode === 'all') selected[k(c.posId, i, c.g)] = true;
+        else if (mode === 'weekday' && !isWeekend) selected[k(c.posId, i, c.g)] = true;
+        else if (mode === 'weekend' && isWeekend) selected[k(c.posId, i, c.g)] = true;
+        else if (mode === 'midOnly' && c.g === 'mid') selected[k(c.posId, i, c.g)] = true;
+      });
+    }
+    renderDays();
+  }
+
+  function updateCounter() {
+    var sel = selectedDayCount();
+    var contract = USER.contractDays;
+    var diff = sel - contract;
+
+    document.getElementById('dcContract').textContent = contract + '일';
+    document.getElementById('dcSel').textContent = sel + '일';
+    document.getElementById('dayCount').textContent = sel;
+    document.getElementById('contractEcho').textContent = contract;
+
+    // pips render (7 pips for 7 days)
+    var pips = '';
+    for (var i = 0; i < 7; i++) {
+      var cls = 'pip';
+      if (i < sel) cls += (i < contract ? ' on' : ' over');
+      if (i === contract - 1) cls += ' contract-edge';
+      pips += '<div class="' + cls + '"></div>';
+    }
+    document.getElementById('dcPips').innerHTML = pips;
+
+    var state = '', stateCls = '', badge = '', badgeCls = '';
+    if (sel === 0) { state = contract + '일 신청 필요'; stateCls = 'short'; badge = '미신청'; badgeCls = 'short'; }
+    else if (diff < 0) { state = '+' + Math.abs(diff) + '일 더 가능'; stateCls = 'short'; badge = '-' + Math.abs(diff) + '일'; badgeCls = 'short'; }
+    else if (diff === 0) { state = '✓ 계약일수 일치'; stateCls = 'ok'; badge = '정확'; badgeCls = 'ok'; }
+    else { state = '⚠ +' + diff + '일 초과(관리자 검토)'; stateCls = 'over'; badge = '+' + diff + '일'; badgeCls = 'over'; }
+    var dcState = document.getElementById('dcState');
+    dcState.textContent = state; dcState.className = 'dc-state ' + stateCls;
+    var sb = document.getElementById('sumBadge');
+    sb.textContent = badge; sb.className = 'badge ' + badgeCls;
+
+    // slot count
+    var slot = 0;
+    Object.keys(selected).forEach(function(key){ if (selected[key]) slot++; });
+    document.getElementById('slotCount').textContent = slot;
+
+    document.getElementById('submit').disabled = sel === 0;
+  }
+
+  document.getElementById('submit').addEventListener('click', function(){
+    var picks = [];
+    Object.keys(selected).forEach(function(key){
+      if (!selected[key]) return;
+      var p = key.split(':');
+      picks.push({ position: p[0], day: +p[1], dayName: DAY_KOR[+p[1]], group: p[2] });
+    });
+    alert('[MOCKUP] 신청 페이로드:\n' + JSON.stringify({
+      name: USER.name, hours: USER.hours,
+      week_key: '2026-W22',
+      contract_days: USER.contractDays,
+      selected_day_count: selectedDayCount(),
+      availability: picks
+    }, null, 2));
+  });
+
+  renderDays();
+</script>
+</body>
+</html>

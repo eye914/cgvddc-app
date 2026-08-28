@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>미소지기 신청 하니스</title>
+<style>
+  body{margin:0;background:#cdcdd3;font-family:-apple-system,"Pretendard","Malgun Gothic",sans-serif;}
+  .frame{max-width:412px;margin:0 auto;min-height:100vh;background:#f8fafc;position:relative;}
+  .subtabs{display:flex;gap:6px;padding:12px 16px;background:#fff;border-bottom:1px solid #eef2f6;}
+  #avail-week-label{text-align:center;font-size:13px;font-weight:900;color:#0f172a;padding:10px;background:#fff;}
+  #avail-body{padding:8px 14px 16px;}
+  #avail-sticky-footer{position:sticky;bottom:0;background:#fff;border-top:1px solid #eef2f6;padding:10px 14px calc(12px + env(safe-area-inset-bottom));}
+  #avail-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:99;}
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="subtabs">
+    <button id="sched-sub-btn-view" onclick="switchSchedTab('view')">📅 내 근무</button>
+    <button id="sched-sub-btn-apply" onclick="switchSchedTab('apply')">✍️ 스케줄 신청</button>
+  </div>
+  <div id="sched-sub-view" style="display:none;padding:30px;text-align:center;color:#94a3b8">내 근무(조회) 화면</div>
+  <div id="sched-sub-apply" style="display:none">
+    <div id="avail-week-label"></div>
+    <div id="avail-body"></div>
+    <div id="avail-sticky-footer">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <div id="avail-footer-days"></div>
+        <div id="avail-footer-contract"></div>
+      </div>
+      <button id="avail-submit-btn" style="width:100%;padding:14px;border:none;border-radius:14px;background:#d8463a;color:#fff;font-size:14px;font-weight:800">제출하기</button>
+    </div>
+  </div>
+  <div id="avail-toast"></div>
+</div>
+<script>
+  // 로그인 사용자 / 미소지기 명단 목
+  sessionStorage.setItem('cgv_currentUser', '홍성현');
+  window.MISO_DATA = [
+    {name:'홍성현', pos:['통합'], hours:'4.5', contract_days:4},
+    {name:'김한솔', pos:['통합'], hours:'5.5', contract_days:5},
+    {name:'손정현', pos:['매점','플로어'], hours:'4.5', contract_days:4}
+  ];
+  // 관리자 지정 통합모집/이벤트 등은 없음(기본 룰만)
+  var _of = window.fetch;
+  window.fetch = function(url, opts){
+    url = String(url);
+    if(url.indexOf('/api/availability?mode=active')>-1)
+      return Promise.resolve({json:function(){return Promise.resolve({weekKey:'2026-06-02', isOpen:true});}});
+    if(url.indexOf('/api/availability?weekKey')>-1)
+      return Promise.resolve({json:function(){return Promise.resolve({data:[]});}}); // 기존 신청 없음
+    if(url.indexOf('/api/availability')>-1 && opts && opts.method==='POST')
+      return Promise.resolve({json:function(){return Promise.resolve({ok:true});}});
+    return _of.apply(this, arguments);
+  };
+</script>
+<script src="/availability-ui.js"></script>
+<script>
+  setTimeout(function(){ if(typeof switchSchedTab==='function') switchSchedTab('apply'); }, 300);
+</script>
+</body></html>
