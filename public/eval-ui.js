@@ -483,7 +483,8 @@
         el.innerHTML = '<div style="background:#fff;border:1px solid #eceef2;border-radius:16px;padding:13px 14px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'
           + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px"><span style="font-size:16px">🏆</span><span style="font-weight:800;font-size:14px;color:#0f172a">이 달의 우수 미소지기</span><span style="margin-left:auto;font-size:10px;font-weight:700;color:#94a3b8;background:#f4f5f7;padding:2px 8px;border-radius:20px">' + mm + '</span></div>'
           + '<div style="display:flex;gap:7px">' + cols + '</div>'
-          + '<div style="margin-top:9px;padding:8px 11px;border-radius:10px;background:#eef6ff;font-size:11.5px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + (d.rookie ? esc(d.rookie) : '8월부터 시작') + '</div>'
+          // 신인왕 후보를 등록하지 않은 달은 줄 자체를 그리지 않는다 (생략한 달에 빈 문구가 뜨지 않도록)
+          + (d.rookie ? '<div style="margin-top:9px;padding:8px 11px;border-radius:10px;background:#eef6ff;font-size:11.5px;font-weight:700;color:#2563a8">🐣 신인왕 · ' + esc(d.rookie) + '</div>' : '')
           + '</div>';
       }).catch(function () {});
   };
