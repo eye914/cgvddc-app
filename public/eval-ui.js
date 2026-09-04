@@ -318,8 +318,11 @@
       var as = autoS(c.kind, ctx);
       var note = c.kind === 'late' ? ('지각 ' + (ctx.lateN || 0) + '회')
         : c.kind === 'absent' ? ('결근 ' + (ctx.absentN || 0) + '회')
-          : ('서명 ' + (ctx.noticeSigned || 0) + '/' + (ctx.noticeReq || 0)
-            + ((ctx.missN || 0) ? ' · <span style="color:#7c3aed">미숙지 ' + ctx.missN + '회(−' + (NOTICE_MISS_PENALTY * ctx.missN) + ')</span>' : ''));
+          : ((ctx.noticeReq || 0) <= 0
+            // 이 달에 '서명필요' 공지가 아직 없으면 만점 처리된다 — 왜 만점인지 보이게 한다
+            ? '<span style="color:#94a3b8">이 달 서명필요 공지 없음 · 만점 처리</span>'
+            : ('서명 ' + (ctx.noticeSigned || 0) + '/' + ctx.noticeReq
+              + ((ctx.missN || 0) ? ' · <span style="color:#7c3aed">미숙지 ' + ctx.missN + '회(−' + (NOTICE_MISS_PENALTY * ctx.missN) + ')</span>' : '')));
       return '<tr><td class="l">' + c.sub + '<div style="font-size:10px;color:#93a">' + note + '</div></td><td style="color:#2563a8;font-weight:800">자동</td><td class="au" data-k="' + c.key + '" data-w="' + c.w + '">' + as + '</td><td>' + c.w + '</td><td class="ac" id="c_' + c.key + '">' + Math.round(as * c.w / 100) + '</td></tr>';
     }).join('');
     var css = '#ev-in table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border-radius:10px;overflow:hidden}#ev-in th{background:#44546A;color:#fff;padding:8px 4px}#ev-in td{border-bottom:1px solid #eee;padding:8px 5px;text-align:center}#ev-in td.l{text-align:left;font-weight:700}';

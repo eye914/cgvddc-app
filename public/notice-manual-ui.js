@@ -162,6 +162,12 @@
     if (!n.start_date && !n.end_date) return '상시';
     return (n.start_date || '~') + ' ~ ' + (n.end_date || '상시');
   }
+  // 게시일 — 월말평가의 '공지 숙지' 는 이 날짜가 속한 달로 집계된다
+  function postedTxt(n) {
+    var d = n.created_at ? new Date(n.created_at) : null;
+    if (!d || isNaN(d.getTime())) return '';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
   function isExpired(n) { return n.end_date && String(n.end_date) < todayISO(); }
 
   function noticeCard(n) {
@@ -176,7 +182,7 @@
     return '<div onclick="NM.openNotice(\'' + n.id + '\')" style="background:#fff;border:1px solid #eee;border-radius:14px;padding:13px 14px;margin-bottom:10px;cursor:pointer">'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">' + badges + adminExtra + '</div>'
       + '<div style="font-size:14px;font-weight:800;line-height:1.35;color:#0f172a">' + esc(n.title) + '</div>'
-      + '<div style="font-size:11px;color:#9a9aa0;margin-top:5px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + periodTxt(n) + '</div>'
+      + '<div style="font-size:11px;color:#9a9aa0;margin-top:5px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + postedTxt(n) + ' 게시 · ' + periodTxt(n) + '</div>'
       + '</div>';
   }
 
@@ -200,7 +206,7 @@
         + (n.require_signature ? '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;background:#111;color:#fff">✍ 서명필요</span>' : '')
         + '<span style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:6px;' + (catCls[n.category] || catCls['전체']) + '">' + esc(n.category) + '</span></div>'
         + '<div style="font-size:17px;font-weight:800;line-height:1.35">' + esc(n.title) + '</div>'
-        + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + periodTxt(n) + '</div>'
+        + '<div style="font-size:11px;color:#9a9aa0;margin:6px 0 12px;font-weight:600">✍ ' + esc(n.author || '관리자') + ' · ' + postedTxt(n) + ' 게시 · ' + periodTxt(n) + '</div>'
         + '<div class="nm-protected nm-body" style="border-top:1px solid #f0f0f0;padding-top:12px;position:relative">' + renderBody(n.body, n.images) + '</div>'
         + sigArea + adminStatus + adminBtns;
       openSheet(html, true);
