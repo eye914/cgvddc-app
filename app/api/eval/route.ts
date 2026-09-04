@@ -164,13 +164,14 @@ export async function GET(req: NextRequest) {
     const scMap: Record<string, any> = {}; (sc ?? []).forEach((x: any) => { scMap[x.miso_name] = x.grades || {}; });
     const rows: any[] = (asg ?? []).map((a: any) => {
       const c = ctxFor(a.miso_name, auto);
-      return { miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, c), _ab: c.absentN, _la: c.lateN, _nr: c.noticeReq ? c.noticeSigned / c.noticeReq : 1 };
+      return { miso: a.miso_name, total: totalScore(scMap[a.miso_name] || {}, c), scored: !!scMap[a.miso_name], _ab: c.absentN, _la: c.lateN, _nr: c.noticeReq ? c.noticeSigned / c.noticeReq : 1 };
     });
     rows.sort(tieCmp);
     rows.forEach((r, i) => { r.rank = i + 1; });
     const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', period);
     const cand = new Set((rc ?? []).map((r: any) => r.miso_name));
-    const rookieRow = rows.find((r: any) => cand.has(r.miso));
+    // 평가가 들어온 후보만 신인왕이 될 수 있다
+    const rookieRow = rows.find((r: any) => r.scored && cand.has(r.miso));
     return NextResponse.json({ period, rows: rows.map((r: any) => ({ rank: r.rank, miso: r.miso, total: r.total })), rookie: rookieRow ? rookieRow.miso : null });
   }
 
@@ -225,7 +226,9 @@ export async function GET(req: NextRequest) {
     rows.forEach((r, i) => { r.rank = i + 1; });
     const { data: rc } = await supabaseAdmin.from('eval_rookies').select('miso_name').eq('period', period);
     const cand = new Set((rc ?? []).map((r: any) => r.miso_name));
-    const rookieRow = rows.find((r: any) => cand.has(r.miso));
+    // ★ 실제로 평가가 들어온 후보만 대상. 아무도 평가하지 않았는데
+    //   자동 점수만으로 신인왕이 정해져 보이던 문제 방지
+    const rookieRow = rows.find((r: any) => r.scored && cand.has(r.miso));
     return NextResponse.json({ rows, rookie: rookieRow ? rookieRow.miso : null });
   }
 

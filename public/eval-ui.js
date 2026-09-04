@@ -421,7 +421,8 @@
       var closed = _data.period && _data.period.status === 'closed';
       var medal = function (r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; };
       el.innerHTML = '<div style="font-size:12px;color:#64748b;font-weight:700;margin-bottom:8px">' + (closed ? '최종 순위 (마감됨)' : '중간 집계 (마감 전)') + '</div>'
-        + (rookie ? '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px;font-weight:800;color:#2563a8">🐣 신인왕: ' + esc(rookie) + '</div>' : '')
+        // 마감 전에는 평가가 더 들어오면 바뀔 수 있으므로 '잠정' 임을 밝힌다
+        + (rookie ? '<div style="background:#eef6ff;border:1px solid #d6e6fb;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:13px;font-weight:800;color:#2563a8">🐣 신인왕' + (closed ? '' : '(잠정)') + ': ' + esc(rookie) + '</div>' : '')
         + rows.map(function (r) {
           return '<div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid ' + (r.rank <= 3 && closed ? '#fbbf24' : '#eee') + ';border-radius:12px;padding:11px 13px;margin-bottom:8px">'
             + '<div style="width:38px;text-align:center;font-size:16px;font-weight:900">' + (closed ? medal(r.rank) : r.rank + '위') + '</div>'
