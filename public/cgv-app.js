@@ -38,6 +38,55 @@
             "N": [{code:"N1",time:"18:00(19:00)-23:30"},{code:"N2",time:"19:00(20:00)-24:30"}]
         };
 
+        // ── 시트 기준 타임슬롯 시간 ──
+        //   SHIFT_CODES 는 기본값일 뿐, 실제 시간은 스케줄 시트 B열이 기준이다.
+        //   (관리자가 시트에서 D1 을 08:30 으로 바꾸면 앱도 08:30 으로 보여야 함 · 평일/주말 블록별로 다를 수 있음)
+        //   SLOT_TIMES[M/D][code] = 'HH:MM-HH:MM' — 스케줄을 받아올 때 채운다.
+        var SLOT_TIMES = {};
+        function _mdOf(s) {
+            s = String(s || '');
+            var iso = s.match(/\d{4}-(\d{1,2})-(\d{1,2})/); if (iso) return (+iso[1]) + '/' + (+iso[2]);
+            var md = s.match(/(\d{1,2})\s*\/\s*(\d{1,2})/); return md ? (+md[1]) + '/' + (+md[2]) : '';
+        }
+        // 스케줄 행 → SLOT_TIMES. 빈 슬롯은 행이 없으므로 같은 블록(평일 월~목 / 주말 금~일) 시간을 공유한다.
+        function ingestSlotTimes(rows) {
+            var grp = {};
+            (rows || []).forEach(function (r) {
+                var md = _mdOf(r.date); if (!md || !r.shiftCode) return;
+                var dow = (String(r.date).match(/\(([월화수목금토일])\)/) || [])[1] || '';
+                var g = grp['월화수목'.indexOf(dow) > -1 ? 'W' : 'E'] || (grp['월화수목'.indexOf(dow) > -1 ? 'W' : 'E'] = { dates: {}, t: {} });
+                g.dates[md] = 1;
+                if (r.time) g.t[r.shiftCode] = r.time;
+            });
+            Object.keys(grp).forEach(function (k) {
+                Object.keys(grp[k].dates).forEach(function (md) { SLOT_TIMES[md] = Object.assign(SLOT_TIMES[md] || {}, grp[k].t); });
+            });
+        }
+        // ponytail: 이번 주~2주 뒤까지만 미리 받음. 그 밖의 날짜는 기본 시간표로 표시.
+        function prefetchSlotTimes() {
+            var now = new Date();
+            [0, 7, 14].reduce(function (p, add) {
+                return p.then(function () {
+                    var d = new Date(now); d.setDate(d.getDate() + add);
+                    var ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                    if (SLOT_TIMES[_mdOf(ymd)]) return;
+                    return fetch('/api/schedule?mode=today&date=' + ymd).then(function (r) { return r.json(); })
+                        .then(function (j) { ingestSlotTimes(j && j.schedule); }).catch(function () {});
+                });
+            }, Promise.resolve());
+        }
+        function _addMin(hhmm, d) { var x = hhmm.split(':'), m = (+x[0]) * 60 + (+x[1]) + d; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+        // SHIFT_CODES 항목과 같은 형식의 시간 문자열을 날짜 기준(시트 시간)으로 만든다
+        //   D/M: "시작-종료(4.5h종료=종료-1h)"  N: "시작(4.5h시작=시작+1h)-종료"
+        function slotLabel(item, dateStr) {
+            var t = (SLOT_TIMES[_mdOf(dateStr)] || {})[item.code];
+            if (!t) return item.time;
+            var p = t.split('-');
+            return item.code.charAt(0) === 'N'
+                ? p[0] + '(' + _addMin(p[0], 60) + ')-' + p[1]
+                : p[0] + '-' + p[1] + '(' + _addMin(p[1], -60) + ')';
+        }
+
         // 시간 표시 파싱: "09:00-14:30(13:30)" → {main:"09:00-14:30", sub:"4.5h:13:30"}
         //                 "18:00(19:00)-23:30"  → {main:"18:00-23:30",  sub:"4.5h:19:00↑"}
         function parseTimeDisplay(timeStr) {
@@ -1396,7 +1445,7 @@ function showKakaoModal(text, forced) {
                             var cStr = i.code+" ("+i.time+")";
                             var isSel = data.codes.indexOf(cStr) > -1;
                             var cls = isSel ? "bg-blue-600 text-white border-blue-600 shadow-md" : "bg-white text-slate-500 border-slate-100";
-                            var timeParts = parseTimeDisplay(i.time);
+                            var timeParts = parseTimeDisplay(slotLabel(i, dStr));
                             codeGridHtml += "<div onclick=\"toggleWishCode('"+dStr+"','"+cStr+"')\" class='chip flex flex-col items-center justify-center p-2 rounded-xl border-2 shadow-sm font-black transition-all "+cls+"'><span class='text-[14px] font-black leading-tight'>"+i.code+"</span><span class='text-[9px] font-bold opacity-80 leading-tight'>"+timeParts.main+"</span><span class='text-[8px] font-bold text-blue-500 leading-tight'>"+timeParts.sub+"</span></div>";
                         });
                     });
@@ -1556,7 +1605,7 @@ function showKakaoModal(text, forced) {
             codes.forEach(function(i) {
                 var b = document.createElement("div");
                 b.className = "code-chip chip flex flex-col items-center justify-center bg-white border-2 border-slate-200 shadow-sm font-black transition-all";
-                var timeParts = parseTimeDisplay(i.time);
+                var timeParts = parseTimeDisplay(slotLabel(i, reqFullDate));
                 b.innerHTML = "<span class='text-[14px] font-black leading-tight'>"+i.code+"</span><span class='text-[9px] font-bold opacity-80 leading-tight'>"+timeParts.main+"</span><span class='text-[8px] font-bold text-blue-500 leading-tight'>"+timeParts.sub+"</span>";
                 b.onclick = function() {
                     grid.querySelectorAll(".code-chip").forEach(function(c){ c.classList.remove("selected"); });
@@ -1662,6 +1711,7 @@ function showKakaoModal(text, forced) {
                     .then(function(r){ return r.json(); })
                     .then(function(d){
                         if (!d || !d.weekKey || !d.schedule) { cb({ published:false, mine:[] }); return; }
+                        ingestSlotTimes(d.schedule);
                         var p = String(dateYMD).split('-'); var md = parseInt(p[1],10)+'/'+parseInt(p[2],10);
                         var key = String(name).replace(/\s/g,'');
                         var mine = d.schedule.filter(function(row){
@@ -1780,7 +1830,7 @@ function showKakaoModal(text, forced) {
         }
 
         // 공고자 근무시간(h)과 타임코드(e.g."D1")를 받아 실제 시작~종료 반환
-        function getActualTimeByCode(code, hours) {
+        function getActualTimeByCode(code, hours, dateStr) {
             if (!code) return '';
             var prefix = code.charAt(0);
             var slots = SHIFT_CODES[prefix];
@@ -1790,7 +1840,7 @@ function showKakaoModal(text, forced) {
                 if (slots[_si].code === code) { slot = slots[_si]; break; }
             }
             if (!slot) return code;
-            var tStr = slot.time;
+            var tStr = slotLabel(slot, dateStr);
             var is45 = (hours <= 4.5);
             if (prefix === 'N') {
                 // "18:00(19:00)-23:30" → 5.5h: 18:00-23:30 / 4.5h: 19:00-23:30
@@ -1826,7 +1876,7 @@ function showKakaoModal(text, forced) {
                 var _dateStr = shiftParts[0] || '';
                 var _codeStr = (shiftParts.length > 1 ? shiftParts.slice(1).join(' / ') : '').trim();
                 var _pureCodeM = (_codeStr.match(/^([A-Z]\d+)/) || ['',''])[1] || _codeStr.split(' ')[0];
-                var _actualTime = _pureCodeM ? getActualTimeByCode(_pureCodeM, _reqHours) : '';
+                var _actualTime = _pureCodeM ? getActualTimeByCode(_pureCodeM, _reqHours, _dateStr) : '';
                 var _hoursLabel = _reqHours <= 4.5 ? '4.5h' : '5.5h';
                 var _shiftHtml = "<div class='font-black text-base text-slate-900 leading-tight'>" + _dateStr + "</div>";
                 if (_pureCodeM) {
@@ -1989,7 +2039,7 @@ function showKakaoModal(text, forced) {
                 var cStr = i.code+" ("+i.time+")";
                 var b = document.createElement("div");
                 b.className = "support-code-chip code-chip chip flex flex-col items-center justify-center bg-white border-2 border-slate-200 shadow-sm font-black transition-all";
-                var timeParts = parseTimeDisplay(i.time);
+                var timeParts = parseTimeDisplay(slotLabel(i, opt.date));
                 b.innerHTML = "<span class='text-[14px] font-black leading-tight'>"+i.code+"</span><span class='text-[9px] font-bold opacity-80 leading-tight'>"+timeParts.main+"</span><span class='text-[8px] font-bold text-blue-500 leading-tight'>"+timeParts.sub+"</span>";
                 b.onclick = function(){
                     // 지원 모달: 공고자가 정의한 조합 허용 (포지션-시간 교차 제한 없음)
@@ -2141,7 +2191,7 @@ function showKakaoModal(text, forced) {
                 }
                 // 12초 이내 응답 없으면 강제 완료
                 setTimeout(function() {
-                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); refreshCurrentUserPos(); }
+                    if (!_fetchDone) { _fetchDone = true; showLoader(false); buildUserGrid(); renderList(); refreshCurrentUserPos(); prefetchSlotTimes(); }
                 }, 12000);
 
                 // 미소지기DB: 세션 캐시 활용 (1시간 만료)
