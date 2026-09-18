@@ -85,13 +85,30 @@ export async function POST(req: NextRequest) {
   try {
     const { name, pos, hours, employeeId } = await req.json();
     if (!name) return NextResponse.json({ error: '이름 필요' }, { status: 400 });
+    const nm = String(name).trim();
+
+    // ★ 같은 이름 중복 등록 차단.
+    //   PATCH·DELETE 가 모두 .eq('name') 으로 동작하므로 동명 행이 2개가 되면
+    //   수정·삭제가 두 건에 동시에 적용되어 되돌릴 수 없다.
+    //   (버튼 두 번 눌림·요청 재시도로 실제 중복이 발생했었음)
+    // maybeSingle() 은 이미 중복이 있으면 오류로 null 을 돌려줘 검사를 통과시킨다 → 목록으로 조회
+    const { data: dupRows } = await supabaseAdmin
+      .from('misojigi').select('name, active').eq('name', nm).limit(1);
+    const dup = dupRows && dupRows[0];
+    if (dup) {
+      return NextResponse.json({
+        error: dup.active
+          ? `이미 등록된 미소지기입니다: ${nm}`
+          : `${nm} 님은 퇴사 처리된 상태로 남아 있습니다. 새로 추가하는 대신 복구해 주세요.`,
+      }, { status: 409 });
+    }
 
     // 근로일수 디폴트: 5.5h → 2일, 4.5h(그 외) → 3일
     const hrs = Number(hours ?? 5.5);
     const contractDays = hrs >= 5.5 ? 2 : 3;
 
     const { error } = await supabaseAdmin.from('misojigi').insert({
-      name: name.trim(),
+      name: nm,
       pos: Array.isArray(pos) ? pos.join(',') : (pos || ''),
       hours: hours ?? 5.5,
       active: true,
@@ -100,9 +117,15 @@ export async function POST(req: NextRequest) {
       contract_days: contractDays,
     });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      // unique 제약에 걸린 경우(동시 요청) → 중복 안내로 변환
+      const isDup = (error as any).code === '23505' || /duplicate/i.test(error.message);
+      return NextResponse.json(
+        { error: isDup ? `이미 등록된 미소지기입니다: ${nm}` : error.message },
+        { status: isDup ? 409 : 500 });
+    }
     // GAS 미소지기DB 동기화
-    await callGAS('addMisojigiToDB', [name.trim(), Array.isArray(pos) ? pos.join(',') : (pos || ''), hours ?? 5.5]);
+    await callGAS('addMisojigiToDB', [nm, Array.isArray(pos) ? pos.join(',') : (pos || ''), hours ?? 5.5]);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
@@ -121,8 +144,8 @@ export async function PATCH(req: NextRequest) {
       const newName = String(body.newName).trim();
       if (!oldName || !newName) return NextResponse.json({ error: '기존/새 이름 필요' }, { status: 400 });
       // 중복 방지
-      const { data: dup } = await supabaseAdmin.from('misojigi').select('name').eq('name', newName).maybeSingle();
-      if (dup) return NextResponse.json({ error: '이미 존재하는 이름: ' + newName }, { status: 400 });
+      const { data: dupRows } = await supabaseAdmin.from('misojigi').select('name').eq('name', newName).limit(1);
+      if (dupRows && dupRows.length) return NextResponse.json({ error: '이미 존재하는 이름: ' + newName }, { status: 400 });
       const { error: renErr } = await supabaseAdmin.from('misojigi').update({ name: newName }).eq('name', oldName);
       if (renErr) return NextResponse.json({ error: renErr.message }, { status: 500 });
       // GAS 미소지기DB 동기화 (이름 열 변경)
@@ -166,13 +189,15 @@ export async function DELETE(req: NextRequest) {
 
     if (hard) {
       // 완전 삭제 (비활성 상태인 경우만)
-      const { data: existing } = await supabaseAdmin
+      // ★ .single() 을 쓰면 동명 행이 2개일 때 오류 → '찾을 수 없음' 으로 삭제가 막혔다.
+      //   목록으로 받아서 판단한다.
+      const { data: rows, error: selErr } = await supabaseAdmin
         .from('misojigi')
         .select('active')
-        .eq('name', name)
-        .single();
-      if (!existing) return NextResponse.json({ error: '미소지기를 찾을 수 없습니다' }, { status: 404 });
-      if (existing.active) return NextResponse.json({ error: '활성 미소지기는 삭제할 수 없습니다. 먼저 퇴사 처리하세요.' }, { status: 400 });
+        .eq('name', name);
+      if (selErr) return NextResponse.json({ error: selErr.message }, { status: 500 });
+      if (!rows || !rows.length) return NextResponse.json({ error: '미소지기를 찾을 수 없습니다' }, { status: 404 });
+      if (rows.some((r: any) => r.active)) return NextResponse.json({ error: '활성 미소지기는 삭제할 수 없습니다. 먼저 퇴사 처리하세요.' }, { status: 400 });
 
       const { error } = await supabaseAdmin
         .from('misojigi')

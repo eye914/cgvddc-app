@@ -2751,14 +2751,21 @@ function showKakaoModal(text, forced) {
             if (pos.length === 0) { alert('포지션을 하나 이상 선택하세요.'); return; }
             var hours = parseFloat((document.getElementById('miso-add-hours') || {}).value) || 5.5;
             if (!confirm(name + ' 미소지기를 추가합니다.\n포지션: ' + pos.join(', ') + '\n근무시간: ' + hours + '시간\n\n계속하시겠습니까?')) return;
+            // ★ 중복 등록 방지: 응답이 오기 전 버튼이 다시 눌리면 같은 이름이 2번 들어간다
+            if (window._misoAdding) return;
+            window._misoAdding = true;
             google.script.run
                 .withSuccessHandler(function() {
+                    window._misoAdding = false;
                     alert(name + ' 추가 완료!');
                     document.getElementById('miso-add-form').classList.add('hidden');
                     loadMisojigiAdmin();
                     sessionStorage.removeItem('cgv_miso');
                 })
-                .withFailureHandler(function(e) { alert('오류: ' + (e && e.message ? e.message : e)); })
+                .withFailureHandler(function(e) {
+                    window._misoAdding = false;
+                    alert('오류: ' + (e && e.message ? e.message : e));
+                })
                 .addMisojigi(name, pos, hours, employeeId);
         }
 
