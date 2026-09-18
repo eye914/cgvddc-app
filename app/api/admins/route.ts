@@ -26,11 +26,20 @@ export async function POST(req: NextRequest) {
     if (!nm) return NextResponse.json({ error: '이름 필수' }, { status: 400 });
     if (!/^\d{4,6}$/.test(pn)) return NextResponse.json({ error: 'PIN은 숫자 4~6자리' }, { status: 400 });
 
-    const { data: existing } = await supabaseAdmin
+    // ★ 관리자 로그인은 PIN 만으로 사람을 찾는다(auth: .eq('pin')).
+    //   다른 관리자와 PIN 이 겹치면 조회 결과가 2건이 되어 두 사람 모두 로그인이 막힌다.
+    const { data: pinUsers } = await supabaseAdmin
+      .from('admins').select('name').eq('pin', pn).eq('active', true);
+    if ((pinUsers ?? []).some((a: any) => a.name !== nm)) {
+      return NextResponse.json({ error: '다른 관리자가 사용 중인 PIN입니다. 다른 번호를 지정해 주세요.' }, { status: 409 });
+    }
+
+    const { data: existRows } = await supabaseAdmin
       .from('admins')
       .select('name')
       .eq('name', nm)
-      .maybeSingle();
+      .limit(1);
+    const existing = existRows && existRows[0];
 
     if (existing) {
       const { error } = await supabaseAdmin
