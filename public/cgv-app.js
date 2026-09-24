@@ -1154,6 +1154,20 @@ function showKakaoModal(text, forced) {
             if (!m) return '기타';
             return m[1] + '년 ' + parseInt(m[2]) + '월';
         }
+        // "2026년 10월" → 202610. 비교용 숫자.
+        function monthKeyNum(mKey) {
+            var m = String(mKey).match(/(\d{4})년\s*(\d+)월/);
+            return m ? parseInt(m[1]) * 100 + parseInt(m[2]) : 0;
+        }
+        // ★ '지난 달 기록'은 이번 달보다 앞선 달만.
+        //   예전엔 "이번 달이 아니면 과거"로 판단해, 10/1(10월 1주차) 공고가
+        //   9월 말에 올라오면 미래인데도 지난 달 기록에 접혀 들어갔다.
+        function isPastMonthKey(mKey) {
+            var n = monthKeyNum(mKey);
+            if (!n) return false;                     // '기타'는 과거로 보내지 않는다
+            var now = new Date();
+            return n < now.getFullYear() * 100 + (now.getMonth() + 1);
+        }
         function sortMonthKeys(keys) {
             var now = new Date();
             var currNum = now.getFullYear() * 100 + (now.getMonth() + 1);
@@ -3264,7 +3278,7 @@ function showKakaoModal(text, forced) {
                 grouped[key].sort(function(a,b){ return (a.pri||5)-(b.pri||5) || a.date.localeCompare(b.date); }).forEach(function(item){ sec += item.html; });
                 sec += "</div></details>";
                 var _mk = getMonthKeyFromWeekKey(key);
-                if (_mk === _homeCurMonth) _homeCur += sec; else { _homePast += sec; _homePastM[_mk] = 1; }
+                if (!isPastMonthKey(_mk)) _homeCur += sec; else { _homePast += sec; _homePastM[_mk] = 1; }
             });
             mainBoard.innerHTML += _homeCur;
             if (_homePast) {
@@ -3294,7 +3308,7 @@ function showKakaoModal(text, forced) {
                 Object.keys(weeks).forEach(function(wk) {
                     weeks[wk].forEach(function(x) { if (x.isDone) mTotalDone++; else mTotalWait++; });
                 });
-                var secMonth = "<details class='mb-4' "+(isThisMonth?"open":"")+">"
+                var secMonth = "<details class='mb-4' "+(isPastMonthKey(monthKey)?"":"open")+">"
                     + "<summary class='flex justify-between items-center bg-slate-900 text-white px-5 py-4 rounded-[20px] cursor-pointer select-none font-black'>"
                     + "<span class='text-[14px] min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis'>"+monthKey+(isThisMonth?" <span class='text-red-400 text-[10px]'>이번달</span>":"")+"</span>"
                     + "<div class='flex items-center gap-2 flex-shrink-0'><span class='fold-hint-dark'></span>"
@@ -3320,7 +3334,7 @@ function showKakaoModal(text, forced) {
                     secMonth += secA;
                 });
                 secMonth += "</div></details>";
-                if (isThisMonth) _curM += secMonth; else { _pastM += secMonth; _pastCnt++; }
+                if (!isPastMonthKey(monthKey)) _curM += secMonth; else { _pastM += secMonth; _pastCnt++; }
             });
             mgrBoard.innerHTML += _curM;
             if (_pastM) {
